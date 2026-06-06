@@ -1,0 +1,52 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 200 33% 98%;
+    --foreground: 215 30% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 30% 16%;
+    --primary: 197 81% 32%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 200 23% 94%;
+    --secondary-foreground: 215 30% 16%;
+    --muted: 210 22% 94%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 46 92% 93%;
+    --accent-foreground: 28 64% 28%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 20% 86%;
+    --input: 214 20% 86%;
+    --ring: 197 81% 32%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top, rgba(14, 116, 144, 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(248, 250, 252, 0.7), rgba(241, 245, 249, 0.95));
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+}
+
+@layer components {
+  .surface {
+    @apply rounded-2xl border bg-card shadow-panel;
+  }
+
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+}
