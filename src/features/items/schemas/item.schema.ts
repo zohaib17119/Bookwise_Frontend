@@ -17,7 +17,7 @@ export const itemSchema = z.object({
   assetAccountId: optionalString,
   preferredVendorId: optionalString,
   taxable: z.boolean(),
-  taxCode: optionalString,
+  taxRateId: optionalString,
   trackQuantity: z.boolean(),
   quantityOnHand: optionalDecimalString,
   reorderLevel: optionalDecimalString,

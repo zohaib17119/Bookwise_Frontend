@@ -23,8 +23,8 @@ interface ItemOption {
   id: string;
   name: string;
   description?: string | null;
-  salesPrice?: number | null;
-  purchaseCost?: number | null;
+  salesPrice?: string | null;
+  purchaseCost?: string | null;
 }
 
 interface AccountOption {
@@ -55,7 +55,7 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
   docDiscountValue?: number | null;
 }
 
-const discountOptions: DiscountType[] = ["amount", "percentage"];
+const discountOptions: DiscountType[] = ["FIXED", "PERCENTAGE"];
 
 export function LineItemsEditor<TFieldValues extends FieldValues>({
   control,
@@ -124,12 +124,12 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
           mode === "sales" ? "unitPrice" : "unitCost";
         const price =
           mode === "sales"
-            ? selectedItem.salesPrice
-            : selectedItem.purchaseCost;
+            ? Number(selectedItem.salesPrice ?? "0")
+            : Number(selectedItem.purchaseCost ?? "0");
 
         setValue(
           `${name}.${index}.${priceField}` as never,
-          (price ?? 0) as never,
+          String(price) as never,
         );
         if (selectedItem.description) {
           setValue(

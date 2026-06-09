@@ -18,7 +18,7 @@ export interface Item {
   preferredVendorId?: string | null;
   preferredVendorName?: string | null;
   taxable: boolean;
-  taxCode?: string | null;
+  taxRateId?: string | null;
   trackQuantity: boolean;
   quantityOnHand?: string | null;
   reorderLevel?: string | null;
@@ -45,7 +45,7 @@ export interface ItemPayload {
   assetAccountId?: string | null;
   preferredVendorId?: string | null;
   taxable: boolean;
-  taxCode?: string;
+  taxRateId?: string;
   trackQuantity: boolean;
   quantityOnHand?: string | null;
   reorderLevel?: string | null;

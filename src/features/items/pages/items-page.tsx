@@ -25,6 +25,7 @@ import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
+import { useTaxRates } from "@/features/tax/hooks/use-tax";
 
 export function ItemsPage() {
   const { companyId, permissions } = useActiveCompany();
@@ -47,6 +48,7 @@ export function ItemsPage() {
   });
   const accountsQuery = useAccountOptions(companyId);
   const vendorsQuery = useVendorOptions(companyId);
+  const taxRatesQuery = useTaxRates(companyId);
   const createMutation = useCreateItem(companyId);
   const updateMutation = useUpdateItem(companyId, selectedItem?.id ?? null);
   const deleteMutation = useDeleteItem(companyId);
@@ -224,7 +226,7 @@ export function ItemsPage() {
             expenseAccountId: values.expenseAccountId || undefined,
             assetAccountId: values.assetAccountId || undefined,
             preferredVendorId: values.preferredVendorId || undefined,
-            taxCode: values.taxCode || undefined,
+            taxRateId: values.taxRateId || undefined,
             quantityOnHand: values.quantityOnHand || undefined,
             reorderLevel: values.reorderLevel || undefined,
           };
@@ -238,6 +240,7 @@ export function ItemsPage() {
           setDrawerOpen(false);
         }}
         open={drawerOpen}
+        taxRates={taxRatesQuery.data ?? []}
         vendors={vendorsQuery.data ?? []}
       />
 

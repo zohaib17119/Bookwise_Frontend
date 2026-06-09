@@ -20,6 +20,7 @@ import {
 import type { Item } from "@/features/items/types/item.types";
 import type { Account } from "@/features/accounts/types/account.types";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import type { TaxRate } from "@/features/tax/types/tax.types";
 
 interface ItemFormDrawerProps {
   open: boolean;
@@ -27,6 +28,7 @@ interface ItemFormDrawerProps {
   item?: Item | null;
   accounts: Account[];
   vendors: Vendor[];
+  taxRates: TaxRate[];
   isPending?: boolean;
   error?: ApiError | null;
   onClose: () => void;
@@ -39,6 +41,7 @@ export function ItemFormDrawer({
   item,
   accounts,
   vendors,
+  taxRates,
   isPending,
   error,
   onClose,
@@ -60,7 +63,7 @@ export function ItemFormDrawer({
       assetAccountId: "",
       preferredVendorId: "",
       taxable: false,
-      taxCode: "",
+      taxRateId: "",
       trackQuantity: false,
       quantityOnHand: undefined,
       reorderLevel: undefined,
@@ -87,7 +90,7 @@ export function ItemFormDrawer({
       assetAccountId: item?.assetAccountId ?? "",
       preferredVendorId: item?.preferredVendorId ?? "",
       taxable: item?.taxable ?? false,
-      taxCode: item?.taxCode ?? "",
+      taxRateId: item?.taxRateId ?? "",
       trackQuantity: item?.trackQuantity ?? false,
       quantityOnHand: item?.quantityOnHand ?? undefined,
       reorderLevel: item?.reorderLevel ?? undefined,
@@ -148,8 +151,15 @@ export function ItemFormDrawer({
             <FormField label="Unit name">
               <Input {...form.register("unitName")} placeholder="Each" />
             </FormField>
-            <FormField label="Tax code">
-              <Input {...form.register("taxCode")} placeholder="VAT-STD" />
+            <FormField label="Tax rate">
+              <Select {...form.register("taxRateId")}>
+                <option value="">No tax</option>
+                {taxRates.map((rate) => (
+                  <option key={rate.id} value={rate.id}>
+                    {rate.name} ({rate.ratePercent}%)
+                  </option>
+                ))}
+              </Select>
             </FormField>
             <FormField label="Sales price">
               <Input type="number" step="0.01" {...form.register("salesPrice")} />

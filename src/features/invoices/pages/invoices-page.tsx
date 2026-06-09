@@ -15,6 +15,7 @@ import { useInvoices } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import InvoiceEditorPage from "./invoice-editor-page";
 
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -79,6 +80,7 @@ export function InvoicesPage() {
   ];
 
   return (
+  
     <EntityListPage
       content={
         invoicesQuery.error ? (
@@ -125,6 +127,7 @@ export function InvoicesPage() {
             ))}
           </Select>
         </FilterBar>
+      
       }
     />
   );
