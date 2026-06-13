@@ -15,6 +15,7 @@ import { useActiveCompany } from "@/features/companies/hooks/use-active-company"
 import { useDeleteInvoice, useInvoice } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
+import InvoiceView from "./InvoiceView";
 
 export function InvoiceDetailPage() {
   const navigate = useNavigate();
@@ -40,12 +41,14 @@ export function InvoiceDetailPage() {
 
   const invoice = invoiceQuery.data;
 
+
   return (
     <PageContainer className="space-y-6">
       <DocumentHeaderCard
         actions={
           canManage ? (
             <div className="flex flex-wrap gap-3">
+              {invoice &&<InvoiceView invoice={invoice}  /> }
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/invoices/${invoice.id}/edit`}>Edit invoice</Link>
               </Button>

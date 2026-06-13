@@ -79,6 +79,7 @@ export function DataTable<T>({
                     {column.render(row)}
                   </td>
                 ))}
+                
               </tr>
             ))}
           </tbody>
