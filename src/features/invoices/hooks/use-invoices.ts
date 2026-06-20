@@ -5,6 +5,7 @@ import {
   getInvoice,
   getInvoices,
   updateInvoice,
+  getNextInvoiceNumber,
 } from "@/features/invoices/api/invoices.api";
 import type {
   InvoiceListParams,
@@ -73,5 +74,15 @@ export function useDeleteInvoice(companyId: string | undefined) {
     onSuccess: async () => {
       if (companyId) await invalidateInvoiceQueries(companyId);
     },
+  });
+}
+
+export function useNextInvoiceNumber(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "invoices", "next-number"],
+    queryFn: () => getNextInvoiceNumber(companyId!),
+    enabled: Boolean(companyId) && enabled,
+    staleTime: 0,
+    gcTime: 0,
   });
 }

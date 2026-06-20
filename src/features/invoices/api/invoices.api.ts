@@ -52,3 +52,10 @@ export async function updateInvoice(
 export async function deleteInvoice(companyId: string, invoiceId: string) {
   await apiClient.delete(`/companies/${companyId}/invoices/${invoiceId}`);
 }
+
+export async function getNextInvoiceNumber(companyId: string) {
+  const { data } = await apiClient.get<{ nextNumber: number }>(
+    `/companies/${companyId}/invoices/next-number`,
+  );
+  return data;
+}

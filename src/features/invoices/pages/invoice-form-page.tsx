@@ -9,6 +9,7 @@ import {
   useCreateInvoice,
   useInvoice,
   useUpdateInvoice,
+  useNextInvoiceNumber,
 } from "@/features/invoices/hooks/use-invoices";
 import {
   invoiceSchema,
@@ -36,6 +37,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   const invoiceQuery = useInvoice(companyId, mode === "edit" ? invoiceId ?? null : null);
   const createMutation = useCreateInvoice(companyId);
   const updateMutation = useUpdateInvoice(companyId, invoiceId ?? null);
+  const nextNumberQuery = useNextInvoiceNumber(companyId, mode === "create");
   const canManage = canManageEntity(permissions, "invoices");
 
   const form = useForm<InvoiceFormInput, undefined, InvoiceFormValues>({
@@ -64,12 +66,13 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 discountValue: line.discountValue ?? undefined,
                 taxCodeId: line.taxCodeId ?? "",
                 taxRate: line.taxRate ?? undefined,
+                itemName: line.itemName ??  "",
               })) ?? [],
           }
         : {
             customerId: "",
             estimateId: "",
-            invoiceNumber: "",
+            invoiceNumber: nextNumberQuery.data?.nextNumber ? String(nextNumberQuery.data.nextNumber) : "",
             referenceNumber: "",
             issueDate: new Date().toISOString().split("T")[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
@@ -88,6 +91,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 discountValue: "",
                 taxCodeId: "",
                 taxRate: "",
+                itemName: "",
               },
             ],
           },
@@ -114,6 +118,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
       taxCodesQuery={taxCodesQuery}
       taxRatesQuery={taxRatesQuery}
       onSubmit={async (values) => {
+        console.log("values",values)
         const payload = {
           ...values,
           estimateId: values.estimateId || undefined,
@@ -144,9 +149,10 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 ? undefined
                 : String(line.discountValue),
             taxRateId: line.taxRateId || undefined,
+            itemName: line.itemName || "",
           })),
         };
-
+console.log("payload",payload)
         const result =
           mode === "create"
             ? await createMutation.mutateAsync(payload)

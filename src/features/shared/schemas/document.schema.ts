@@ -14,6 +14,7 @@ export const lineItemSchema = z.object({
   discountValue: optionalDecimalString,
   taxRateId: optionalString,
   taxRate: optionalDecimalString,
+  itemName: z.string().min(1).max(500),
   expenseAccountId: optionalString,
 });
 
@@ -22,7 +23,7 @@ export const documentBaseSchema = z.object({
   currencyCode: z.string().min(3).max(3).optional().or(z.literal("")),
   notes: optionalString,
   terms: z.enum(["", "0", "15", "30", "45", "60", "90"]).optional().or(z.literal("")),
-  discountType: z.enum(["FIXED", "PERCENTAGE"]).optional(),
+  discountType: z.enum(["FIXED", "PERCENTAGE"]).optional().or(z.literal("")),
   discountValue: optionalDecimalString,
 });
 

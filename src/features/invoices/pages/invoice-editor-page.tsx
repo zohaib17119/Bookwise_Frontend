@@ -25,7 +25,7 @@ export default function InvoiceEditorPage({
   itemsQuery?: any;
   taxCodesQuery?: any;
   taxRatesQuery?: any;
-  onSubmit: () => void;
+  onSubmit: (values: any) => void;
   isLoading: boolean;
   mode: "create" | "edit";
   companyId: string;
@@ -64,16 +64,19 @@ export default function InvoiceEditorPage({
       form.setValue(`lines.${index}.description`, "");
       form.setValue(`lines.${index}.unitPrice`, "");
       form.setValue(`lines.${index}.taxRateId`, "");
+      form.setValue(`lines.${index}.itemName`, "");
       return;
     }
     
     const item = getItemById(itemId);
     
     if (item) {
+      console.log("item",item)
       // Auto-populate from item
       form.setValue(`lines.${index}.itemId`, itemId);
       form.setValue(`lines.${index}.description`, item.description || item.name);
       form.setValue(`lines.${index}.unitPrice`, item.salesPrice || "");
+      form.setValue(`lines.${index}.itemName`, item.name || "");
       
       // If item has tax rate, auto-populate tax
       if (item.taxRateId) {
@@ -156,6 +159,7 @@ export default function InvoiceEditorPage({
         discountValue: "",
         taxCodeId: "",
         taxRate: "",
+        itemName: "",
       },
     ]);
   };
@@ -179,6 +183,7 @@ export default function InvoiceEditorPage({
         discountValue: "",
         taxCodeId: "",
         taxRate: "",
+        itemName: "",
       },
     ]);
   };
@@ -268,7 +273,8 @@ export default function InvoiceEditorPage({
                 <Input
                   {...form.register("invoiceNumber")}
                   placeholder="Auto-generated"
-                  className="border p-2"
+                  className="border p-2 bg-gray-100 cursor-not-allowed font-semibold text-gray-700"
+                  readOnly
                 />
               </div>
 

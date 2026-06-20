@@ -19,12 +19,15 @@ import {
   useUpdateCompanySettings,
 } from "@/features/settings/hooks/use-settings";
 import { ErrorState } from "@/components/shared/error-state";
+import FileInput from "@/components/ui/fileInput";
+import { useState } from "react";
 
 export function CompanySettingsPage() {
   const { companyId, permissions } = useActiveCompany();
   const canManage = canUsePermission(permissions, ["company.update", "settings.manage"]);
   const companySettingsQuery = useCompanySettings(companyId);
   const updateMutation = useUpdateCompanySettings(companyId);
+  const [logo, setlogo] = useState(companySettingsQuery.data?.logoUrl ?? "")
 
   const form = useForm<CompanySettingsFormInput, undefined, CompanySettingsFormValues>({
     resolver: zodResolver(companySettingsSchema),
@@ -68,6 +71,7 @@ export function CompanySettingsPage() {
       onSubmit={form.handleSubmit(async (values) => {
         await updateMutation.mutateAsync({
           ...values,
+          logoUrl: logo ?? null,
           fiscalYearStartMonth: values.fiscalYearStartMonth ?? null,
         });
       })}
@@ -78,6 +82,7 @@ export function CompanySettingsPage() {
         description="Administrative company profile information used across documents and settings."
         title="Company Profile"
       >
+        {logo && logo !== "" && <img src={logo} alt="Company Logo" />}
         <FieldGrid columns={2}>
           <FormField error={form.formState.errors.name?.message} label="Company name">
             <Input disabled={!canManage} {...form.register("name")} />
@@ -147,7 +152,8 @@ export function CompanySettingsPage() {
         </FieldGrid>
         <div className="mt-4">
           <FormField label="Logo URL">
-            <Input disabled={!canManage} {...form.register("logoUrl")} />
+            {/* <Input disabled={!canManage} {...form.register("logoUrl")} /> */}
+         <FileInput logo={logo} setlogo={setlogo}/>
           </FormField>
         </div>
       </SettingsSectionCard>

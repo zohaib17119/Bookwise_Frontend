@@ -5,27 +5,26 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import Modal from "react-modal";
 
-export default function InvoiceView({invoice}) {
+export default function InvoiceView({ invoice }) {
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
         Modal.setAppElement("#root");
     }, []);
-console.log("invoice",invoice)
-    const pdfInvoice = `<!DOCTYPE html>
+    console.log("invoice", invoice)
+  const pdfInvoice = `
+<!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <title>Invoice</title>
-  <link
-  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-  rel="stylesheet"
-/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     body {
-     font-family: Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
+      font-family: Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
       padding: 30px;
       color: #333;
     }
@@ -35,7 +34,7 @@ console.log("invoice",invoice)
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #eee;
-      padding-bottom: 20px;
+      padding-bottom: 5px;
     }
 
     .logo {
@@ -43,19 +42,28 @@ console.log("invoice",invoice)
     }
 
     .company {
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1.5;
     }
 
     .section {
-      margin-top: 20px;
+      padding-top: 20px;
+      padding-bottom: 40px;
       display: flex;
       justify-content: space-between;
+      border-bottom: 2px dotted grey;
+    }
+    .section2 {
+      padding-top: 40px;
+      padding-bottom: 20px;
+      display: flex;
+    //   justify-content: space-between;
+    //   border-bottom: 2px dotted grey;
     }
 
     .box {
       width: 48%;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .invoice-details {
@@ -67,15 +75,16 @@ console.log("invoice",invoice)
 
     table {
       width: 100%;
-    
-    border: 1px solid grey;
+
+      border: 1px solid grey;
       margin-top: 20px;
     }
 
-    table th, table td {
+    table th,
+    table td {
       border: 1px solid #eee;
       padding: 12px;
-      font-size: 12px;
+      font-size: 11px;
       text-align: left;
     }
 
@@ -92,7 +101,7 @@ console.log("invoice",invoice)
 
     .summary-box {
       width: 300px;
-      font-size: 14px;
+      font-size: 12px;
     }
 
     .total {
@@ -102,70 +111,87 @@ console.log("invoice",invoice)
     }
 
     .note {
-      margin-top: 20px;
-      font-size: 14px;
+      margin-top: 0px;
+      font-size: 12px;
+      padding: 30px;
     }
-.main-bod{
-padding: 30px;
-}
+
+    .main-bod {
+      padding: 30px;
+    }
+
+    .main-bod-second {
+      padding: 0px 30px 5px; 
+      background-color: #EBF4FB;
+    }
   </style>
 </head>
 
 <body>
-<div class="main-bod">
 
   <!-- HEADER -->
-  <div class="header">
-    <div>
-      <h2 style="color:#1d4ed8;">INVOICE</h2>
-      <div class="company">
-        Zee Holdings<br>
-        A - 10 Block A North Nazimabad<br>
-        Karachi, Pakistan<br>
-        Karachi, Sindh 74700
-      </div>
-      <div class="company">
-        zohaibzafar1117@gmail.com<br>
-        +923168939741
-      </div>
-    </div>
+  <div>
+    <div class="main-bod">
+      <div class="header">
+        <div class="company">
+          <h2 style="color:#1d4ed8; font-size:14px"><b>INVOICE</b></h2>
 
-    <img class="logo" src="data:image/jpeg;base64,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" />
+          <b>${invoice?.company?.name}</b><br />
+          ${invoice?.company?.addressLine1}<br />
+          ${invoice?.company?.city} ${invoice?.company?.state} ${invoice?.company?.Country}<br />
+          ${invoice?.company?.email}<br>
+          ${invoice?.company?.phone}
+        </div>
+        <img class="logo" src='${invoice?.company?.logoUrl}' alt="Company Logo" />
+      </div>
+
+    </div>
   </div>
 
   <!-- BILL / SHIP -->
-  <div class="section">
-    <div class="box">
-      <h4>Bill To</h4>
-      <div>
-        abcd ab cd ss kansk<br>
-        kmkmmlkmsalks<br>
-        A - 10 Block A North Nazimabad Karachi<br>
-        Pakistan
-      </div>
-    </div>
+  <div class="main-bod-second">
+    <div class="section">
+        <div class="box">
+                <h4><b>Bill To</b></h4>
 
-    <div class="box">
-      <h4>Ship To</h4>
-      <div>
-        abcd ab cd ss kansk<br>
-        kmkmmlkmsalks<br>
-        A - 10 Block A North Nazimabad Karachi<br>
-        Pakistan
-      </div>
+            <div>
+            ${invoice?.customer?.displayName}<br />
+            ${invoice?.customer?.billingAddressLine1}<br />
+            ${invoice?.customer?.billingCity} ${invoice?.customer?.billingState}
+            ${invoice?.customer?.billingCountry}<br />
+            ${invoice?.customer?.email}<br>
+            ${invoice?.customer?.phone}
+            </div>
+         </div>
+        <div class="box">
+        <h4><b>Ship To</b></h4>
+            <div>
+            ${invoice?.customer?.displayName}<br />
+            ${invoice?.customer?.shippingAddressLine1}<br />
+            ${invoice?.customer?.shippingCity} ${invoice?.customer?.shippingState}
+            ${invoice?.customer?.shippingCountry}<br />
+            ${invoice?.customer?.email}<br>
+            ${invoice?.customer?.phone}
+            </div>
+         </div>
     </div>
-  </div>
-
-  <!-- INVOICE DETAILS -->
-  <div class="invoice-details">
-    <b>Invoice No:</b> 1001 <br>
-    <b>Terms:</b> Net 15 <br>
-    <b>Invoice Date:</b> 11/06/2026 <br>
-    <b>Due Date:</b> 28/06/2026
+    
+    <!-- INVOICE DETAILS -->
+    <div class="section2">
+    <div class="box">
+      <b>Invoice Details</b><br>
+      Invoice No: ${invoice?.invoiceNumber} <br>
+      Terms: ${invoice?.terms} <br>
+      Invoice Date: ${invoice?.issueDate} <br>
+      Due Date: ${invoice?.dueDate}
+    </div>
+    </div>
   </div>
 
   <!-- TABLE -->
-  <table bordered >
+    <div class="main-bod">
+
+  <table bordered>
     <thead>
       <tr>
         <th>#</th>
@@ -175,44 +201,57 @@ padding: 30px;
         <th>Rate</th>
         <th>Amount</th>
         <th>Tax</th>
+        <th>Total</th>
       </tr>
     </thead>
 
     <tbody>
-      <tr>
-        <td>1</td>
-        <td>abcd</td>
-        <td>10000</td>
-        <td>1000</td>
-        <td>Rs 1000000000000000000000</td>
-        <td>Rs 10,00,000.00</td>
-        <td>GST @ 15% 15000</td>
-      </tr>
-      
+    ${invoice.lines.map((line : any, index : number) =>`<tr>
+        <td>${index + 1}</td>
+        <td>${line?.item?.name}</td>
+        <td>${line.description}</td>
+        <td>${line.quantity}</td>
+        <td>${line.unitPrice}</td>
+        <td>${line?.lineSubtotal}</td>
+        <td>${line?.lineTaxAmount && line?.lineTaxAmount !== 0 ? (line?.taxName + "@ " + parseFloat(line?.taxRate).toFixed(1) +"% " +line?.lineTaxAmount) : "-"}</td>
+        <td>${line?.lineTotal}</td>
+      </tr>`).join("")
+      }
+<td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td><b>${invoice?.subtotalBase}</b></td>
+        <td><b>${invoice?.taxAmountBase}</b></td>
+        <td><b>${invoice?.totalBase}</b></td>
     </tbody>
   </table>
 
   <!-- SUMMARY -->
   <div class="summary">
-    <div class="summary-box">
-      <div>Subtotal: Rs 10,000,000.00</div>
-      <div>GST @ 15%: Rs 1,500,000.00</div>
-      <div class="total">Total: Rs 11,500,000.00</div>
-    </div>
+   
+  </div>
   </div>
 
   <!-- NOTE -->
   <div class="note">
-    <b>Payment Options</b><br>
-    Note to customer: ye note hai aksdjknknasdkjnasjdn <br />
-    Note to customer: ye note hai aksdjknknasdkjnasjdn <br />
-    Note to customer: ye note hai aksdjknknasdkjnasjdn <br />
-    Note to customer: ye note hai aksdjknknasdkjnasjdn <br />
+    
+    ${invoice?.notes ? "Note:" + " " + invoice?.notes : ""}
   </div>
 
-</div>
 </body>
+
 </html>`
+    {/* <div class="box">
+      <h4>Ship To</h4>
+      <div>
+        abcd ab cd ss kansk<br>
+        kmkmmlkmsalks<br>
+        A - 10 Block A North Nazimabad Karachi<br>
+        Pakistan
+      </div>
+    </div> */}
     const [pdfUrl, setPdfUrl] = useState("");
     useEffect(() => {
         if (isOpen) {

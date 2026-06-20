@@ -94,12 +94,13 @@ export function CustomerPaymentFormPage() {
       <form
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
         onSubmit={form.handleSubmit(async (values) => {
+          console.log("values",values)
           const payment = await createMutation.mutateAsync({
             customerId: values.customerId,
             paymentDate: values.paymentDate || undefined,
             paymentMethod: values.paymentMethod,
             referenceNumber: values.referenceNumber || undefined,
-            amount: Number(values.amount),
+            amount: values.amount.toString(),
             notes: values.notes || undefined,
           });
 
@@ -110,7 +111,7 @@ export function CustomerPaymentFormPage() {
           if (nonZeroAllocations.length) {
             await allocateMutation.mutateAsync({
               paymentId: payment.id,
-              payload: { allocations: nonZeroAllocations },
+              payload: { allocations: nonZeroAllocations.map((item)=> ({invoiceId : item?.invoiceId, amount: item?.amount.toString()})) },
             });
           }
 
