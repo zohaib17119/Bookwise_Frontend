@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,6 +117,14 @@ export function BillFormPage({ mode }: BillFormPageProps) {
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
+  const [showAccountColumn, setShowAccountColumn] = useState(false);
+  // Reveal the per-line account picker automatically when a bill already has
+  // explicit account overrides, so power users don't lose visibility on edit.
+  const hasLineAccountOverrides = (watchedLines ?? []).some((line) =>
+    Boolean(line.expenseAccountId),
+  );
+  const accountColumnVisible = showAccountColumn || hasLineAccountOverrides;
+
   if (!canManage) {
     return <Alert title="Bill editing is unavailable" description="Your current company membership does not include bill management." variant="destructive" />;
   }
@@ -200,6 +209,15 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           </FormSection>
 
           <FormSection title="Line items">
+            <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                checked={accountColumnVisible}
+                onChange={(event) => setShowAccountColumn(event.target.checked)}
+              />
+              <span>
+                Advanced: choose an expense account per line (optional)
+              </span>
+            </label>
             <LineItemsEditor
               accountOptions={accountsQuery.data ?? []}
               control={form.control}
@@ -207,6 +225,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               itemOptions={itemsQuery.data ?? []}
               mode="purchase"
               name={"lines"}
+              showAccountColumn={accountColumnVisible}
             />
           </FormSection>
 

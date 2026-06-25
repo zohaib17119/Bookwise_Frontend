@@ -25,12 +25,20 @@ export interface Company {
   status?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  setup?: {
+    coaTemplate: string;
+    accountsCreated: number;
+    defaultMappingConfigured: boolean;
+  };
 }
 
 export interface CreateCompanyPayload {
   name: string;
+  coaTemplate?: "SERVICE" | "RETAIL_OR_PRODUCT" | "BOTH";
+  ownerUserId?: string;
   legalName?: string;
   currency?: string;
+  currencyCode?: string;
   country?: string;
   state?: string;
   city?: string;

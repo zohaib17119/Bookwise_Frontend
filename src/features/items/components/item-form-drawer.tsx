@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AdvancedSection } from "@/components/shared/advanced-section";
 import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
@@ -73,6 +74,9 @@ export function ItemFormDrawer({
 
   const itemType = form.watch("type");
   const trackQuantity = form.watch("trackQuantity");
+  const hasAccountOverrides = Boolean(
+    item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -173,7 +177,26 @@ export function ItemFormDrawer({
           </FormField>
         </FormSection>
 
-        <FormSection title="Accounting links" description="Default accounts for sales, purchases, and stock.">
+        <FormSection title="Purchasing" description="Optional defaults used when buying this item.">
+          <FieldGrid>
+            <FormField label="Preferred vendor">
+              <Select {...form.register("preferredVendorId")}>
+                <option value="">No preferred vendor</option>
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.displayName}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          </FieldGrid>
+        </FormSection>
+
+        <AdvancedSection
+          title="Advanced: accounting mapping (optional)"
+          description="Leave blank to use your company's default accounts."
+          defaultOpen={hasAccountOverrides}
+        >
           <FieldGrid>
             <FormField label="Income account">
               <Select {...form.register("incomeAccountId")}>
@@ -207,18 +230,8 @@ export function ItemFormDrawer({
                 </Select>
               </FormField>
             ) : null}
-            <FormField label="Preferred vendor">
-              <Select {...form.register("preferredVendorId")}>
-                <option value="">No preferred vendor</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.displayName}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
           </FieldGrid>
-        </FormSection>
+        </AdvancedSection>
 
         <FormSection title="Flags and stock behavior">
           <div className="grid gap-3">

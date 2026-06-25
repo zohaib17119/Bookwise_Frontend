@@ -53,6 +53,12 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
   setValue?: UseFormSetValue<TFieldValues>;
   docDiscountType?: DiscountType | null;
   docDiscountValue?: number | null;
+  /**
+   * When false (default), the per-line GL account picker is hidden so that
+   * non-accountant users are not asked to map every line to an account.
+   * The backend falls back to the company's default accounts in that case.
+   */
+  showAccountColumn?: boolean;
 }
 
 const discountOptions: DiscountType[] = ["FIXED", "PERCENTAGE"];
@@ -68,7 +74,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   setValue,
   docDiscountType,
   docDiscountValue,
+  showAccountColumn = false,
 }: LineItemsEditorProps<TFieldValues>) {
+  const accountColumnVisible = mode === "purchase" && showAccountColumn;
   const { fields, append, remove } = useFieldArray({
     control,
     name,
@@ -162,7 +170,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
 
   const priceLabel = mode === "sales" ? "Rate" : "Unit Cost";
   const currency = currencyCode ?? "USD";
-  const colCount = mode === "purchase" ? 10 : 9;
+  const colCount = accountColumnVisible ? 10 : 9;
 
   return (
     <div className="space-y-3">
@@ -189,7 +197,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               <th className="w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Discount
               </th>
-              {mode === "purchase" ? (
+              {accountColumnVisible ? (
                 <th className="min-w-[180px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Account
                 </th>
@@ -394,8 +402,8 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                     </div>
                   </td>
 
-                  {/* Expense account (purchase mode only) */}
-                  {mode === "purchase" ? (
+                  {/* Expense account (purchase mode, advanced toggle only) */}
+                  {accountColumnVisible ? (
                     <td className="px-3 py-2.5">
                       <Controller
                         control={control}
