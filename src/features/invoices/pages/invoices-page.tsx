@@ -11,7 +11,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
-import { useInvoices } from "@/features/invoices/hooks/use-invoices";
+import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
@@ -22,12 +22,16 @@ export function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const deferredSearch = useDeferredValue(search);
   const customersQuery = useCustomerOptions(companyId);
-  const invoicesQuery = useInvoices(companyId, {
+  const invoicesQuery = useInvoicesPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     status: status || undefined,
     customerId: customerId || undefined,
+    page,
+    limit,
   });
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
@@ -68,14 +72,17 @@ export function InvoicesPage() {
       header: "Total",
       className: "text-right",
       render: (invoice) =>
-        formatCurrency(invoice.totals?.total ?? 0, invoice.currencyCode ?? company?.currency ?? "USD"),
+        formatCurrency(
+          Number(invoice.total ?? invoice.totals?.total ?? 0),
+          invoice.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
+        ),
     },
     {
       key: "amountDue",
       header: "Amount Due",
       className: "text-right",
       render: (invoice) =>
-        formatCurrency(invoice.amountDue ?? 0, invoice.currencyCode ?? company?.currency ?? "USD"),
+        formatCurrency(Number(invoice.amountDue ?? 0), invoice.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
   ];
 
@@ -88,11 +95,26 @@ export function InvoicesPage() {
         ) : (
           <DataTable
             columns={columns}
-            data={invoicesQuery.data ?? []}
+            data={invoicesQuery.data?.items ?? []}
             emptyDescription="Create invoices to manage receivables and payment collection."
             emptyTitle="No invoices yet"
             getRowKey={(invoice) => invoice.id}
             isLoading={invoicesQuery.isLoading}
+            pagination={
+              invoicesQuery.data
+                ? {
+                    page: invoicesQuery.data.pagination.page,
+                    totalPages: invoicesQuery.data.pagination.totalPages,
+                    total: invoicesQuery.data.pagination.total,
+                    limit: invoicesQuery.data.pagination.limit,
+                    onPageChange: setPage,
+                    onLimitChange: (next) => {
+                      setLimit(next);
+                      setPage(1);
+                    },
+                  }
+                : undefined
+            }
           />
         )
       }
@@ -109,8 +131,22 @@ export function InvoicesPage() {
       title="Invoices"
       toolbar={
         <FilterBar>
-          <SearchInput onChange={setSearch} placeholder="Search invoice number or reference" value={search} />
-          <Select className="min-w-[180px]" onChange={(e) => setStatus(e.target.value)} value={status}>
+          <SearchInput
+            onChange={(value) => {
+              setSearch(value);
+              setPage(1);
+            }}
+            placeholder="Search invoice number or reference"
+            value={search}
+          />
+          <Select
+            className="min-w-[180px]"
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            value={status}
+          >
             <option value="">All statuses</option>
             {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
               <option key={option} value={option}>
@@ -118,7 +154,14 @@ export function InvoicesPage() {
               </option>
             ))}
           </Select>
-          <Select className="min-w-[220px]" onChange={(e) => setCustomerId(e.target.value)} value={customerId}>
+          <Select
+            className="min-w-[220px]"
+            onChange={(e) => {
+              setCustomerId(e.target.value);
+              setPage(1);
+            }}
+            value={customerId}
+          >
             <option value="">All customers</option>
             {(customersQuery.data ?? []).map((customer) => (
               <option key={customer.id} value={customer.id}>

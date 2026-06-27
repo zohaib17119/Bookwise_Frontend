@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageContainer } from "@/components/shared/page-container";
 import { AmountSummaryCard } from "@/components/documents/amount-summary-card";
@@ -12,7 +13,7 @@ import { DocumentLinesTable } from "@/components/documents/document-lines-table"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { useDeleteInvoice, useInvoice } from "@/features/invoices/hooks/use-invoices";
+import { useDeleteInvoice, useInvoice, useSendInvoice } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
 import InvoiceView from "./InvoiceView";
@@ -22,8 +23,10 @@ export function InvoiceDetailPage() {
   const { invoiceId, companyId } = useParams();
   const { permissions } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
   const deleteMutation = useDeleteInvoice(companyId);
+  const sendMutation = useSendInvoice(companyId);
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
 
@@ -49,6 +52,9 @@ export function InvoiceDetailPage() {
           canManage ? (
             <div className="flex flex-wrap gap-3">
               {invoice &&<InvoiceView invoice={invoice}  /> }
+              {invoice.status === "DRAFT" ? (
+                <Button onClick={() => setSendOpen(true)} variant="primary">Send invoice</Button>
+              ) : null}
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/invoices/${invoice.id}/edit`}>Edit invoice</Link>
               </Button>
@@ -114,6 +120,22 @@ export function InvoiceDetailPage() {
           <AmountSummaryCard amount={invoice.amountDue} currencyCode={invoice.currencyCode} label="Amount due" />
         </div>
       </div>
+
+      <ConfirmDialog
+        confirmLabel="Send invoice"
+        description="This finalizes the invoice: it posts revenue to your ledger, marks it as Issued, and emails the customer. This cannot be undone."
+        isPending={sendMutation.isPending}
+        onClose={() => {
+          setSendOpen(false);
+          sendMutation.reset();
+        }}
+        onConfirm={async () => {
+          await sendMutation.mutateAsync(invoice.id);
+          setSendOpen(false);
+        }}
+        open={sendOpen}
+        title="Send this invoice?"
+      />
 
       <ConfirmDeleteDialog
         description="This will remove the invoice from active workflows while preserving backend audit visibility."

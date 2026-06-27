@@ -1,9 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import {
   useCreateInvoice,
@@ -20,6 +20,7 @@ import { useItemOptions } from "@/features/items/hooks/use-items";
 import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import type { DiscountType } from "@/features/shared/types/documents";
+import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
 import InvoiceEditorPage from "./invoice-editor-page";
 
 interface InvoiceFormPageProps {
@@ -51,7 +52,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             referenceNumber: invoiceQuery.data.referenceNumber ?? "",
             issueDate: invoiceQuery.data.issueDate ?? "",
             dueDate: invoiceQuery.data.dueDate ?? "",
-            currencyCode: invoiceQuery.data.currencyCode ?? company?.currency ?? "USD",
+            currencyCode: invoiceQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
+            exchangeRate: invoiceQuery.data.exchangeRate ?? "",
             notes: invoiceQuery.data.notes ?? "",
             terms: invoiceQuery.data.terms ?? "",
             discountType: invoiceQuery.data.discountType ?? undefined,
@@ -76,7 +78,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             referenceNumber: "",
             issueDate: new Date().toISOString().split("T")[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-            currencyCode: company?.currency ?? "USD",
+            currencyCode: getCompanyBaseCurrency(company),
+            exchangeRate: "",
             notes: "",
             terms: "30",
             discountType: undefined,
@@ -95,6 +98,14 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
               },
             ],
           },
+  });
+
+  useCounterpartyCurrencyDefault({
+    form,
+    counterpartyId: form.watch("customerId"),
+    counterparties: customersQuery.data ?? [],
+    company,
+    mode,
   });
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
@@ -118,7 +129,6 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
       taxCodesQuery={taxCodesQuery}
       taxRatesQuery={taxRatesQuery}
       onSubmit={async (values) => {
-        console.log("values",values)
         const payload = {
           ...values,
           estimateId: values.estimateId || undefined,
@@ -127,6 +137,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           issueDate: values.issueDate || undefined,
           dueDate: values.dueDate || undefined,
           currencyCode: values.currencyCode || undefined,
+          exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
           notes: values.notes || undefined,
           terms: values.terms || undefined,
           discountType: values.discountType
@@ -152,7 +163,6 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             itemName: line.itemName || "",
           })),
         };
-console.log("payload",payload)
         const result =
           mode === "create"
             ? await createMutation.mutateAsync(payload)

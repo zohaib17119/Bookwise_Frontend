@@ -26,6 +26,7 @@ export interface Estimate {
   issueDate?: string | null;
   expiryDate?: string | null;
   currencyCode?: string | null;
+  exchangeRate?: string | null;
   notes?: string | null;
   terms?: string | null;
   discountType?: DiscountType | null;
@@ -47,6 +48,7 @@ export interface EstimatePayload {
   issueDate?: string;
   expiryDate?: string;
   currencyCode?: string;
+  exchangeRate?: string;
   notes?: string;
   terms?: string;
   discountType?: DiscountType;

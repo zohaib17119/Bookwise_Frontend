@@ -4,8 +4,10 @@ import type {
   AuthTokens,
   LoginPayload,
   RegisterPayload,
+  ResendVerificationPayload,
   UserCompanyMembership,
   User,
+  VerifyEmailPayload,
 } from "@/features/auth/types/auth.types";
 
 interface ApiEnvelope<T> {
@@ -19,6 +21,7 @@ interface ApiUser {
   name?: string;
   fullName?: string;
   email: string;
+  isEmailVerified?: boolean;
   memberships?: UserCompanyMembership[];
 }
 
@@ -38,12 +41,12 @@ function normalizeUser(user: ApiUser): User {
     name: user.name ?? fullName,
     fullName,
     email: user.email,
+    isEmailVerified: user.isEmailVerified,
     memberships: user.memberships ?? [],
   };
 }
 
 function normalizeAuthResponse(response: ApiAuthResponse): AuthResponse {
-  console.log("response",response)
   return {
     token: response.tokens.accessToken,
     refreshToken: response.tokens.refreshToken,
@@ -73,4 +76,14 @@ export async function register(payload: RegisterPayload) {
 export async function getCurrentUser() {
   const { data } = await apiClient.get<ApiCurrentUserResponse>("/auth/me");
   return normalizeCurrentUser(data);
+}
+
+export async function verifyEmail(payload: VerifyEmailPayload) {
+  const { data } = await apiClient.post<ApiAuthResponse>("/auth/verify-email", payload);
+  return normalizeAuthResponse(data);
+}
+
+export async function resendVerification(payload: ResendVerificationPayload) {
+  const { data } = await apiClient.post<{ sent: boolean }>("/auth/resend-verification", payload);
+  return data;
 }

@@ -10,6 +10,7 @@ export interface User {
   name: string;
   fullName: string;
   email: string;
+  isEmailVerified?: boolean;
   memberships: UserCompanyMembership[];
 }
 
@@ -33,4 +34,13 @@ export interface RegisterPayload {
   fullName: string;
   email: string;
   password: string;
+}
+
+export interface VerifyEmailPayload {
+  email: string;
+  code: string;
+}
+
+export interface ResendVerificationPayload {
+  email: string;
 }

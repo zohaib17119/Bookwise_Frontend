@@ -18,7 +18,7 @@ export function useActiveCompany() {
       membership,
       role: permissionsQuery.role ?? membership?.role,
       permissions: permissionsQuery.permissions,
-      currency: companyQuery.data?.currency ?? "USD",
+      currency: companyQuery.data?.currencyCode ?? companyQuery.data?.baseCurrencyCode ?? "USD",
       isLoading: companyQuery.isLoading || permissionsQuery.isLoading,
       error: companyQuery.error ?? permissionsQuery.error ?? null,
     }),

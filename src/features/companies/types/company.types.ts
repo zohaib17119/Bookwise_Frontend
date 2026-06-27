@@ -4,6 +4,7 @@ export interface Company {
   legalName?: string | null;
   slug?: string | null;
   currency?: string | null;
+  currencyCode?: string | null;
   baseCurrencyCode?: string | null;
   country?: string | null;
   state?: string | null;

@@ -4,8 +4,10 @@ import {
   deleteInvoice,
   getInvoice,
   getInvoices,
+  getInvoicesPaginated,
   updateInvoice,
   getNextInvoiceNumber,
+  sendInvoice,
 } from "@/features/invoices/api/invoices.api";
 import type {
   InvoiceListParams,
@@ -29,6 +31,14 @@ export function useInvoices(companyId: string | undefined, params: InvoiceListPa
   });
 }
 
+export function useInvoicesPaginated(companyId: string | undefined, params: InvoiceListParams) {
+  return useQuery({
+    queryKey: ["companies", companyId, "invoices", "paginated", params],
+    queryFn: () => getInvoicesPaginated(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
 export function useInvoice(companyId: string | undefined, invoiceId: string | null) {
   return useQuery({
     queryKey: ["companies", companyId, "invoices", invoiceId],
@@ -43,7 +53,7 @@ export function useOpenInvoicesByCustomer(
 ) {
   return useQuery({
     queryKey: ["companies", companyId, "invoices", "open", customerId],
-    queryFn: () => getInvoices(companyId!, { customerId }),
+    queryFn: () => getInvoices(companyId!, { customerId, limit: 100 }),
     enabled: Boolean(companyId && customerId),
     select: (data) => data.filter((invoice) => (invoice.amountDue ?? 0) > 0),
   });
@@ -71,6 +81,15 @@ export function useUpdateInvoice(companyId: string | undefined, invoiceId: strin
 export function useDeleteInvoice(companyId: string | undefined) {
   return useMutation({
     mutationFn: (invoiceId: string) => deleteInvoice(companyId!, invoiceId),
+    onSuccess: async () => {
+      if (companyId) await invalidateInvoiceQueries(companyId);
+    },
+  });
+}
+
+export function useSendInvoice(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => sendInvoice(companyId!, invoiceId),
     onSuccess: async () => {
       if (companyId) await invalidateInvoiceQueries(companyId);
     },

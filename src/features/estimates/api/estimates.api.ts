@@ -11,6 +11,8 @@ function buildQuery(params: EstimateListParams) {
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
   if (params.customerId) query.set("customerId", params.customerId);
+  query.set("limit", String(params.limit ?? 100));
+  if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }

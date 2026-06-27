@@ -69,12 +69,12 @@ export function JournalDetailPage() {
     {
       key: "debit",
       header: "Debit",
-      render: (line) => formatCurrency(line.debitAmount || 0, company?.currency ?? "USD"),
+      render: (line) => formatCurrency(line.debitAmount || 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "credit",
       header: "Credit",
-      render: (line) => formatCurrency(line.creditAmount || 0, company?.currency ?? "USD"),
+      render: (line) => formatCurrency(line.creditAmount || 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
   ];
 
@@ -158,7 +158,7 @@ export function JournalDetailPage() {
                 <dd>
                   {formatCurrency(
                     (journal.lines ?? []).reduce((sum, line) => sum + Number(line.debitAmount || 0), 0),
-                    company?.currency ?? "USD",
+                    company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
                   )}
                 </dd>
               </div>
@@ -167,7 +167,7 @@ export function JournalDetailPage() {
                 <dd>
                   {formatCurrency(
                     (journal.lines ?? []).reduce((sum, line) => sum + Number(line.creditAmount || 0), 0),
-                    company?.currency ?? "USD",
+                    company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
                   )}
                 </dd>
               </div>

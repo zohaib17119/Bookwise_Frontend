@@ -43,7 +43,10 @@ export function CompanySettingsPage() {
       postalCode: companySettingsQuery.data?.postalCode ?? "",
       addressLine1: companySettingsQuery.data?.addressLine1 ?? "",
       addressLine2: companySettingsQuery.data?.addressLine2 ?? "",
-      currency: companySettingsQuery.data?.currency ?? "",
+      currencyCode:
+        companySettingsQuery.data?.currencyCode ??
+        companySettingsQuery.data?.baseCurrencyCode ??
+        "",
       baseCurrencyCode: companySettingsQuery.data?.baseCurrencyCode ?? "",
       timezone: companySettingsQuery.data?.timezone ?? "",
       fiscalYearStartMonth: companySettingsQuery.data?.fiscalYearStartMonth ?? undefined,
@@ -109,7 +112,7 @@ export function CompanySettingsPage() {
             <Input disabled={!canManage} {...form.register("timezone")} />
           </FormField>
           <FormField label="Currency code">
-            <Input disabled={!canManage} {...form.register("currency")} />
+            <Input disabled={!canManage} {...form.register("currencyCode")} />
           </FormField>
           <FormField label="Base currency code">
             <Input disabled={!canManage} {...form.register("baseCurrencyCode")} />

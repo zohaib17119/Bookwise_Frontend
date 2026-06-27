@@ -85,7 +85,7 @@ export function BankTransactionDetailPage() {
         <div className="surface p-5">
           <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Amount</p>
           <p className="mt-1 text-sm font-medium">
-            {formatCurrency(transaction.amount, company?.currency ?? "USD")}
+            {formatCurrency(transaction.amount, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
           </p>
         </div>
         <div className="surface p-5">

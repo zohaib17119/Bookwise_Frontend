@@ -14,6 +14,7 @@ export interface Vendor {
   currencyCode?: string | null;
   paymentTermsDays?: number | null;
   openingBalance?: number | null;
+  amountOwed?: string | null;
   openingBalanceDate?: string | null;
   billingAddressLine1?: string | null;
   billingAddressLine2?: string | null;

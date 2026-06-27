@@ -20,7 +20,7 @@ export const companySettingsSchema = z.object({
   postalCode: optionalString,
   addressLine1: optionalString,
   addressLine2: optionalString,
-  currency: optionalString,
+  currencyCode: optionalString,
   baseCurrencyCode: optionalString,
   timezone: optionalString,
   fiscalYearStartMonth: optionalNumber,

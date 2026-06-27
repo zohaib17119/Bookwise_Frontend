@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageContainer } from "@/components/shared/page-container";
 import { AmountSummaryCard } from "@/components/documents/amount-summary-card";
@@ -12,7 +13,7 @@ import { DocumentLinesTable } from "@/components/documents/document-lines-table"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { useBill, useDeleteBill } from "@/features/bills/hooks/use-bills";
+import { useBill, useDeleteBill, useIssueBill } from "@/features/bills/hooks/use-bills";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
 
@@ -21,8 +22,10 @@ export function BillDetailPage() {
   const { billId, companyId } = useParams();
   const { permissions } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [issueOpen, setIssueOpen] = useState(false);
   const billQuery = useBill(companyId, billId ?? null);
   const deleteMutation = useDeleteBill(companyId);
+  const issueMutation = useIssueBill(companyId);
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
 
@@ -46,6 +49,9 @@ export function BillDetailPage() {
         actions={
           canManage ? (
             <div className="flex flex-wrap gap-3">
+              {bill.status === "DRAFT" ? (
+                <Button onClick={() => setIssueOpen(true)} variant="primary">Issue bill</Button>
+              ) : null}
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/bills/${bill.id}/edit`}>Edit bill</Link>
               </Button>
@@ -106,6 +112,22 @@ export function BillDetailPage() {
           <AmountSummaryCard amount={bill.amountDue} currencyCode={bill.currencyCode} label="Amount due" />
         </div>
       </div>
+
+      <ConfirmDialog
+        confirmLabel="Issue bill"
+        description="This finalizes the bill: it posts the expense and accounts payable to your ledger and marks it as Open so payments can be recorded. This cannot be undone."
+        isPending={issueMutation.isPending}
+        onClose={() => {
+          setIssueOpen(false);
+          issueMutation.reset();
+        }}
+        onConfirm={async () => {
+          await issueMutation.mutateAsync(bill.id);
+          setIssueOpen(false);
+        }}
+        open={issueOpen}
+        title="Issue this bill?"
+      />
 
       <ConfirmDeleteDialog
         description="This will remove the bill from active workflows while preserving backend audit visibility."

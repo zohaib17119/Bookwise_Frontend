@@ -27,7 +27,11 @@ export function LoginPage() {
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await loginMutation.mutateAsync(values);
+    const result = await loginMutation.mutateAsync(values);
+    if (result.user.isEmailVerified === false) {
+      navigate("/verify-email", { replace: true, state: { email: result.user.email } });
+      return;
+    }
     navigate(redirectTo, { replace: true });
   });
 

@@ -19,7 +19,7 @@ function buildQuery(params: ReportFilterParams) {
 }
 
 export async function getTaxRates(companyId: string) {
-  const { data } = await apiClient.get<TaxRate[]>(`/companies/${companyId}/tax-rates`);
+  const { data } = await apiClient.get<TaxRate[]>(`/companies/${companyId}/tax-rates?limit=100`);
   return extractListData(data);
 }
 

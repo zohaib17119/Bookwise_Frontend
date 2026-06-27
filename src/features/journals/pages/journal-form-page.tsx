@@ -190,11 +190,11 @@ export function JournalFormPage({ mode }: JournalFormPageProps) {
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Debit total</dt>
-                <dd>{formatCurrency(debitTotal, company?.currency ?? "USD")}</dd>
+                <dd>{formatCurrency(debitTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Credit total</dt>
-                <dd>{formatCurrency(creditTotal, company?.currency ?? "USD")}</dd>
+                <dd>{formatCurrency(creditTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}</dd>
               </div>
               <div className="flex items-center justify-between border-t pt-3 font-semibold">
                 <dt>Status</dt>

@@ -95,8 +95,8 @@ export function JournalsPage() {
 
         return (
           <div className="text-sm">
-            {formatCurrency(debitTotal, company?.currency ?? "USD")} /{" "}
-            {formatCurrency(creditTotal, company?.currency ?? "USD")}
+            {formatCurrency(debitTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")} /{" "}
+            {formatCurrency(creditTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
           </div>
         );
       },

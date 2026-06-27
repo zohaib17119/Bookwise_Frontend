@@ -226,7 +226,7 @@ export function AccountsPage() {
 
       <AccountFormDrawer
         account={selectedAccount}
-        companyCurrency={company?.currency}
+        companyCurrency={company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"}
         error={activeMutation.error}
         isPending={activeMutation.isPending}
         mode={drawerMode}

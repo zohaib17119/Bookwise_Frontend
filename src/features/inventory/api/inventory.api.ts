@@ -18,6 +18,7 @@ function buildMovementQuery(params: StockMovementParams) {
   if (params.movementType) query.set("movementType", params.movementType);
   if (params.direction) query.set("direction", params.direction);
   if (params.sourceModule) query.set("sourceModule", params.sourceModule);
+  query.set("limit", "100");
   return query.toString() ? `?${query.toString()}` : "";
 }
 
@@ -44,7 +45,7 @@ export async function getInventoryValuation(companyId: string) {
 
 export async function getInventoryAdjustments(companyId: string) {
   const { data } = await apiClient.get<InventoryAdjustment[]>(
-    `/companies/${companyId}/inventory-adjustments`,
+    `/companies/${companyId}/inventory-adjustments?limit=100`,
   );
   return extractListData(data);
 }

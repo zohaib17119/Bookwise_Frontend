@@ -4,7 +4,9 @@ import {
   deleteBill,
   getBill,
   getBills,
+  getBillsPaginated,
   updateBill,
+  issueBill,
 } from "@/features/bills/api/bills.api";
 import type { BillListParams, BillPayload } from "@/features/bills/types/bill.types";
 import { queryClient } from "@/lib/query/query-client";
@@ -25,6 +27,14 @@ export function useBills(companyId: string | undefined, params: BillListParams) 
   });
 }
 
+export function useBillsPaginated(companyId: string | undefined, params: BillListParams) {
+  return useQuery({
+    queryKey: ["companies", companyId, "bills", "paginated", params],
+    queryFn: () => getBillsPaginated(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
 export function useBill(companyId: string | undefined, billId: string | null) {
   return useQuery({
     queryKey: ["companies", companyId, "bills", billId],
@@ -39,7 +49,7 @@ export function useOpenBillsByVendor(
 ) {
   return useQuery({
     queryKey: ["companies", companyId, "bills", "open", vendorId],
-    queryFn: () => getBills(companyId!, { vendorId }),
+    queryFn: () => getBills(companyId!, { vendorId, limit: 100 }),
     enabled: Boolean(companyId && vendorId),
     select: (data) => data.filter((bill) => (bill.amountDue ?? 0) > 0),
   });
@@ -66,6 +76,15 @@ export function useUpdateBill(companyId: string | undefined, billId: string | nu
 export function useDeleteBill(companyId: string | undefined) {
   return useMutation({
     mutationFn: (billId: string) => deleteBill(companyId!, billId),
+    onSuccess: async () => {
+      if (companyId) await invalidateBillQueries(companyId);
+    },
+  });
+}
+
+export function useIssueBill(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (billId: string) => issueBill(companyId!, billId),
     onSuccess: async () => {
       if (companyId) await invalidateBillQueries(companyId);
     },

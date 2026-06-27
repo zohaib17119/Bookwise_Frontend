@@ -55,17 +55,17 @@ export function LedgerAccountPage() {
     {
       key: "debit",
       header: "Debit",
-      render: (row) => formatCurrency(row.debitAmount ?? 0, company?.currency ?? "USD"),
+      render: (row) => formatCurrency(row.debitAmount ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "credit",
       header: "Credit",
-      render: (row) => formatCurrency(row.creditAmount ?? 0, company?.currency ?? "USD"),
+      render: (row) => formatCurrency(row.creditAmount ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "balance",
       header: "Running balance",
-      render: (row) => formatCurrency(row.runningBalance ?? 0, company?.currency ?? "USD"),
+      render: (row) => formatCurrency(row.runningBalance ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
   ];
 

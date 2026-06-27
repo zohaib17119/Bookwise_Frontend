@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
+import { CurrencySelect } from "@/components/shared/currency-select";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
@@ -168,7 +169,18 @@ export function CustomerFormDrawer({
         <FormSection title="Finance" description="Defaults used by invoices and balances.">
           <FieldGrid>
             <FormField label="Currency">
-              <Input {...form.register("currencyCode")} maxLength={3} placeholder="USD" />
+              <Controller
+                control={form.control}
+                name="currencyCode"
+                render={({ field }) => (
+                  <CurrencySelect
+                    name={field.name}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                    value={field.value}
+                  />
+                )}
+              />
             </FormField>
             <FormField label="Payment terms (days)">
               <Input type="number" {...form.register("paymentTermsDays")} placeholder="30" />

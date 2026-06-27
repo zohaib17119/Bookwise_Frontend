@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FormField } from "@/components/shared/form-field";
+import type { ApiError } from "@/lib/api/types";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -26,9 +27,16 @@ export function RegisterPage() {
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    await registerMutation.mutateAsync(values);
-    navigate("/app/companies", { replace: true });
+    const result = await registerMutation.mutateAsync(values);
+    if (result.user.isEmailVerified) {
+      navigate("/app/companies", { replace: true });
+      return;
+    }
+    navigate("/verify-email", { replace: true, state: { email: result.user.email } });
   });
+
+  const registerError = registerMutation.error as ApiError | null;
+  const alreadyRegistered = registerError?.status === 409;
 
   return (
     <AuthFormShell
@@ -45,7 +53,15 @@ export function RegisterPage() {
     >
       <form className="space-y-5" onSubmit={onSubmit}>
         {registerMutation.error ? (
-          <Alert variant="destructive" title={registerMutation.error.message} />
+          alreadyRegistered ? (
+            <Alert
+              variant="destructive"
+              title="This email is already registered"
+              description="Try signing in instead, or use a different email address."
+            />
+          ) : (
+            <Alert variant="destructive" title={registerError?.message ?? "Registration failed"} />
+          )
         ) : null}
         <FormField label="Full name" error={form.formState.errors.fullName?.message}>
           <Input placeholder="Ayesha Khan" {...form.register("fullName")} />

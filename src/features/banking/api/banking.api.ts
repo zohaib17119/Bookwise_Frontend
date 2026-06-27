@@ -23,7 +23,7 @@ function buildTransactionQuery(params: BankTransactionListParams) {
 }
 
 export async function getBankAccounts(companyId: string) {
-  const { data } = await apiClient.get<BankAccount[]>(`/companies/${companyId}/bank-accounts`);
+  const { data } = await apiClient.get<BankAccount[]>(`/companies/${companyId}/bank-accounts?limit=100`);
   return extractListData(data);
 }
 

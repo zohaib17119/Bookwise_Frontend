@@ -4,6 +4,7 @@ import {
   deleteCustomer,
   getCustomer,
   getCustomers,
+  getCustomersPaginated,
   updateCustomer,
 } from "@/features/customers/api/customers.api";
 import type {
@@ -23,6 +24,17 @@ export function useCustomers(
   });
 }
 
+export function useCustomersPaginated(
+  companyId: string | undefined,
+  params: CustomerListParams,
+) {
+  return useQuery({
+    queryKey: ["companies", companyId, "customers", "paginated", params],
+    queryFn: () => getCustomersPaginated(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
 export function useCustomer(companyId: string | undefined, customerId: string | null) {
   return useQuery({
     queryKey: ["companies", companyId, "customers", customerId],
@@ -34,7 +46,7 @@ export function useCustomer(companyId: string | undefined, customerId: string | 
 export function useCustomerOptions(companyId: string | undefined) {
   return useQuery({
     queryKey: ["companies", companyId, "customers", "options"],
-    queryFn: () => getCustomers(companyId!, { includeInactive: false }),
+    queryFn: () => getCustomers(companyId!, { includeInactive: false, limit: 100 }),
     enabled: Boolean(companyId),
   });
 }

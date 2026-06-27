@@ -20,8 +20,8 @@ export function InventoryValuationPage() {
   const columns: DataTableColumn<StockOnHandRow>[] = [
     { key: "item", header: "Item", render: (row) => row.itemName || "-" },
     { key: "qty", header: "Quantity", render: (row) => row.quantityOnHand ?? 0 },
-    { key: "cost", header: "Average cost", render: (row) => formatCurrency(row.averageUnitCost ?? 0, company?.currency ?? "USD") },
-    { key: "value", header: "Value", render: (row) => formatCurrency(row.inventoryValue ?? 0, company?.currency ?? "USD") },
+    { key: "cost", header: "Average cost", render: (row) => formatCurrency(row.averageUnitCost ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
+    { key: "value", header: "Value", render: (row) => formatCurrency(row.inventoryValue ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
   ];
 
   return (
@@ -42,7 +42,7 @@ export function InventoryValuationPage() {
             <div className="surface p-5">
               <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Total inventory value</p>
               <p className="mt-1 text-lg font-semibold">
-                {formatCurrency(valuationQuery.data?.totalInventoryValue ?? 0, valuationQuery.data?.currencyCode ?? company?.currency ?? "USD")}
+                {formatCurrency(valuationQuery.data?.totalInventoryValue ?? 0, valuationQuery.data?.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
               </p>
             </div>
             <div className="surface p-5">

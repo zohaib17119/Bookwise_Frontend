@@ -12,6 +12,7 @@ import { AuditLogDetailPage } from "@/features/audit/pages/audit-log-detail-page
 import { AuditLogsPage } from "@/features/audit/pages/audit-logs-page";
 import { LoginPage } from "@/features/auth/pages/login-page";
 import { RegisterPage } from "@/features/auth/pages/register-page";
+import { VerifyEmailPage } from "@/features/auth/pages/verify-email-page";
 import { BankAccountsPage } from "@/features/banking/pages/bank-accounts-page";
 import { BankTransactionDetailPage } from "@/features/banking/pages/bank-transaction-detail-page";
 import { BankTransactionsPage } from "@/features/banking/pages/bank-transactions-page";
@@ -78,6 +79,10 @@ const router = createBrowserRouter([
   {
     path: "/pricing",
     element: <PricingPage />,
+  },
+  {
+    element: <AuthLayout />,
+    children: [{ path: "/verify-email", element: <VerifyEmailPage /> }],
   },
   {
     element: <PublicRoute />,

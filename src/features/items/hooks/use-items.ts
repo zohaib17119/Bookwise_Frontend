@@ -4,6 +4,7 @@ import {
   deleteItem,
   getItem,
   getItems,
+  getItemsPaginated,
   updateItem,
 } from "@/features/items/api/items.api";
 import type { ItemListParams, ItemPayload } from "@/features/items/types/item.types";
@@ -13,6 +14,14 @@ export function useItems(companyId: string | undefined, params: ItemListParams) 
   return useQuery({
     queryKey: ["companies", companyId, "items", params],
     queryFn: () => getItems(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
+export function useItemsPaginated(companyId: string | undefined, params: ItemListParams) {
+  return useQuery({
+    queryKey: ["companies", companyId, "items", "paginated", params],
+    queryFn: () => getItemsPaginated(companyId!, params),
     enabled: Boolean(companyId),
   });
 }
@@ -28,7 +37,7 @@ export function useItem(companyId: string | undefined, itemId: string | null) {
 export function useItemOptions(companyId: string | undefined) {
   return useQuery({
     queryKey: ["companies", companyId, "items", "options"],
-    queryFn: () => getItems(companyId!, { includeInactive: false }),
+    queryFn: () => getItems(companyId!, { includeInactive: false, limit: 100 }),
     enabled: Boolean(companyId),
   });
 }

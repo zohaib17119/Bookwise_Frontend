@@ -21,6 +21,10 @@ export const lineItemSchema = z.object({
 export const documentBaseSchema = z.object({
   referenceNumber: optionalString,
   currencyCode: z.string().min(3).max(3).optional().or(z.literal("")),
+  exchangeRate: optionalDecimalString.refine(
+    (value) => !value || (Number(value) > 0 && Number.isFinite(Number(value))),
+    { message: "Exchange rate must be a positive number" },
+  ),
   notes: optionalString,
   terms: z.enum(["", "0", "15", "30", "45", "60", "90"]).optional().or(z.literal("")),
   discountType: z.enum(["FIXED", "PERCENTAGE"]).optional().or(z.literal("")),

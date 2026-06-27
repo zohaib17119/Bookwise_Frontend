@@ -18,7 +18,7 @@ import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
 import {
   useCreateItem,
   useDeleteItem,
-  useItems,
+  useItemsPaginated,
   useUpdateItem,
 } from "@/features/items/hooks/use-items";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
@@ -34,17 +34,21 @@ export function ItemsPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [taxableOnly, setTaxableOnly] = useState(false);
   const [trackQuantityOnly, setTrackQuantityOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Item | null>(null);
   const deferredSearch = useDeferredValue(search);
-  const itemsQuery = useItems(companyId, {
+  const itemsQuery = useItemsPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     type: type || undefined,
     includeInactive,
     taxable: taxableOnly ? true : undefined,
     trackQuantity: trackQuantityOnly ? true : undefined,
+    page,
+    limit,
   });
   const accountsQuery = useAccountOptions(companyId);
   const vendorsQuery = useVendorOptions(companyId);
@@ -102,6 +106,13 @@ export function ItemsPage() {
       ),
     },
     {
+      key: "onHand",
+      header: "On hand",
+      className: "text-right",
+      render: (item) =>
+        item.trackQuantity ? (item.quantityOnHand ?? "0") : <span className="text-muted-foreground">-</span>,
+    },
+    {
       key: "vendor",
       header: "Preferred Vendor",
       render: (item) => item.preferredVendorName || "Not set",
@@ -140,11 +151,26 @@ export function ItemsPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={itemsQuery.data ?? []}
+              data={itemsQuery.data?.items ?? []}
               emptyDescription="Create products and services that feed invoices, bills, and inventory workflows."
               emptyTitle="No items yet"
               getRowKey={(item) => item.id}
               isLoading={itemsQuery.isLoading}
+              pagination={
+                itemsQuery.data
+                  ? {
+                      page: itemsQuery.data.pagination.page,
+                      totalPages: itemsQuery.data.pagination.totalPages,
+                      total: itemsQuery.data.pagination.total,
+                      limit: itemsQuery.data.pagination.limit,
+                      onPageChange: setPage,
+                      onLimitChange: (next) => {
+                        setLimit(next);
+                        setPage(1);
+                      },
+                    }
+                  : undefined
+              }
             />
           )
         }
@@ -168,11 +194,21 @@ export function ItemsPage() {
         toolbar={
           <FilterBar>
             <SearchInput
-              onChange={setSearch}
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
               placeholder="Search by item code, name, SKU"
               value={search}
             />
-            <Select className="min-w-[180px]" onChange={(e) => setType(e.target.value)} value={type}>
+            <Select
+              className="min-w-[180px]"
+              onChange={(e) => {
+                setType(e.target.value);
+                setPage(1);
+              }}
+              value={type}
+            >
               <option value="">All item types</option>
               <option value="service">Service</option>
               <option value="non_inventory">Non-inventory</option>
@@ -181,21 +217,30 @@ export function ItemsPage() {
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={includeInactive}
-                onChange={(event) => setIncludeInactive(event.target.checked)}
+                onChange={(event) => {
+                  setIncludeInactive(event.target.checked);
+                  setPage(1);
+                }}
               />
               Include inactive
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={taxableOnly}
-                onChange={(event) => setTaxableOnly(event.target.checked)}
+                onChange={(event) => {
+                  setTaxableOnly(event.target.checked);
+                  setPage(1);
+                }}
               />
               Taxable only
             </label>
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={trackQuantityOnly}
-                onChange={(event) => setTrackQuantityOnly(event.target.checked)}
+                onChange={(event) => {
+                  setTrackQuantityOnly(event.target.checked);
+                  setPage(1);
+                }}
               />
               Track quantity
             </label>

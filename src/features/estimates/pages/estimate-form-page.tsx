@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
+import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { LineItemsEditor } from "@/components/documents/line-items-editor";
 import { ErrorState } from "@/components/shared/error-state";
@@ -17,6 +18,8 @@ import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
+import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import {
   useCreateEstimate,
@@ -57,7 +60,8 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             referenceNumber: estimateQuery.data.referenceNumber ?? "",
             issueDate: estimateQuery.data.issueDate ?? "",
             expiryDate: estimateQuery.data.expiryDate ?? "",
-            currencyCode: estimateQuery.data.currencyCode ?? company?.currency ?? "USD",
+            currencyCode: estimateQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
+            exchangeRate: estimateQuery.data.exchangeRate ?? "",
             notes: estimateQuery.data.notes ?? "",
             terms: estimateQuery.data.terms ?? "",
             discountType: estimateQuery.data.discountType ?? undefined,
@@ -79,7 +83,8 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             referenceNumber: "",
             issueDate: "",
             expiryDate: "",
-            currencyCode: company?.currency ?? "USD",
+            currencyCode: getCompanyBaseCurrency(company),
+            exchangeRate: "",
             notes: "",
             terms: "",
             discountType: undefined,
@@ -100,6 +105,17 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
 
   useFieldArray({ control: form.control, name: "lines" });
   const watchedLines = form.watch("lines");
+  const watchedCustomerId = form.watch("customerId");
+  const watchedCurrencyCode = form.watch("currencyCode");
+  const watchedExchangeRate = form.watch("exchangeRate");
+
+  useCounterpartyCurrencyDefault({
+    form,
+    counterpartyId: watchedCustomerId,
+    counterparties: customersQuery.data ?? [],
+    company,
+    mode,
+  });
   const previewTotals = useMemo(
     () =>
       getDocumentPreviewTotals(
@@ -162,6 +178,7 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             issueDate: values.issueDate || undefined,
             expiryDate: values.expiryDate || undefined,
             currencyCode: values.currencyCode || undefined,
+            exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
             notes: values.notes || undefined,
             terms: values.terms || undefined,
             discountValue:
@@ -211,9 +228,16 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               <FormField label="Reference number">
                 <Input {...form.register("referenceNumber")} placeholder="PO-1049" />
               </FormField>
-              <FormField label="Currency">
-                <Input {...form.register("currencyCode")} maxLength={3} placeholder="USD" />
-              </FormField>
+              <DocumentCurrencyFields
+                company={company}
+                companyId={companyId}
+                control={form.control}
+                documentCurrencyCode={watchedCurrencyCode}
+                errors={form.formState.errors}
+                exchangeRateValue={watchedExchangeRate}
+                register={form.register}
+                setValue={form.setValue}
+              />
               <FormField label="Issue date">
                 <Input type="date" {...form.register("issueDate")} />
               </FormField>

@@ -41,7 +41,7 @@ export function CompanyDetailPage() {
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-muted-foreground">Currency</dt>
-              <dd className="font-medium">{company.currency || "Not set"}</dd>
+              <dd className="font-medium">{(company.baseCurrencyCode ?? company.currencyCode) || "Not set"}</dd>
             </div>
             <div className="flex items-center justify-between gap-4">
               <dt className="text-muted-foreground">Country</dt>

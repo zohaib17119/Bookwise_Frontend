@@ -45,7 +45,7 @@ export function ReconciliationsPage() {
       key: "difference",
       header: "Difference",
       render: (session) => (
-        <span>{session.difference ?? 0} {company?.currency ?? "USD"}</span>
+        <span>{session.difference ?? 0} {company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"}</span>
       ),
     },
   ];
@@ -60,7 +60,7 @@ export function ReconciliationsPage() {
             {(reconciliationsQuery.data ?? []).length ? (
               <ReconciliationSummaryCard
                 clearedBalance={reconciliationsQuery.data?.[0]?.clearedBalance}
-                currencyCode={company?.currency}
+                currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
                 difference={reconciliationsQuery.data?.[0]?.difference}
                 statementEndingBalance={reconciliationsQuery.data?.[0]?.statementEndingBalance}
                 status={reconciliationsQuery.data?.[0]?.status}

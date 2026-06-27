@@ -14,7 +14,7 @@ export function CompanyAppShell() {
   const setActiveCompanyId = useCompanyStore((state) => state.setActiveCompanyId);
   const sidebarOpen = useCompanyStore((state) => state.sidebarOpen);
   const setSidebarOpen = useCompanyStore((state) => state.setSidebarOpen);
-  const { companyId, company, permissions } = useActiveCompany();
+  const { companyId, company, currency, permissions } = useActiveCompany();
   
 
   if (!companyId) {
@@ -65,7 +65,7 @@ export function CompanyAppShell() {
           <p className="text-xs uppercase tracking-[0.24em] text-slate-400">Active company</p>
           <p className="mt-2 text-base font-semibold">{company?.name}</p>
           <p className="mt-1 text-sm text-slate-400">
-            {company?.currency ?? "USD"} reporting base
+            {currency} reporting base
           </p>
           <Link className="font-medium text-primary" to="/app/companies">
             <span onClick={()=>setActiveCompanyId(null)}>

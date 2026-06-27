@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import { extractListData } from "@/lib/api/response";
+import { extractListData, extractPaginated } from "@/lib/api/response";
 import type {
   Customer,
   CustomerListParams,
@@ -10,6 +10,8 @@ function buildQuery(params: CustomerListParams) {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.includeInactive) query.set("includeInactive", "true");
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }
@@ -19,6 +21,13 @@ export async function getCustomers(companyId: string, params: CustomerListParams
     `/companies/${companyId}/customers${buildQuery(params)}`,
   );
   return extractListData(data);
+}
+
+export async function getCustomersPaginated(companyId: string, params: CustomerListParams = {}) {
+  const { data } = await apiClient.get<Customer[]>(
+    `/companies/${companyId}/customers${buildQuery(params)}`,
+  );
+  return extractPaginated<Customer>(data);
 }
 
 export async function getCustomer(companyId: string, customerId: string) {

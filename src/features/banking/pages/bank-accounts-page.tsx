@@ -50,13 +50,13 @@ export function BankAccountsPage() {
       ),
     },
     { key: "linked", header: "Linked account", render: (account) => account.linkedAccountName || "-" },
-    { key: "currency", header: "Currency", render: (account) => account.currencyCode || company?.currency || "USD" },
+    { key: "currency", header: "Currency", render: (account) => account.currencyCode || company?.baseCurrencyCode || company?.currencyCode || "USD" },
     {
       key: "opening",
       header: "Opening balance",
       render: (account) => (
         <div>
-          <p>{formatCurrency(account.openingBalance ?? 0, account.currencyCode ?? company?.currency ?? "USD")}</p>
+          <p>{formatCurrency(account.openingBalance ?? 0, account.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}</p>
           <p className="mt-1 text-xs text-muted-foreground">{formatDate(account.openingBalanceDate)}</p>
         </div>
       ),

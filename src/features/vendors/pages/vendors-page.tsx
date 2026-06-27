@@ -11,6 +11,7 @@ import { FilterBar } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
+import { formatCurrency } from "@/lib/utils/format";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { VendorFormDrawer } from "@/features/vendors/components/vendor-form-drawer";
@@ -18,7 +19,7 @@ import {
   useCreateVendor,
   useDeleteVendor,
   useUpdateVendor,
-  useVendors,
+  useVendorsPaginated,
 } from "@/features/vendors/hooks/use-vendors";
 import type { VendorFormValues } from "@/features/vendors/schemas/vendor.schema";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
@@ -27,14 +28,18 @@ export function VendorsPage() {
   const { companyId, company, permissions } = useActiveCompany();
   const [search, setSearch] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Vendor | null>(null);
   const deferredSearch = useDeferredValue(search);
-  const vendorsQuery = useVendors(companyId, {
+  const vendorsQuery = useVendorsPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     includeInactive,
+    page,
+    limit,
   });
   const createMutation = useCreateVendor(companyId);
   const updateMutation = useUpdateVendor(companyId, selectedVendor?.id ?? null);
@@ -74,6 +79,18 @@ export function VendorsPage() {
           <p className="text-xs text-muted-foreground">{vendor.phone || vendor.mobile || "No phone"}</p>
         </div>
       ),
+    },
+    {
+      key: "amountOwed",
+      header: "Amount owed",
+      className: "text-right",
+      render: (vendor) =>
+        formatCurrency(Number(vendor.amountOwed ?? 0), vendor.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
+    },
+    {
+      key: "currency",
+      header: "Currency",
+      render: (vendor) => vendor.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "-",
     },
     {
       key: "terms",
@@ -117,11 +134,26 @@ export function VendorsPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={vendorsQuery.data ?? []}
+              data={vendorsQuery.data?.items ?? []}
               emptyDescription="Create vendors to support purchasing, bills, and item sourcing."
               emptyTitle="No vendors yet"
               getRowKey={(vendor) => vendor.id}
               isLoading={vendorsQuery.isLoading}
+              pagination={
+                vendorsQuery.data
+                  ? {
+                      page: vendorsQuery.data.pagination.page,
+                      totalPages: vendorsQuery.data.pagination.totalPages,
+                      total: vendorsQuery.data.pagination.total,
+                      limit: vendorsQuery.data.pagination.limit,
+                      onPageChange: setPage,
+                      onLimitChange: (next) => {
+                        setLimit(next);
+                        setPage(1);
+                      },
+                    }
+                  : undefined
+              }
             />
           )
         }
@@ -145,14 +177,20 @@ export function VendorsPage() {
         toolbar={
           <FilterBar>
             <SearchInput
-              onChange={setSearch}
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
               placeholder="Search by vendor code, display name, contact"
               value={search}
             />
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={includeInactive}
-                onChange={(event) => setIncludeInactive(event.target.checked)}
+                onChange={(event) => {
+                  setIncludeInactive(event.target.checked);
+                  setPage(1);
+                }}
               />
               Include inactive
             </label>
@@ -161,7 +199,7 @@ export function VendorsPage() {
       />
 
       <VendorFormDrawer
-        companyCurrency={company?.currency}
+        companyCurrency={company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"}
         error={activeMutation.error}
         isPending={activeMutation.isPending}
         mode={drawerMode}

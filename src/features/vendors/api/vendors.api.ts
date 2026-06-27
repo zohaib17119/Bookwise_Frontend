@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import { extractListData } from "@/lib/api/response";
+import { extractListData, extractPaginated } from "@/lib/api/response";
 import type {
   Vendor,
   VendorListParams,
@@ -10,6 +10,8 @@ function buildQuery(params: VendorListParams) {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.includeInactive) query.set("includeInactive", "true");
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }
@@ -19,6 +21,13 @@ export async function getVendors(companyId: string, params: VendorListParams = {
     `/companies/${companyId}/vendors${buildQuery(params)}`,
   );
   return extractListData(data);
+}
+
+export async function getVendorsPaginated(companyId: string, params: VendorListParams = {}) {
+  const { data } = await apiClient.get<Vendor[]>(
+    `/companies/${companyId}/vendors${buildQuery(params)}`,
+  );
+  return extractPaginated<Vendor>(data);
 }
 
 export async function getVendor(companyId: string, vendorId: string) {

@@ -51,7 +51,7 @@ export function StockMovementsPage() {
         ) : movementsQuery.isLoading ? (
           <div className="surface p-6">Loading stock movements...</div>
         ) : (
-          <InventoryMovementTable currencyCode={company?.currency} data={movementsQuery.data ?? []} />
+          <InventoryMovementTable currencyCode={company?.baseCurrencyCode ?? company?.currencyCode} data={movementsQuery.data ?? []} />
         )
       }
       description="Inspect inventory movement history by item, source, and direction."

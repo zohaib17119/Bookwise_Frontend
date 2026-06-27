@@ -72,7 +72,7 @@ export function ReconciliationDetailPage() {
     {
       key: "amount",
       header: "Amount",
-      render: (transaction) => formatCurrency(transaction.amount, company?.currency ?? "USD"),
+      render: (transaction) => formatCurrency(transaction.amount, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     { key: "cleared", header: "Cleared", render: (transaction) => (transaction.isCleared ? "Yes" : "No") },
   ];
@@ -133,7 +133,7 @@ export function ReconciliationDetailPage() {
 
       <ReconciliationSummaryCard
         clearedBalance={reconciliation.clearedBalance}
-        currencyCode={company?.currency}
+        currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
         difference={reconciliation.difference}
         statementEndingBalance={reconciliation.statementEndingBalance}
         status={reconciliation.status}

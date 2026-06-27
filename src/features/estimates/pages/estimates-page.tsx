@@ -83,7 +83,7 @@ export function EstimatesPage() {
       header: "Total",
       className: "text-right",
       render: (estimate) =>
-        formatCurrency(estimate.totals?.total ?? 0, estimate.currencyCode ?? company?.currency ?? "USD"),
+        formatCurrency(estimate.totals?.total ?? 0, estimate.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
   ];
 

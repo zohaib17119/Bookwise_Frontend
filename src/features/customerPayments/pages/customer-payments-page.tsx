@@ -51,13 +51,13 @@ export function CustomerPaymentsPage() {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      render: (payment) => formatCurrency(payment.amount, payment.currencyCode ?? company?.currency ?? "USD"),
+      render: (payment) => formatCurrency(payment.amount, payment.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "unapplied",
       header: "Unapplied",
       className: "text-right",
-      render: (payment) => formatCurrency(payment.unappliedAmount ?? 0, payment.currencyCode ?? company?.currency ?? "USD"),
+      render: (payment) => formatCurrency(payment.unappliedAmount ?? 0, payment.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "method",

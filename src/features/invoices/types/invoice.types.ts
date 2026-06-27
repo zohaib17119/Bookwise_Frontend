@@ -29,11 +29,14 @@ export interface Invoice {
   issueDate?: string | null;
   dueDate?: string | null;
   currencyCode?: string | null;
+  exchangeRate?: string | null;
   notes?: string | null;
   terms?: string | null;
   discountType?: DiscountType | null;
   discountValue?: string | null;
   status?: InvoiceStatus | null;
+  rawStatus?: InvoiceStatus | null;
+  total?: string | null;
   amountPaid?: string | null;
   amountDue?: string | null;
   lines: InvoiceLine[];
@@ -53,6 +56,7 @@ export interface InvoicePayload {
   issueDate?: string;
   dueDate?: string;
   currencyCode?: string;
+  exchangeRate?: string;
   notes?: string;
   terms?: string;
   discountType?: DiscountType;

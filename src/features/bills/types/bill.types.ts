@@ -27,10 +27,13 @@ export interface Bill {
   issueDate?: string | null;
   dueDate?: string | null;
   currencyCode?: string | null;
+  exchangeRate?: string | null;
   notes?: string | null;
   discountType?: DiscountType | null;
   discountValue?: number | null;
   status?: BillStatus | null;
+  rawStatus?: BillStatus | null;
+  total?: string | null;
   amountPaid?: number | null;
   amountDue?: number | null;
   lines: BillLine[];
@@ -49,6 +52,7 @@ export interface BillPayload {
   issueDate?: string;
   dueDate?: string;
   currencyCode?: string;
+  exchangeRate?: string;
   notes?: string;
   discountType?: DiscountType;
   discountValue?: number | null;

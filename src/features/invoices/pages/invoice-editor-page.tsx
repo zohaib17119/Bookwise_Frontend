@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
+import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default function InvoiceEditorPage({
@@ -31,6 +33,8 @@ export default function InvoiceEditorPage({
   companyId: string;
 }) {
   const watchedCustomerId = form.watch("customerId");
+  const watchedCurrencyCode = form.watch("currencyCode");
+  const watchedExchangeRate = form.watch("exchangeRate");
   const watchedLines = form.watch("lines") || [];
   const watchedTerms = form.watch("terms");
   const watchedIssueDate = form.watch("issueDate");
@@ -71,7 +75,6 @@ export default function InvoiceEditorPage({
     const item = getItemById(itemId);
     
     if (item) {
-      console.log("item",item)
       // Auto-populate from item
       form.setValue(`lines.${index}.itemId`, itemId);
       form.setValue(`lines.${index}.description`, item.description || item.name);
@@ -188,7 +191,7 @@ export default function InvoiceEditorPage({
     ]);
   };
 
-  const currency = form.watch("currencyCode") || company?.currency || "USD";
+  const currency = watchedCurrencyCode || getCompanyBaseCurrency(company);
 
   // Group items by type for better UX
   const inventoryItems = itemsQuery?.data?.filter((item: any) => item.type === "inventory") || [];
@@ -310,6 +313,18 @@ export default function InvoiceEditorPage({
                   className="border p-2"
                 />
               </div>
+
+              <DocumentCurrencyFields
+                company={company}
+                companyId={companyId}
+                control={form.control}
+                documentCurrencyCode={watchedCurrencyCode}
+                errors={form.formState.errors}
+                exchangeRateValue={watchedExchangeRate}
+                layout="stack"
+                register={form.register}
+                setValue={form.setValue}
+              />
             </div>
           </div>
         </div>

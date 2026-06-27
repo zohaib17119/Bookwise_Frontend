@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import { extractListData } from "@/lib/api/response";
+import { extractListData, extractPaginated } from "@/lib/api/response";
 import type {
   Invoice,
   InvoiceListParams,
@@ -11,6 +11,8 @@ function buildQuery(params: InvoiceListParams) {
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
   if (params.customerId) query.set("customerId", params.customerId);
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }
@@ -20,6 +22,13 @@ export async function getInvoices(companyId: string, params: InvoiceListParams =
     `/companies/${companyId}/invoices${buildQuery(params)}`,
   );
   return extractListData(data);
+}
+
+export async function getInvoicesPaginated(companyId: string, params: InvoiceListParams = {}) {
+  const { data } = await apiClient.get<Invoice[]>(
+    `/companies/${companyId}/invoices${buildQuery(params)}`,
+  );
+  return extractPaginated<Invoice>(data);
 }
 
 export async function getInvoice(companyId: string, invoiceId: string) {
@@ -51,6 +60,13 @@ export async function updateInvoice(
 
 export async function deleteInvoice(companyId: string, invoiceId: string) {
   await apiClient.delete(`/companies/${companyId}/invoices/${invoiceId}`);
+}
+
+export async function sendInvoice(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<Invoice>(
+    `/companies/${companyId}/invoices/${invoiceId}/send`,
+  );
+  return data;
 }
 
 export async function getNextInvoiceNumber(companyId: string) {

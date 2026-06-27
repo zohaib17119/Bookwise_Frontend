@@ -11,12 +11,13 @@ import { FilterBar } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
+import { formatCurrency } from "@/lib/utils/format";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
 import {
   useCreateCustomer,
-  useCustomers,
+  useCustomersPaginated,
   useDeleteCustomer,
   useUpdateCustomer,
 } from "@/features/customers/hooks/use-customers";
@@ -24,17 +25,21 @@ import type { CustomerFormValues } from "@/features/customers/schemas/customer.s
 import type { Customer } from "@/features/customers/types/customer.types";
 
 export function CustomersPage() {
-  const { companyId, company, permissions } = useActiveCompany();
+  const { companyId, company, currency, permissions } = useActiveCompany();
   const [search, setSearch] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const deferredSearch = useDeferredValue(search);
-  const customersQuery = useCustomers(companyId, {
+  const customersQuery = useCustomersPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     includeInactive,
+    page,
+    limit,
   });
   const createMutation = useCreateCustomer(companyId);
   const updateMutation = useUpdateCustomer(companyId, selectedCustomer?.id ?? null);
@@ -78,6 +83,18 @@ export function CustomersPage() {
       ),
     },
     {
+      key: "openBalance",
+      header: "Open balance",
+      className: "text-right",
+      render: (customer) =>
+        formatCurrency(Number(customer.openBalance ?? 0), customer.currencyCode ?? currency),
+    },
+    {
+      key: "currency",
+      header: "Currency",
+      render: (customer) => customer.currencyCode ?? currency ?? "-",
+    },
+    {
       key: "terms",
       header: "Terms",
       render: (customer) => `${customer.paymentTermsDays ?? 0} days`,
@@ -119,11 +136,26 @@ export function CustomersPage() {
           ) : (
             <DataTable
               columns={columns}
-              data={customersQuery.data ?? []}
+              data={customersQuery.data?.items ?? []}
               emptyDescription="Create customers to power quotes, invoices, and receivables."
               emptyTitle="No customers yet"
               getRowKey={(customer) => customer.id}
               isLoading={customersQuery.isLoading}
+              pagination={
+                customersQuery.data
+                  ? {
+                      page: customersQuery.data.pagination.page,
+                      totalPages: customersQuery.data.pagination.totalPages,
+                      total: customersQuery.data.pagination.total,
+                      limit: customersQuery.data.pagination.limit,
+                      onPageChange: setPage,
+                      onLimitChange: (next) => {
+                        setLimit(next);
+                        setPage(1);
+                      },
+                    }
+                  : undefined
+              }
             />
           )
         }
@@ -147,14 +179,20 @@ export function CustomersPage() {
         toolbar={
           <FilterBar>
             <SearchInput
-              onChange={setSearch}
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
               placeholder="Search by customer code, display name, email"
               value={search}
             />
             <label className="flex items-center gap-2 text-sm">
               <Checkbox
                 checked={includeInactive}
-                onChange={(event) => setIncludeInactive(event.target.checked)}
+                onChange={(event) => {
+                  setIncludeInactive(event.target.checked);
+                  setPage(1);
+                }}
               />
               Include inactive
             </label>
@@ -163,7 +201,7 @@ export function CustomersPage() {
       />
 
       <CustomerFormDrawer
-        companyCurrency={company?.currency}
+        companyCurrency={currency}
         customer={selectedCustomer}
         error={activeMutation.error}
         isPending={activeMutation.isPending}

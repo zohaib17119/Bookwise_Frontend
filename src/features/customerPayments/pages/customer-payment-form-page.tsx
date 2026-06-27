@@ -157,7 +157,7 @@ export function CustomerPaymentFormPage() {
           <FormSection title="Invoice allocation" description="Allocate this payment across open invoices if the backend allocation endpoint is available.">
             <AllocationEditor
               allocations={allocations}
-              currencyCode={company?.currency}
+              currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
               documents={allocationDocuments}
               onAllocationChange={(documentId, amount) =>
                 setAllocations((current) => ({ ...current, [documentId]: amount }))
@@ -176,7 +176,7 @@ export function CustomerPaymentFormPage() {
                 amountDue: document.amountDue,
                 allocatedAmount: allocations[document.id],
               }))}
-            currencyCode={company?.currency}
+            currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
             title="Allocation preview"
             totalAmount={Number(form.watch("amount") || 0)}
             unappliedAmount={unappliedPreview}
@@ -184,7 +184,7 @@ export function CustomerPaymentFormPage() {
           <div className="surface p-5">
             <p className="text-sm text-muted-foreground">Amount preview</p>
             <p className="mt-3 text-2xl font-semibold">
-              {formatCurrency(Number(form.watch("amount") || 0), company?.currency ?? "USD")}
+              {formatCurrency(Number(form.watch("amount") || 0), company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
             </p>
           </div>
           <Button

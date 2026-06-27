@@ -14,6 +14,8 @@ function buildQuery(params: JournalListParams) {
   if (params.sourceModule) query.set("sourceModule", params.sourceModule);
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
+  query.set("limit", String(params.limit ?? 100));
+  if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }

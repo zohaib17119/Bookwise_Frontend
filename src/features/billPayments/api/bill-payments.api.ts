@@ -11,6 +11,8 @@ function buildQuery(params: BillPaymentListParams) {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.vendorId) query.set("vendorId", params.vendorId);
+  query.set("limit", String(params.limit ?? 100));
+  if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }

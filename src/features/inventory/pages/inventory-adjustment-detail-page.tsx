@@ -48,7 +48,7 @@ export function InventoryAdjustmentDetailPage() {
     { key: "item", header: "Item", render: (line) => line.itemName || line.itemId },
     { key: "direction", header: "Direction", render: (line) => line.direction },
     { key: "quantity", header: "Quantity", render: (line) => line.quantity },
-    { key: "cost", header: "Unit cost", render: (line) => formatCurrency(line.unitCost ?? 0, company?.currency ?? "USD") },
+    { key: "cost", header: "Unit cost", render: (line) => formatCurrency(line.unitCost ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
     { key: "notes", header: "Notes", render: (line) => line.notes || "-" },
   ];
 

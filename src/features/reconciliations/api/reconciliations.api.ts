@@ -7,7 +7,7 @@ import type {
 
 export async function getReconciliations(companyId: string) {
   const { data } = await apiClient.get<Reconciliation[]>(
-    `/companies/${companyId}/reconciliations`,
+    `/companies/${companyId}/reconciliations?limit=100`,
   );
   return extractListData(data);
 }

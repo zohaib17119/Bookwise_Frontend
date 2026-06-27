@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/client";
-import { extractListData } from "@/lib/api/response";
+import { extractListData, extractPaginated } from "@/lib/api/response";
 import type { Item, ItemListParams, ItemPayload } from "@/features/items/types/item.types";
 
 function buildQuery(params: ItemListParams) {
@@ -11,6 +11,8 @@ function buildQuery(params: ItemListParams) {
   if (typeof params.trackQuantity === "boolean") {
     query.set("trackQuantity", String(params.trackQuantity));
   }
+  if (params.page) query.set("page", String(params.page));
+  if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }
@@ -20,6 +22,13 @@ export async function getItems(companyId: string, params: ItemListParams = {}) {
     `/companies/${companyId}/items${buildQuery(params)}`,
   );
   return extractListData(data);
+}
+
+export async function getItemsPaginated(companyId: string, params: ItemListParams = {}) {
+  const { data } = await apiClient.get<Item[]>(
+    `/companies/${companyId}/items${buildQuery(params)}`,
+  );
+  return extractPaginated<Item>(data);
 }
 
 export async function getItem(companyId: string, itemId: string) {

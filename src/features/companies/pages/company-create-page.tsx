@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type Path } from "react-hook-form";
+import { Controller, useForm, type Path } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { useCreateCompany } from "@/features/companies/hooks/use-create-company";
 import {
@@ -15,6 +15,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import FileInput from "@/components/ui/fileInput";
+import { CurrencySelect } from "@/components/shared/currency-select";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { cn } from "@/lib/utils/cn";
 
@@ -258,13 +259,35 @@ export function CompanyCreatePage() {
 
               <FieldGrid columns={2}>
                 <FormField label="Currency code" error={form.formState.errors.currencyCode?.message}>
-                  <Input placeholder="USD" maxLength={3} {...form.register("currencyCode")} />
+                  <Controller
+                    control={form.control}
+                    name="currencyCode"
+                    render={({ field }) => (
+                      <CurrencySelect
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                        value={field.value}
+                      />
+                    )}
+                  />
                 </FormField>
                 <FormField
                   label="Base currency code (optional)"
                   error={form.formState.errors.baseCurrencyCode?.message}
                 >
-                  <Input placeholder="USD" maxLength={3} {...form.register("baseCurrencyCode")} />
+                  <Controller
+                    control={form.control}
+                    name="baseCurrencyCode"
+                    render={({ field }) => (
+                      <CurrencySelect
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                        value={field.value}
+                      />
+                    )}
+                  />
                 </FormField>
                 <FormField label="Timezone" error={form.formState.errors.timezone?.message}>
                   <Input placeholder="Asia/Karachi" {...form.register("timezone")} />

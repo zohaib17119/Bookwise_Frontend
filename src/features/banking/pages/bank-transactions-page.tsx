@@ -97,7 +97,7 @@ export function BankTransactionsPage() {
     {
       key: "amount",
       header: "Amount",
-      render: (transaction) => formatCurrency(transaction.amount, company?.currency ?? "USD"),
+      render: (transaction) => formatCurrency(transaction.amount, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     {
       key: "status",

@@ -4,6 +4,7 @@ import {
   deleteVendor,
   getVendor,
   getVendors,
+  getVendorsPaginated,
   updateVendor,
 } from "@/features/vendors/api/vendors.api";
 import type {
@@ -20,6 +21,14 @@ export function useVendors(companyId: string | undefined, params: VendorListPara
   });
 }
 
+export function useVendorsPaginated(companyId: string | undefined, params: VendorListParams) {
+  return useQuery({
+    queryKey: ["companies", companyId, "vendors", "paginated", params],
+    queryFn: () => getVendorsPaginated(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
 export function useVendor(companyId: string | undefined, vendorId: string | null) {
   return useQuery({
     queryKey: ["companies", companyId, "vendors", vendorId],
@@ -31,7 +40,7 @@ export function useVendor(companyId: string | undefined, vendorId: string | null
 export function useVendorOptions(companyId: string | undefined) {
   return useQuery({
     queryKey: ["companies", companyId, "vendors", "options"],
-    queryFn: () => getVendors(companyId!, { includeInactive: false }),
+    queryFn: () => getVendors(companyId!, { includeInactive: false, limit: 100 }),
     enabled: Boolean(companyId),
   });
 }

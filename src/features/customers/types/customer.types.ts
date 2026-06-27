@@ -15,6 +15,7 @@ export interface Customer {
   currencyCode?: string | null;
   paymentTermsDays?: number | null;
   openingBalance?: number | null;
+  openBalance?: string | null;
   openingBalanceDate?: string | null;
   billingAddressLine1?: string | null;
   billingAddressLine2?: string | null;
