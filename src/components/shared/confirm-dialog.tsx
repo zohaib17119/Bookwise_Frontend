@@ -30,6 +30,10 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const isDestructive = tone === "destructive";
 
+  if (!open) {
+    return null;
+  }
+
   return (
     <>
       <div

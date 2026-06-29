@@ -12,6 +12,7 @@ export interface Vendor {
   website?: string | null;
   taxRegistrationNumber?: string | null;
   currencyCode?: string | null;
+  hasTransactions?: boolean;
   paymentTermsDays?: number | null;
   openingBalance?: number | null;
   amountOwed?: string | null;

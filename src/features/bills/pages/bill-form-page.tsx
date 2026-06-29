@@ -217,6 +217,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 company={company}
                 companyId={companyId}
                 control={form.control}
+                currencyLocked={Boolean(watchedVendorId)}
                 documentCurrencyCode={watchedCurrencyCode}
                 errors={form.formState.errors}
                 exchangeRateValue={watchedExchangeRate}
@@ -244,11 +245,14 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             </label>
             <LineItemsEditor
               accountOptions={accountsQuery.data ?? []}
+              baseCurrencyCode={getCompanyBaseCurrency(company)}
               control={form.control}
               currencyCode={form.watch("currencyCode")}
+              exchangeRate={watchedExchangeRate}
               itemOptions={itemsQuery.data ?? []}
               mode="purchase"
               name={"lines"}
+              setValue={form.setValue}
               showAccountColumn={accountColumnVisible}
             />
           </FormSection>

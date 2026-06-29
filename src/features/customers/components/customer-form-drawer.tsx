@@ -40,6 +40,8 @@ export function CustomerFormDrawer({
   onClose,
   onSubmit,
 }: CustomerFormDrawerProps) {
+  const currencyLocked = mode === "edit" && Boolean(customer?.hasTransactions);
+
   const form = useForm<CustomerFormInput, undefined, CustomerFormValues>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
@@ -168,12 +170,20 @@ export function CustomerFormDrawer({
 
         <FormSection title="Finance" description="Defaults used by invoices and balances.">
           <FieldGrid>
-            <FormField label="Currency">
+            <FormField
+              label="Currency"
+              helperText={
+                currencyLocked
+                  ? "Currency can't be changed after the first transaction."
+                  : undefined
+              }
+            >
               <Controller
                 control={form.control}
                 name="currencyCode"
                 render={({ field }) => (
                   <CurrencySelect
+                    disabled={currencyLocked}
                     name={field.name}
                     onBlur={field.onBlur}
                     onChange={field.onChange}

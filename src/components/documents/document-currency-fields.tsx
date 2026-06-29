@@ -4,7 +4,7 @@ import { CurrencySelect } from "@/components/shared/currency-select";
 import { FormField } from "@/components/shared/form-field";
 import { Input } from "@/components/ui/input";
 import { useLatestExchangeRate } from "@/features/exchange-rates/hooks/use-latest-exchange-rate";
-import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { getCompanyBaseCurrency, exchangeRateTableToDocumentRate } from "@/features/companies/utils/company-currency";
 import type { Company } from "@/features/companies/types/company.types";
 
 interface DocumentCurrencyFieldsProps {
@@ -17,6 +17,7 @@ interface DocumentCurrencyFieldsProps {
   documentCurrencyCode?: string;
   exchangeRateValue?: string;
   layout?: "grid" | "stack";
+  currencyLocked?: boolean;
 }
 
 export function DocumentCurrencyFields({
@@ -29,6 +30,7 @@ export function DocumentCurrencyFields({
   documentCurrencyCode,
   exchangeRateValue,
   layout = "grid",
+  currencyLocked = false,
 }: DocumentCurrencyFieldsProps) {
   const baseCurrency = getCompanyBaseCurrency(company);
   const docCurrency = (documentCurrencyCode || baseCurrency).toUpperCase();
@@ -48,10 +50,18 @@ export function DocumentCurrencyFields({
     if (exchangeRateValue || !latestRateQuery.data?.rate) {
       return;
     }
-    setValue("exchangeRate", latestRateQuery.data.rate, { shouldDirty: false });
+    setValue(
+      "exchangeRate",
+      exchangeRateTableToDocumentRate(latestRateQuery.data.rate),
+      { shouldDirty: false },
+    );
   }, [exchangeRateValue, latestRateQuery.data?.rate, needsExchangeRate, setValue]);
 
-  const currencyField = (
+  const currencyField = currencyLocked ? (
+    <FormField label="Currency">
+      <p className="text-sm font-medium text-foreground">{docCurrency}</p>
+    </FormField>
+  ) : (
     <FormField error={errors?.currencyCode?.message as string | undefined} label="Currency">
       <Controller
         control={control}

@@ -232,6 +232,7 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
                 company={company}
                 companyId={companyId}
                 control={form.control}
+                currencyLocked={Boolean(watchedCustomerId)}
                 documentCurrencyCode={watchedCurrencyCode}
                 errors={form.formState.errors}
                 exchangeRateValue={watchedExchangeRate}
@@ -249,11 +250,14 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
 
           <FormSection title="Line items" description="Frontend previews are provisional. Backend totals remain authoritative.">
             <LineItemsEditor
+              baseCurrencyCode={getCompanyBaseCurrency(company)}
               control={form.control}
               currencyCode={form.watch("currencyCode")}
+              exchangeRate={watchedExchangeRate}
               itemOptions={itemsQuery.data ?? []}
               mode="sales"
               name={"lines"}
+              setValue={form.setValue}
             />
           </FormSection>
 

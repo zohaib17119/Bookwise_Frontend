@@ -40,6 +40,8 @@ export function VendorFormDrawer({
   onClose,
   onSubmit,
 }: VendorFormDrawerProps) {
+  const currencyLocked = mode === "edit" && Boolean(vendor?.hasTransactions);
+
   const form = useForm<VendorFormInput, undefined, VendorFormValues>({
     resolver: zodResolver(vendorSchema),
     defaultValues: {
@@ -151,12 +153,20 @@ export function VendorFormDrawer({
 
         <FormSection title="Finance">
           <FieldGrid>
-            <FormField label="Currency">
+            <FormField
+              label="Currency"
+              helperText={
+                currencyLocked
+                  ? "Currency can't be changed after the first transaction."
+                  : undefined
+              }
+            >
               <Controller
                 control={form.control}
                 name="currencyCode"
                 render={({ field }) => (
                   <CurrencySelect
+                    disabled={currencyLocked}
                     name={field.name}
                     onBlur={field.onBlur}
                     onChange={field.onChange}

@@ -27,6 +27,7 @@ interface ItemFormDrawerProps {
   open: boolean;
   mode: "create" | "edit";
   item?: Item | null;
+  baseCurrencyCode?: string;
   accounts: Account[];
   vendors: Vendor[];
   taxRates: TaxRate[];
@@ -40,6 +41,7 @@ export function ItemFormDrawer({
   open,
   mode,
   item,
+  baseCurrencyCode = "USD",
   accounts,
   vendors,
   taxRates,
@@ -165,10 +167,16 @@ export function ItemFormDrawer({
                 ))}
               </Select>
             </FormField>
-            <FormField label="Sales price">
+            <FormField
+              helperText={`Prices are entered in your company's base currency (${baseCurrencyCode}).`}
+              label="Sales price"
+            >
               <Input type="number" step="0.01" {...form.register("salesPrice")} />
             </FormField>
-            <FormField label="Purchase cost">
+            <FormField
+              helperText={`Prices are entered in your company's base currency (${baseCurrencyCode}).`}
+              label="Purchase cost"
+            >
               <Input type="number" step="0.01" {...form.register("purchaseCost")} />
             </FormField>
           </FieldGrid>

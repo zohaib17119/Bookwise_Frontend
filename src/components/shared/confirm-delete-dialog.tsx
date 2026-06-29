@@ -19,6 +19,10 @@ export function ConfirmDeleteDialog({
   onClose,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
+  if (!open) {
+    return null;
+  }
+
   return (
     <>
       <div

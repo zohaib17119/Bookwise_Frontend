@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
 import {
   useCreateItem,
@@ -28,7 +29,7 @@ import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import { useTaxRates } from "@/features/tax/hooks/use-tax";
 
 export function ItemsPage() {
-  const { companyId, permissions } = useActiveCompany();
+  const { companyId, company, permissions } = useActiveCompany();
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -250,6 +251,7 @@ export function ItemsPage() {
 
       <ItemFormDrawer
         accounts={accountsQuery.data ?? []}
+        baseCurrencyCode={getCompanyBaseCurrency(company)}
         error={activeMutation.error}
         isPending={activeMutation.isPending}
         item={selectedItem}

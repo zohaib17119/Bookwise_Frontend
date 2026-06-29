@@ -2,6 +2,8 @@ export type DiscountType = "FIXED" | "PERCENTAGE";
 
 export interface DocumentLineInput {
   itemId?: string | null;
+  itemName?: string | null;
+  item?: { id?: string; name?: string } | null;
   description: string;
   quantity: string;
   unitPrice?: string | null;

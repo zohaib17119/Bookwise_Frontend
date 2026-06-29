@@ -17,6 +17,7 @@ import {
   getDocumentPreviewTotals,
   getLinePreviewTotal,
 } from "@/features/shared/utils/document-calculations";
+import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import type { DiscountType } from "@/features/shared/types/documents";
 
 interface ItemOption {
@@ -50,6 +51,8 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
   taxCodeOptions?: TaxCodeOption[];
   mode: "sales" | "purchase";
   currencyCode?: string | null;
+  baseCurrencyCode?: string | null;
+  exchangeRate?: string | null;
   setValue?: UseFormSetValue<TFieldValues>;
   docDiscountType?: DiscountType | null;
   docDiscountValue?: number | null;
@@ -71,6 +74,8 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   taxCodeOptions = [],
   mode,
   currencyCode,
+  baseCurrencyCode,
+  exchangeRate,
   setValue,
   docDiscountType,
   docDiscountValue,
@@ -130,10 +135,16 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       if (selectedItem) {
         const priceField =
           mode === "sales" ? "unitPrice" : "unitCost";
-        const price =
+        const basePrice =
           mode === "sales"
             ? Number(selectedItem.salesPrice ?? "0")
             : Number(selectedItem.purchaseCost ?? "0");
+        const price = convertBasePriceToDocumentPrice(
+          basePrice,
+          exchangeRate ?? undefined,
+          currencyCode ?? baseCurrencyCode ?? "USD",
+          baseCurrencyCode ?? currencyCode ?? "USD",
+        );
 
         setValue(
           `${name}.${index}.${priceField}` as never,
@@ -147,7 +158,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
         }
       }
     },
-    [itemOptions, mode, name, setValue],
+    [baseCurrencyCode, currencyCode, exchangeRate, itemOptions, mode, name, setValue],
   );
 
   const handleTaxCodeChange = useCallback(

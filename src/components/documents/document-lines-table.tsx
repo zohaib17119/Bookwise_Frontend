@@ -15,11 +15,14 @@ export function DocumentLinesTable({
 }: DocumentLinesTableProps) {
   const currency = currencyCode ?? "USD";
 
+  const getItemName = (line: DocumentLineInput) => line.itemName ?? line.item?.name ?? null;
+
   return (
     <div className="overflow-x-auto rounded-2xl border border-border/70 bg-white">
       <table className="min-w-full text-left text-sm">
         <thead className="bg-secondary/50">
           <tr>
+            <th className="px-4 py-3">Product/Service</th>
             <th className="px-4 py-3">Description</th>
             <th className="px-4 py-3">Qty</th>
             <th className="px-4 py-3">
@@ -31,10 +34,23 @@ export function DocumentLinesTable({
           </tr>
         </thead>
         <tbody>
-          {lines.map((line, index) => (
+          {lines.map((line, index) => {
+            const itemName = getItemName(line);
+            const description = line.description?.trim();
+            const showDescription =
+              description && description !== itemName?.trim();
+
+            return (
             <tr className="border-t border-border/60" key={`${line.itemId ?? "line"}-${index}`}>
               <td className="px-4 py-3">
-                <p className="font-medium">{line.description}</p>
+                <p className="font-medium">{itemName ?? "-"}</p>
+              </td>
+              <td className="px-4 py-3">
+                {showDescription ? (
+                  <p className="text-xs text-muted-foreground">{description}</p>
+                ) : (
+                  <span className="text-muted-foreground">-</span>
+                )}
               </td>
               <td className="px-4 py-3">{line.quantity}</td>
               <td className="px-4 py-3">
@@ -50,7 +66,8 @@ export function DocumentLinesTable({
                 {formatCurrency(getLinePreviewTotal(line), currency)}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

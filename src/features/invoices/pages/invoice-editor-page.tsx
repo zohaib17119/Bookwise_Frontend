@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
 import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
-import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default function InvoiceEditorPage({
@@ -78,7 +78,7 @@ export default function InvoiceEditorPage({
       // Auto-populate from item
       form.setValue(`lines.${index}.itemId`, itemId);
       form.setValue(`lines.${index}.description`, item.description || item.name);
-      form.setValue(`lines.${index}.unitPrice`, item.salesPrice || "");
+      form.setValue(`lines.${index}.unitPrice`, String(documentItemPrice(item.salesPrice)));
       form.setValue(`lines.${index}.itemName`, item.name || "");
       
       // If item has tax rate, auto-populate tax
@@ -192,6 +192,20 @@ export default function InvoiceEditorPage({
   };
 
   const currency = watchedCurrencyCode || getCompanyBaseCurrency(company);
+  const baseCurrency = getCompanyBaseCurrency(company);
+
+  const documentItemPrice = useCallback(
+    (salesPrice: string | number | null | undefined) => {
+      const converted = convertBasePriceToDocumentPrice(
+        Number(salesPrice ?? 0),
+        watchedExchangeRate,
+        currency,
+        baseCurrency,
+      );
+      return converted;
+    },
+    [baseCurrency, currency, watchedExchangeRate],
+  );
 
   // Group items by type for better UX
   const inventoryItems = itemsQuery?.data?.filter((item: any) => item.type === "inventory") || [];
@@ -318,6 +332,7 @@ export default function InvoiceEditorPage({
                 company={company}
                 companyId={companyId}
                 control={form.control}
+                currencyLocked={Boolean(watchedCustomerId)}
                 documentCurrencyCode={watchedCurrencyCode}
                 errors={form.formState.errors}
                 exchangeRateValue={watchedExchangeRate}
@@ -366,7 +381,7 @@ export default function InvoiceEditorPage({
                       <option value="">Select Item</option>
                       {(itemsQuery?.data ?? []).map((item: any) => (
                         <option key={item.id} value={item.id}>
-                          {item.name} {item.salesPrice ? ` - ${formatCurrency(Number(item.salesPrice), currency)}` : ""}
+                          {item.name} {item.salesPrice ? ` - ${formatCurrency(documentItemPrice(item.salesPrice), currency)}` : ""}
                         </option>
                       ))}
                       <option value="__service__">+ Add Service (Manual)</option>
