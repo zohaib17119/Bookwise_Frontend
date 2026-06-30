@@ -5,15 +5,28 @@ import { filterNavigationGroups } from "@/features/permissions/utils/navigation-
 interface SidebarNavProps {
   companyId: string;
   permissions: string[];
+  collapsed?: boolean;
+  onNavigate?: () => void;
 }
 
-export function SidebarNav({ companyId, permissions }: SidebarNavProps) {
+export function SidebarNav({
+  companyId,
+  permissions,
+  collapsed = false,
+  onNavigate,
+}: SidebarNavProps) {
   const visibleGroups = filterNavigationGroups(companyNavigationGroups, permissions);
 
   return (
-    <nav className="space-y-7">
+    <nav className={collapsed ? "space-y-4" : "space-y-7"}>
       {visibleGroups.map((group) => (
-        <SidebarNavGroup companyId={companyId} group={group} key={group.title} />
+        <SidebarNavGroup
+          collapsed={collapsed}
+          companyId={companyId}
+          group={group}
+          key={group.title}
+          onNavigate={onNavigate}
+        />
       ))}
     </nav>
   );

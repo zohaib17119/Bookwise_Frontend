@@ -1,4 +1,4 @@
-import { Menu, Search, UserCircle2 } from "lucide-react";
+import { Menu, PanelLeft, PanelLeftClose, Search, UserCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Breadcrumbs } from "@/components/navigation/breadcrumbs";
 import { CompanySwitcher } from "@/components/navigation/company-switcher";
@@ -11,6 +11,8 @@ interface TopbarProps {
   companyName?: string;
   onMenuClick?: () => void;
   onLogout: () => void;
+  sidebarCollapsed?: boolean;
+  onSidebarCollapse?: () => void;
 }
 
 export function Topbar({
@@ -19,6 +21,8 @@ export function Topbar({
   companyName,
   onMenuClick,
   onLogout,
+  sidebarCollapsed,
+  onSidebarCollapse,
 }: TopbarProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur">
@@ -34,6 +38,21 @@ export function Topbar({
                 className="lg:hidden"
               >
                 <Menu className="h-5 w-5" />
+              </Button>
+            ) : null}
+            {onSidebarCollapse ? (
+              <Button
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                className="hidden lg:inline-flex"
+                onClick={onSidebarCollapse}
+                size="icon"
+                variant="ghost"
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeft className="h-5 w-5" />
+                ) : (
+                  <PanelLeftClose className="h-5 w-5" />
+                )}
               </Button>
             ) : null}
             <div>

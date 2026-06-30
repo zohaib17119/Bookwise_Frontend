@@ -211,10 +211,10 @@ export default function InvoiceView({ invoice }) {
         <td>${line?.item?.name}</td>
         <td>${line.description}</td>
         <td>${line.quantity}</td>
-        <td>${line.unitPrice}</td>
-        <td>${line?.lineSubtotal}</td>
-        <td>${line?.lineTaxAmount && line?.lineTaxAmount !== 0 ? (line?.taxName + "@ " + parseFloat(line?.taxRate).toFixed(1) +"% " +line?.lineTaxAmount) : "-"}</td>
-        <td>${line?.lineTotal}</td>
+        <td>${invoice?.currencyCode} ${line.unitPrice}</td>
+        <td>${invoice?.currencyCode} ${line?.lineSubtotal}</td>
+        <td>${line?.lineTaxAmount && line?.lineTaxAmount !== 0 ? (line?.taxName + "@ " + parseFloat(line?.taxRate).toFixed(1) +"% " + invoice?.currencyCode + " " + line?.lineTaxAmount) : "-"}</td>
+        <td>${invoice?.currencyCode} ${line?.lineTotal}</td>
       </tr>`).join("")
       }
 <td></td>
@@ -222,9 +222,9 @@ export default function InvoiceView({ invoice }) {
         <td></td>
         <td></td>
         <td></td>
-        <td><b>${invoice?.subtotalBase}</b></td>
-        <td><b>${invoice?.taxAmountBase}</b></td>
-        <td><b>${invoice?.totalBase}</b></td>
+        <td><b>${invoice?.currencyCode} ${invoice?.subtotal}</b></td>
+        <td><b>${invoice?.currencyCode} ${invoice?.taxAmount}</b></td>
+        <td><b>${invoice?.currencyCode} ${invoice?.total}</b></td>
     </tbody>
   </table>
 
