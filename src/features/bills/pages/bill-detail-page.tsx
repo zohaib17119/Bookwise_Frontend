@@ -13,6 +13,7 @@ import { DocumentLinesTable } from "@/components/documents/document-lines-table"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { useBill, useDeleteBill, useIssueBill } from "@/features/bills/hooks/use-bills";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
@@ -20,7 +21,7 @@ import { formatDate } from "@/lib/utils/format";
 export function BillDetailPage() {
   const navigate = useNavigate();
   const { billId, companyId } = useParams();
-  const { permissions } = useActiveCompany();
+  const { permissions, company } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
   const billQuery = useBill(companyId, billId ?? null);
@@ -42,6 +43,7 @@ export function BillDetailPage() {
   }
 
   const bill = billQuery.data;
+  const documentCurrency = bill.currencyCode ?? getCompanyBaseCurrency(company);
 
   return (
     <PageContainer className="space-y-6">
@@ -87,7 +89,7 @@ export function BillDetailPage() {
               />
               <DocumentMetaSection
                 items={[
-                  { label: "Currency", value: bill.currencyCode || "USD" },
+                  { label: "Currency", value: documentCurrency },
                   { label: "Notes", value: bill.notes || "-" },
                 ]}
                 title="Commercials"
@@ -96,20 +98,20 @@ export function BillDetailPage() {
           </DocumentDetailsSection>
 
           <DocumentDetailsSection title="Line items">
-            <DocumentLinesTable currencyCode={bill.currencyCode} lines={bill.lines} mode="purchase" />
+            <DocumentLinesTable currencyCode={documentCurrency} lines={bill.lines} mode="purchase" />
           </DocumentDetailsSection>
         </div>
 
         <div className="space-y-4">
           <DocumentTotalsCard
-            currencyCode={bill.currencyCode}
+            currencyCode={documentCurrency}
             discountTotal={bill.totals?.discountTotal}
             subtotal={bill.totals?.subtotal}
             taxTotal={bill.totals?.taxTotal}
             total={bill.totals?.total}
           />
-          <AmountSummaryCard amount={bill.amountPaid} currencyCode={bill.currencyCode} label="Amount paid" />
-          <AmountSummaryCard amount={bill.amountDue} currencyCode={bill.currencyCode} label="Amount due" />
+          <AmountSummaryCard amount={bill.amountPaid} currencyCode={documentCurrency} label="Amount paid" />
+          <AmountSummaryCard amount={bill.amountDue} currencyCode={documentCurrency} label="Amount due" />
         </div>
       </div>
 

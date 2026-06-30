@@ -10,6 +10,10 @@ export const invoiceSchema = documentBaseSchema.extend({
   invoiceNumber: z.string().optional().or(z.literal("")),
   issueDate: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
+  memoOnStatement: z.string().optional().or(z.literal("")),
+  paymentOptions: z
+    .array(z.enum(["BANK_TRANSFER", "CARD", "CASH", "CHEQUE"]))
+    .optional(),
   lines: z.array(lineItemSchema).min(1, "At least one line item is required"),
 });
 

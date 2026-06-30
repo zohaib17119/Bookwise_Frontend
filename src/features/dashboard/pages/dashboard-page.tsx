@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import {
   useCompanyDashboard,
   useDashboardAnalytics,
@@ -41,8 +42,9 @@ export function DashboardPage() {
 
   const dashboard = dashboardQuery.data;
   const metrics = dashboard?.metrics;
-  const summary = dashboard?.summary;
+  const counts = dashboard?.counts;
   const activity = dashboard?.recentActivity ?? [];
+  const displayCurrency = getCompanyBaseCurrency(company, dashboard?.currency ?? currency);
 
   return (
     <PageContainer
@@ -66,7 +68,7 @@ export function DashboardPage() {
           title="Total revenue"
           trendDirection="up"
           trendLabel="Revenue in focus"
-          value={formatCurrency(metrics?.totalRevenue ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.totalRevenue ?? 0, displayCurrency)}
         />
         <MetricCard
           description="Tracked purchases and outgoing obligations"
@@ -74,7 +76,7 @@ export function DashboardPage() {
           title="Total expenses"
           trendDirection="down"
           trendLabel="Expense visibility"
-          value={formatCurrency(metrics?.totalExpenses ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.totalExpenses ?? 0, displayCurrency)}
         />
         <MetricCard
           description="Profit after expenses in the current snapshot"
@@ -82,25 +84,25 @@ export function DashboardPage() {
           title="Net profit"
           trendDirection={(metrics?.netProfit ?? 0) >= 0 ? "up" : "down"}
           trendLabel={(metrics?.netProfit ?? 0) >= 0 ? "Positive margin" : "Negative margin"}
-          value={formatCurrency(metrics?.netProfit ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.netProfit ?? 0, displayCurrency)}
         />
         <MetricCard
           description="Available company cash position"
           isLoading={dashboardQuery.isLoading}
           title="Cash balance"
-          value={formatCurrency(metrics?.cashBalance ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.cashBalance ?? 0, displayCurrency)}
         />
         <MetricCard
           description="Outstanding customer balances"
           isLoading={dashboardQuery.isLoading}
           title="Accounts receivable"
-          value={formatCurrency(metrics?.accountsReceivable ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.accountsReceivable ?? 0, displayCurrency)}
         />
         <MetricCard
           description="Outstanding vendor obligations"
           isLoading={dashboardQuery.isLoading}
           title="Accounts payable"
-          value={formatCurrency(metrics?.accountsPayable ?? 0, dashboard?.currency ?? currency)}
+          value={formatCurrency(metrics?.accountsPayable ?? 0, displayCurrency)}
         />
       </div>
 
@@ -109,22 +111,22 @@ export function DashboardPage() {
           {
             icon: Users,
             label: "Customers",
-            value: formatNumber(summary?.customerCount ?? 0),
+            value: formatNumber(counts?.totalCustomers ?? 0),
           },
           {
             icon: Landmark,
             label: "Vendors",
-            value: formatNumber(summary?.vendorCount ?? 0),
+            value: formatNumber(counts?.totalVendors ?? 0),
           },
           {
             icon: FileText,
             label: "Invoices",
-            value: formatNumber(summary?.invoiceCount ?? 0),
+            value: formatNumber(counts?.totalInvoices ?? 0),
           },
           {
             icon: Clock3,
             label: "Bills",
-            value: formatNumber(summary?.billCount ?? 0),
+            value: formatNumber(counts?.totalBills ?? 0),
           },
         ].map((item) => (
           <div className="surface flex items-center gap-4 p-5" key={item.label}>
@@ -149,7 +151,7 @@ export function DashboardPage() {
         <div className="xl:col-span-2">
           <ChartCard
             color="#0f766e"
-          currency={dashboard?.currency ?? currency}
+          currency={displayCurrency}
           data={analytics.revenue.data ?? []}
           description="Company-scoped revenue analytics from the backend trend endpoint."
           errorMessage={analytics.revenue.error?.message}
@@ -163,7 +165,7 @@ export function DashboardPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <ChartCard
           color="#ea580c"
-          currency={dashboard?.currency ?? currency}
+          currency={displayCurrency}
           data={analytics.expenses.data ?? []}
           description="Expense movement across the current reporting window."
           errorMessage={analytics.expenses.error?.message}
@@ -172,7 +174,7 @@ export function DashboardPage() {
         />
         <ChartCard
           color="#2563eb"
-          currency={dashboard?.currency ?? currency}
+          currency={displayCurrency}
           data={analytics.cashflow.data ?? []}
           description="Cash flow direction for treasury visibility and planning."
           errorMessage={analytics.cashflow.error?.message}

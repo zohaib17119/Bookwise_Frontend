@@ -4,16 +4,18 @@ import { getLinePreviewTotal } from "@/features/shared/utils/document-calculatio
 
 interface DocumentLinesTableProps {
   currencyCode?: string | null;
+  fallbackCurrency?: string;
   lines: DocumentLineInput[];
   mode: "sales" | "purchase";
 }
 
 export function DocumentLinesTable({
   currencyCode,
+  fallbackCurrency,
   lines,
   mode,
 }: DocumentLinesTableProps) {
-  const currency = currencyCode ?? "USD";
+  const currency = currencyCode ?? fallbackCurrency ?? "USD";
 
   const getItemName = (line: DocumentLineInput) => line.itemName ?? line.item?.name ?? null;
 
@@ -24,12 +26,12 @@ export function DocumentLinesTable({
           <tr>
             <th className="px-4 py-3">Product/Service</th>
             <th className="px-4 py-3">Description</th>
-            <th className="px-4 py-3">Qty</th>
-            <th className="px-4 py-3">
+            <th className="px-4 py-3 text-right">Qty</th>
+            <th className="px-4 py-3 text-right">
               {mode === "sales" ? "Unit Price" : "Unit Cost"}
             </th>
-            <th className="px-4 py-3">Discount</th>
-            <th className="px-4 py-3">Tax</th>
+            <th className="px-4 py-3 text-right">Discount</th>
+            <th className="px-4 py-3 text-right">Tax</th>
             <th className="px-4 py-3 text-right">Line Total</th>
           </tr>
         </thead>
@@ -41,28 +43,31 @@ export function DocumentLinesTable({
               description && description !== itemName?.trim();
 
             return (
-            <tr className="border-t border-border/60" key={`${line.itemId ?? "line"}-${index}`}>
-              <td className="px-4 py-3">
+            <tr
+              className="border-b border-border/60 transition-colors even:bg-secondary/15 hover:bg-secondary/30"
+              key={`${line.itemId ?? "line"}-${index}`}
+            >
+              <td className="px-4 py-4">
                 <p className="font-medium">{itemName ?? "-"}</p>
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-4">
                 {showDescription ? (
                   <p className="text-xs text-muted-foreground">{description}</p>
                 ) : (
                   <span className="text-muted-foreground">-</span>
                 )}
               </td>
-              <td className="px-4 py-3">{line.quantity}</td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-4 text-right tabular-nums">{line.quantity}</td>
+              <td className="px-4 py-4 text-right tabular-nums">
                 {formatCurrency(line.unitPrice ?? line.unitCost ?? 0, currency)}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-4 py-4 text-right tabular-nums">
                 {line.discountType && line.discountValue
                   ? `${line.discountValue} ${line.discountType === "percentage" ? "%" : ""}`
                   : "-"}
               </td>
-              <td className="px-4 py-3">{line.taxCode || "-"}</td>
-              <td className="px-4 py-3 text-right font-medium">
+              <td className="px-4 py-4 text-right tabular-nums">{line.taxCode || "-"}</td>
+              <td className="px-4 py-4 text-right font-medium tabular-nums">
                 {formatCurrency(getLinePreviewTotal(line), currency)}
               </td>
             </tr>

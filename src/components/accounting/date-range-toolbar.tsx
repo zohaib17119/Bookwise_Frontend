@@ -15,16 +15,20 @@ export function DateRangeToolbar({
 }: DateRangeToolbarProps) {
   return (
     <>
-      <Input
-        onChange={(event) => onFromDateChange(event.target.value)}
-        type="date"
-        value={fromDate}
-      />
-      <Input
-        onChange={(event) => onToDateChange(event.target.value)}
-        type="date"
-        value={toDate}
-      />
+      <div className="w-full sm:w-auto sm:min-w-[160px]">
+        <Input
+          onChange={(event) => onFromDateChange(event.target.value)}
+          type="date"
+          value={fromDate}
+        />
+      </div>
+      <div className="w-full sm:w-auto sm:min-w-[160px]">
+        <Input
+          onChange={(event) => onToDateChange(event.target.value)}
+          type="date"
+          value={toDate}
+        />
+      </div>
     </>
   );
 }

@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
+import { Controller } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
 import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
+import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
 import { formatCurrency } from "@/lib/utils/format";
 
 export default function InvoiceEditorPage({
@@ -466,35 +469,58 @@ export default function InvoiceEditorPage({
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Customer Payment Options
+                Payment options
               </label>
-              <textarea
-                {...form.register("notes")}
-                rows={4}
-                className="w-full border p-2"
-                placeholder="Payment options for customer..."
+              <Controller
+                control={form.control}
+                name="paymentOptions"
+                render={({ field }) => (
+                  <div className="flex flex-wrap gap-4">
+                    {INVOICE_PAYMENT_OPTIONS.map((option) => {
+                      const selected = (field.value ?? []).includes(option.value);
+                      return (
+                        <label className="flex items-center gap-2 text-sm" key={option.value}>
+                          <Checkbox
+                            checked={selected}
+                            onChange={(event) => {
+                              const current: string[] = field.value ?? [];
+                              if (event.target.checked) {
+                                field.onChange([...current, option.value]);
+                              } else {
+                                field.onChange(current.filter((value) => value !== option.value));
+                              }
+                            }}
+                          />
+                          {option.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Note To Customer
+                Note to customer
               </label>
               <textarea
+                {...form.register("notes")}
                 rows={4}
-                className="w-full border p-2"
+                className="w-full rounded-xl border border-border/70 p-3 text-sm"
                 placeholder="Notes to show on invoice..."
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Memo On Statement
+                Memo on statement
               </label>
               <textarea
+                {...form.register("memoOnStatement")}
                 rows={4}
-                className="w-full border p-2"
-                placeholder="Memo for statement..."
+                className="w-full rounded-xl border border-border/70 p-3 text-sm"
+                placeholder="Memo for customer account statement..."
               />
             </div>
           </div>

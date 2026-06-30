@@ -56,6 +56,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             exchangeRate: invoiceQuery.data.exchangeRate ?? "",
             notes: invoiceQuery.data.notes ?? "",
             terms: invoiceQuery.data.terms ?? "",
+            memoOnStatement: invoiceQuery.data.memoOnStatement ?? "",
+            paymentOptions: invoiceQuery.data.paymentOptions ?? [],
             discountType: invoiceQuery.data.discountType ?? undefined,
             discountValue: invoiceQuery.data.discountValue ?? undefined,
             lines:
@@ -82,6 +84,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             exchangeRate: "",
             notes: "",
             terms: "30",
+            memoOnStatement: "",
+            paymentOptions: [],
             discountType: undefined,
             discountValue: undefined,
             lines: [
@@ -140,6 +144,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
           notes: values.notes || undefined,
           terms: values.terms || undefined,
+          memoOnStatement: values.memoOnStatement || undefined,
+          paymentOptions: values.paymentOptions?.length ? values.paymentOptions : undefined,
           discountType: values.discountType
             ? (values.discountType as DiscountType)
             : undefined,

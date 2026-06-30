@@ -6,10 +6,11 @@ import { Select } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
-import { FilterBar } from "@/components/shared/filter-bar";
+import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
@@ -35,6 +36,7 @@ export function InvoicesPage() {
   });
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
+  const baseCurrency = getCompanyBaseCurrency(company);
 
   if (!canView) {
     return (
@@ -74,7 +76,7 @@ export function InvoicesPage() {
       render: (invoice) =>
         formatCurrency(
           Number(invoice.total ?? invoice.totals?.total ?? 0),
-          invoice.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
+          invoice.currencyCode ?? baseCurrency,
         ),
     },
     {
@@ -82,7 +84,7 @@ export function InvoicesPage() {
       header: "Amount Due",
       className: "text-right",
       render: (invoice) =>
-        formatCurrency(Number(invoice.amountDue ?? 0), invoice.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
+        formatCurrency(Number(invoice.amountDue ?? 0), invoice.currencyCode ?? baseCurrency),
     },
   ];
 
@@ -131,44 +133,50 @@ export function InvoicesPage() {
       title="Invoices"
       toolbar={
         <FilterBar>
-          <SearchInput
-            onChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder="Search invoice number or reference"
-            value={search}
-          />
-          <Select
-            className="min-w-[180px]"
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
-            value={status}
-          >
-            <option value="">All statuses</option>
-            {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
-              <option key={option} value={option}>
-                {option.replace(/_/g, " ")}
-              </option>
-            ))}
-          </Select>
-          <Select
-            className="min-w-[220px]"
-            onChange={(e) => {
-              setCustomerId(e.target.value);
-              setPage(1);
-            }}
-            value={customerId}
-          >
-            <option value="">All customers</option>
-            {(customersQuery.data ?? []).map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.displayName}
-              </option>
-            ))}
-          </Select>
+          <FilterField className="md:min-w-[240px] md:flex-1">
+            <SearchInput
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              placeholder="Search invoice number or reference"
+              value={search}
+            />
+          </FilterField>
+          <FilterField className="sm:min-w-[180px]">
+            <Select
+              className="w-full"
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+              value={status}
+            >
+              <option value="">All statuses</option>
+              {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
+                <option key={option} value={option}>
+                  {option.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField className="sm:min-w-[220px]">
+            <Select
+              className="w-full"
+              onChange={(e) => {
+                setCustomerId(e.target.value);
+                setPage(1);
+              }}
+              value={customerId}
+            >
+              <option value="">All customers</option>
+              {(customersQuery.data ?? []).map((customer) => (
+                <option key={customer.id} value={customer.id}>
+                  {customer.displayName}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
         </FilterBar>
       
       }

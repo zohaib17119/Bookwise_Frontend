@@ -6,10 +6,11 @@ import { Select } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
-import { FilterBar } from "@/components/shared/filter-bar";
+import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { useVendors, useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import type { Bill } from "@/features/bills/types/bill.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
@@ -34,6 +35,7 @@ export function BillsPage() {
   });
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
+  const baseCurrency = getCompanyBaseCurrency(company);
 
   if (!canView) {
     return <ErrorState title="Bills access restricted" description="Your current company membership does not include bill access." />;
@@ -63,7 +65,7 @@ export function BillsPage() {
       render: (bill) =>
         formatCurrency(
           Number(bill.total ?? bill.totals?.total ?? 0),
-          bill.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
+          bill.currencyCode ?? baseCurrency,
         ),
     },
     {
@@ -71,7 +73,7 @@ export function BillsPage() {
       header: "Amount Due",
       className: "text-right",
       render: (bill) =>
-        formatCurrency(Number(bill.amountDue ?? 0), bill.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
+        formatCurrency(Number(bill.amountDue ?? 0), bill.currencyCode ?? baseCurrency),
     },
   ];
 
@@ -119,44 +121,50 @@ export function BillsPage() {
       title="Bills"
       toolbar={
         <FilterBar>
-          <SearchInput
-            onChange={(value) => {
-              setSearch(value);
-              setPage(1);
-            }}
-            placeholder="Search bill number or reference"
-            value={search}
-          />
-          <Select
-            className="min-w-[180px]"
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
-            value={status}
-          >
-            <option value="">All statuses</option>
-            {["DRAFT", "OPEN", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
-              <option key={option} value={option}>
-                {option.replace(/_/g, " ")}
-              </option>
-            ))}
-          </Select>
-          <Select
-            className="min-w-[220px]"
-            onChange={(e) => {
-              setVendorId(e.target.value);
-              setPage(1);
-            }}
-            value={vendorId}
-          >
-            <option value="">All vendors</option>
-            {(vendorsQuery.data ?? []).map((vendor) => (
-              <option key={vendor.id} value={vendor.id}>
-                {vendor.displayName}
-              </option>
-            ))}
-          </Select>
+          <FilterField className="md:min-w-[240px] md:flex-1">
+            <SearchInput
+              onChange={(value) => {
+                setSearch(value);
+                setPage(1);
+              }}
+              placeholder="Search bill number or reference"
+              value={search}
+            />
+          </FilterField>
+          <FilterField className="sm:min-w-[180px]">
+            <Select
+              className="w-full"
+              onChange={(e) => {
+                setStatus(e.target.value);
+                setPage(1);
+              }}
+              value={status}
+            >
+              <option value="">All statuses</option>
+              {["DRAFT", "OPEN", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
+                <option key={option} value={option}>
+                  {option.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
+          <FilterField className="sm:min-w-[220px]">
+            <Select
+              className="w-full"
+              onChange={(e) => {
+                setVendorId(e.target.value);
+                setPage(1);
+              }}
+              value={vendorId}
+            >
+              <option value="">All vendors</option>
+              {(vendorsQuery.data ?? []).map((vendor) => (
+                <option key={vendor.id} value={vendor.id}>
+                  {vendor.displayName}
+                </option>
+              ))}
+            </Select>
+          </FilterField>
         </FilterBar>
       }
     />

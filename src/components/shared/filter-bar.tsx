@@ -6,6 +6,19 @@ interface FilterBarProps extends PropsWithChildren {
   className?: string;
 }
 
+interface FilterFieldProps extends PropsWithChildren {
+  className?: string;
+}
+
+/** Constrains filter controls to inline width on tablet/desktop while stacking on mobile. */
+export function FilterField({ children, className }: FilterFieldProps) {
+  return (
+    <div className={cn("w-full sm:w-auto sm:min-w-[160px]", className)}>
+      {children}
+    </div>
+  );
+}
+
 export function FilterBar({ actions, className, children }: FilterBarProps) {
   return (
     <div

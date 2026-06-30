@@ -8,10 +8,10 @@ export interface DashboardMetricSet {
 }
 
 export interface DashboardSummarySet {
-  customerCount: number;
-  vendorCount: number;
-  invoiceCount: number;
-  billCount: number;
+  totalCustomers: number;
+  totalVendors: number;
+  totalInvoices: number;
+  totalBills: number;
 }
 
 export interface DashboardActivityItem {
@@ -25,7 +25,7 @@ export interface DashboardActivityItem {
 export interface DashboardOverview {
   currency?: string;
   metrics: DashboardMetricSet;
-  summary: DashboardSummarySet;
+  counts: DashboardSummarySet;
   recentActivity: DashboardActivityItem[];
 }
 

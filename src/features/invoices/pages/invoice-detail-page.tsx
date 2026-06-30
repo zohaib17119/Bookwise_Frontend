@@ -13,15 +13,17 @@ import { DocumentLinesTable } from "@/components/documents/document-lines-table"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { useDeleteInvoice, useInvoice, useSendInvoice } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
+import { formatPaymentOptions } from "@/features/invoices/constants/payment-options";
 import InvoiceView from "./InvoiceView";
 
 export function InvoiceDetailPage() {
   const navigate = useNavigate();
   const { invoiceId, companyId } = useParams();
-  const { permissions } = useActiveCompany();
+  const { permissions, company } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
@@ -43,6 +45,7 @@ export function InvoiceDetailPage() {
   }
 
   const invoice = invoiceQuery.data;
+  const documentCurrency = invoice.currencyCode ?? getCompanyBaseCurrency(company);
 
 
   return (
@@ -95,29 +98,46 @@ export function InvoiceDetailPage() {
               <DocumentMetaSection
                 items={[
                   { label: "Estimate", value: invoice.estimateId || "-" },
-                  { label: "Currency", value: invoice.currencyCode || "USD" },
+                  { label: "Currency", value: documentCurrency },
                   { label: "Terms", value: invoice.terms || "-" },
+                  ...(invoice.paymentOptions?.length
+                    ? [{
+                        label: "Accepted payment methods",
+                        value: formatPaymentOptions(invoice.paymentOptions),
+                      }]
+                    : []),
                 ]}
                 title="Commercials"
               />
             </div>
+            {invoice.notes || invoice.memoOnStatement ? (
+              <DocumentMetaSection
+                items={[
+                  ...(invoice.notes ? [{ label: "Note to customer", value: invoice.notes }] : []),
+                  ...(invoice.memoOnStatement
+                    ? [{ label: "Memo on statement", value: invoice.memoOnStatement }]
+                    : []),
+                ]}
+                title="Notes"
+              />
+            ) : null}
           </DocumentDetailsSection>
 
           <DocumentDetailsSection title="Line items">
-            <DocumentLinesTable currencyCode={invoice.currencyCode} lines={invoice.lines} mode="sales" />
+            <DocumentLinesTable currencyCode={documentCurrency} lines={invoice.lines} mode="sales" />
           </DocumentDetailsSection>
         </div>
 
         <div className="space-y-4">
           <DocumentTotalsCard
-            currencyCode={invoice.currencyCode}
+            currencyCode={documentCurrency}
             discountTotal={invoice.totals?.discountTotal}
             subtotal={invoice.totals?.subtotal}
             taxTotal={invoice.totals?.taxTotal}
             total={invoice.totals?.total}
           />
-          <AmountSummaryCard amount={invoice.amountPaid} currencyCode={invoice.currencyCode} label="Amount paid" />
-          <AmountSummaryCard amount={invoice.amountDue} currencyCode={invoice.currencyCode} label="Amount due" />
+          <AmountSummaryCard amount={invoice.amountPaid} currencyCode={documentCurrency} label="Amount paid" />
+          <AmountSummaryCard amount={invoice.amountDue} currencyCode={documentCurrency} label="Amount due" />
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import { DocumentMetaSection } from "@/components/documents/document-meta-sectio
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { formatDate } from "@/lib/utils/format";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import {
   useConvertEstimateToInvoice,
   useDeleteEstimate,
@@ -23,7 +24,7 @@ import { useState } from "react";
 export function EstimateDetailPage() {
   const navigate = useNavigate();
   const { estimateId, companyId } = useParams();
-  const { permissions } = useActiveCompany();
+  const { permissions, company } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const estimateQuery = useEstimate(companyId, estimateId ?? null);
   const deleteMutation = useDeleteEstimate(companyId);
@@ -54,6 +55,7 @@ export function EstimateDetailPage() {
   }
 
   const estimate = estimateQuery.data;
+  const documentCurrency = estimate.currencyCode ?? getCompanyBaseCurrency(company);
 
   return (
     <PageContainer className="space-y-6">
@@ -124,7 +126,7 @@ export function EstimateDetailPage() {
               />
               <DocumentMetaSection
                 items={[
-                  { label: "Currency", value: estimate.currencyCode || "USD" },
+                  { label: "Currency", value: documentCurrency },
                   { label: "Terms", value: estimate.terms || "-" },
                   { label: "Notes", value: estimate.notes || "-" },
                 ]}
@@ -135,7 +137,7 @@ export function EstimateDetailPage() {
 
           <DocumentDetailsSection title="Line items">
             <DocumentLinesTable
-              currencyCode={estimate.currencyCode}
+              currencyCode={documentCurrency}
               lines={estimate.lines}
               mode="sales"
             />
@@ -144,7 +146,7 @@ export function EstimateDetailPage() {
 
         <div className="space-y-6">
           <DocumentTotalsCard
-            currencyCode={estimate.currencyCode}
+            currencyCode={documentCurrency}
             discountTotal={estimate.totals?.discountTotal}
             subtotal={estimate.totals?.subtotal}
             taxTotal={estimate.totals?.taxTotal}

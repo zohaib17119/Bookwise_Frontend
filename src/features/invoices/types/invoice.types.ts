@@ -32,6 +32,8 @@ export interface Invoice {
   exchangeRate?: string | null;
   notes?: string | null;
   terms?: string | null;
+  memoOnStatement?: string | null;
+  paymentOptions?: string[] | null;
   discountType?: DiscountType | null;
   discountValue?: string | null;
   status?: InvoiceStatus | null;
@@ -59,6 +61,8 @@ export interface InvoicePayload {
   exchangeRate?: string;
   notes?: string;
   terms?: string;
+  memoOnStatement?: string;
+  paymentOptions?: string[];
   discountType?: DiscountType;
   discountValue?: string;
   lines: InvoiceLine[];

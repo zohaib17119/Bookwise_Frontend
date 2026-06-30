@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import type {
   GenericReportResult,
   ReportFilterParams,
@@ -41,23 +42,23 @@ interface ReportViewProps {
 
 function formatReportValue(
   row: ReportRow,
-  currencyCode?: string | null,
+  currencyCode: string,
 ) {
   if (typeof row.value === "number") {
-    return formatCurrency(row.value, currencyCode ?? "USD");
+    return formatCurrency(row.value, currencyCode);
   }
 
   if (typeof row.amount === "number") {
-    return formatCurrency(row.amount, currencyCode ?? "USD");
+    return formatCurrency(row.amount, currencyCode);
   }
 
   if (typeof row.balance === "number") {
-    return formatCurrency(row.balance, currencyCode ?? "USD");
+    return formatCurrency(row.balance, currencyCode);
   }
 
   if (typeof row.debit === "number" || typeof row.credit === "number") {
-    const debit = row.debit ? formatCurrency(row.debit, currencyCode ?? "USD") : "-";
-    const credit = row.credit ? formatCurrency(row.credit, currencyCode ?? "USD") : "-";
+    const debit = row.debit ? formatCurrency(row.debit, currencyCode) : "-";
+    const credit = row.credit ? formatCurrency(row.credit, currencyCode) : "-";
     return `${debit} / ${credit}`;
   }
 
@@ -79,9 +80,10 @@ export function ReportView({
   onReset,
   query,
 }: ReportViewProps) {
-  const { companyId, permissions } = useActiveCompany();
+  const { companyId, company, permissions } = useActiveCompany();
   const accountOptionsQuery = useAccountOptions(companyId);
   const canView = canViewEntity(permissions, "reports");
+  const reportCurrency = getCompanyBaseCurrency(company);
 
   if (!canView) {
     return (
@@ -95,6 +97,7 @@ export function ReportView({
   const result = query.data;
   const rows = result?.rows ?? [];
   const sections = result?.sections ?? [];
+  const currencyCode = result?.currencyCode ?? reportCurrency;
 
   return (
     <ReportPageLayout
@@ -127,7 +130,7 @@ export function ReportView({
                       </p>
                       <p className="mt-1 text-base font-semibold">
                         {typeof value === "number"
-                          ? formatCurrency(value, result.currencyCode ?? "USD")
+                          ? formatCurrency(value, currencyCode)
                           : String(value ?? "-")}
                       </p>
                     </div>
@@ -144,7 +147,7 @@ export function ReportView({
                     emphasize={Boolean((row.depth ?? 0) === 0)}
                     key={`${section.title}-${row.label}-${index}`}
                     label={row.label}
-                    value={formatReportValue(row, result?.currencyCode)}
+                    value={formatReportValue(row, currencyCode)}
                   />
                 ))}
               </StatementSection>
@@ -159,7 +162,7 @@ export function ReportView({
                       emphasize={Boolean((row.depth ?? 0) === 0)}
                       key={`${row.label}-${index}`}
                       label={row.label}
-                      value={formatReportValue(row, result?.currencyCode)}
+                      value={formatReportValue(row, currencyCode)}
                     />
                   ))}
                 </div>
@@ -184,14 +187,16 @@ export function ReportView({
           }
         >
           {usesAsOfDate ? (
-            <input
-              className="flex h-11 rounded-xl border bg-white px-4 py-2 text-sm outline-none"
-              onChange={(event) =>
-                onFiltersChange((current) => ({ ...current, asOfDate: event.target.value }))
-              }
-              type="date"
-              value={filters.asOfDate ?? ""}
-            />
+            <div className="w-full sm:w-auto sm:min-w-[160px]">
+              <input
+                className="flex h-11 w-full rounded-xl border bg-white px-4 py-2 text-sm outline-none"
+                onChange={(event) =>
+                  onFiltersChange((current) => ({ ...current, asOfDate: event.target.value }))
+                }
+                type="date"
+                value={filters.asOfDate ?? ""}
+              />
+            </div>
           ) : (
             <DateRangeToolbar
               fromDate={filters.fromDate ?? ""}
@@ -206,7 +211,7 @@ export function ReportView({
           )}
 
           {requiresAccount ? (
-            <div className="min-w-[260px]">
+            <div className="w-full sm:w-auto sm:min-w-[260px]">
               <AccountSelect
                 label="Account"
                 onChange={(value) =>
@@ -232,19 +237,21 @@ export function ReportView({
           </label>
 
           {!usesAsOfDate ? (
-            <Select
-              className="min-w-[160px]"
-              onChange={(event) =>
-                onFiltersChange((current) => ({
-                  ...current,
-                  postedOnly: event.target.value !== "all",
-                }))
-              }
-              value={filters.postedOnly ? "posted" : "all"}
-            >
-              <option value="posted">Posted entries</option>
-              <option value="all">All entries</option>
-            </Select>
+            <div className="w-full sm:w-auto sm:min-w-[160px]">
+              <Select
+                className="w-full"
+                onChange={(event) =>
+                  onFiltersChange((current) => ({
+                    ...current,
+                    postedOnly: event.target.value !== "all",
+                  }))
+                }
+                value={filters.postedOnly ? "posted" : "all"}
+              >
+                <option value="posted">Posted entries</option>
+                <option value="all">All entries</option>
+              </Select>
+            </div>
           ) : null}
         </ReportFilterBar>
       }
