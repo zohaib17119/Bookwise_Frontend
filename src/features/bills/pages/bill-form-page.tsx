@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { ErrorState } from "@/components/shared/error-state";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
+import { FormValidationSummary } from "@/components/shared/form-validation-summary";
 import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
@@ -25,12 +26,44 @@ import { billSchema, type BillFormInput, type BillFormValues } from "@/features/
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
+import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
+import { useTaxCodes } from "@/features/tax/hooks/use-tax";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 
 interface BillFormPageProps {
   mode: "create" | "edit";
+}
+
+function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["company"]): BillFormInput {
+  return {
+    vendorId: "",
+    billNumber: "",
+    referenceNumber: "",
+    issueDate: "",
+    dueDate: "",
+    currencyCode: getCompanyBaseCurrency(company),
+    exchangeRate: "",
+    notes: "",
+    terms: "",
+    discountType: undefined,
+    discountValue: "",
+    lines: [
+      {
+        itemId: "",
+        description: "",
+        quantity: "1",
+        unitCost: "",
+        itemName: "",
+        discountType: undefined,
+        discountValue: "",
+        taxCodeId: "",
+        taxRate: "",
+        expenseAccountId: "",
+      },
+    ],
+  };
 }
 
 export function BillFormPage({ mode }: BillFormPageProps) {
@@ -40,67 +73,60 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const vendorsQuery = useVendorOptions(companyId);
   const itemsQuery = useItemOptions(companyId);
   const accountsQuery = useAccountOptions(companyId);
+  const taxCodesQuery = useTaxCodes(companyId);
   const billQuery = useBill(companyId, mode === "edit" ? billId ?? null : null);
   const createMutation = useCreateBill(companyId);
   const updateMutation = useUpdateBill(companyId, billId ?? null);
   const canManage = canManageEntity(permissions, "bills");
+  const validationSummaryRef = useRef<HTMLDivElement>(null);
+
+  const createDefaults = useMemo(() => buildCreateDefaults(company), [company]);
 
   const form = useForm<BillFormInput, undefined, BillFormValues>({
     resolver: zodResolver(billSchema),
-    values:
-      mode === "edit" && billQuery.data
-        ? {
-            vendorId: billQuery.data.vendorId,
-            billNumber: billQuery.data.billNumber ?? "",
-            referenceNumber: billQuery.data.referenceNumber ?? "",
-            issueDate: billQuery.data.issueDate ?? "",
-            dueDate: billQuery.data.dueDate ?? "",
-            currencyCode: billQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
-            exchangeRate: billQuery.data.exchangeRate ?? "",
-            notes: billQuery.data.notes ?? "",
-            terms: "",
-            discountType: billQuery.data.discountType ?? undefined,
-            discountValue: billQuery.data.discountValue ?? undefined,
-            lines:
-              billQuery.data.lines?.map((line) => ({
-                itemId: line.itemId ?? "",
-                description: line.description,
-                quantity: line.quantity,
-                unitCost: line.unitCost ?? "",
-                discountType: line.discountType ?? undefined,
-                discountValue: line.discountValue ?? undefined,
-                taxRateId: (line as any).taxCodeId ?? "",
-                expenseAccountId: line.expenseAccountId ?? "",
-              })) ?? [],
-          }
-        : {
-            vendorId: "",
-            billNumber: "",
-            referenceNumber: "",
-            issueDate: "",
-            dueDate: "",
-            currencyCode: getCompanyBaseCurrency(company),
-            exchangeRate: "",
-            notes: "",
-            terms: "",
-            discountType: undefined,
-            discountValue: undefined,
-            lines: [
-              {
-                itemId: "",
-                description: "",
-                quantity: 1,
-                unitCost: "",
-                discountType: undefined,
-                discountValue: undefined,
-                taxRateId: "",
-                expenseAccountId: "",
-              },
-            ],
-          },
+    defaultValues: createDefaults,
   });
 
-  useFieldArray({ control: form.control, name: "lines" });
+  useEffect(() => {
+    if (mode !== "edit" || !billQuery.data) {
+      return;
+    }
+
+    const bill = billQuery.data;
+    form.reset({
+      vendorId: bill.vendorId,
+      billNumber: bill.billNumber ?? "",
+      referenceNumber: bill.referenceNumber ?? "",
+      issueDate: bill.issueDate ?? "",
+      dueDate: bill.dueDate ?? "",
+      currencyCode: bill.currencyCode ?? getCompanyBaseCurrency(company),
+      exchangeRate: bill.exchangeRate ?? "",
+      notes: bill.notes ?? "",
+      terms: "",
+      discountType: bill.discountType ?? undefined,
+      discountValue:
+        bill.discountValue != null && bill.discountValue !== ""
+          ? toOptionalDecimalString(bill.discountValue)
+          : "",
+      lines:
+        bill.lines?.map((line) => ({
+          itemId: line.itemId ?? "",
+          description: line.description,
+          quantity: toDecimalString(line.quantity || "1"),
+          unitCost: line.unitCost != null ? toOptionalDecimalString(line.unitCost) : "",
+          itemName: line.itemName ?? "",
+          discountType: line.discountType ?? undefined,
+          discountValue:
+            line.discountValue != null && line.discountValue !== ""
+              ? toOptionalDecimalString(line.discountValue)
+              : "",
+          taxCodeId: line.taxCodeId ?? "",
+          taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+          expenseAccountId: line.expenseAccountId ?? "",
+        })) ?? [],
+    });
+  }, [billQuery.data, company, form, mode]);
+
   const watchedLines = form.watch("lines");
   const watchedVendorId = form.watch("vendorId");
   const watchedCurrencyCode = form.watch("currencyCode");
@@ -113,6 +139,31 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     company,
     mode,
   });
+
+  const purchaseTaxCodeOptions = useMemo(
+    () =>
+      (taxCodesQuery.data ?? [])
+        .filter(
+          (taxCode) =>
+            !taxCode.scope ||
+            taxCode.scope === "PURCHASE" ||
+            taxCode.scope === "BOTH",
+        )
+        .map((taxCode) => ({
+          id: taxCode.id,
+          name: taxCode.name,
+          code: taxCode.code,
+          calculationMode: taxCode.calculationMode,
+          isExempt: taxCode.isExempt,
+          effectiveRatePercent:
+            taxCode.rates?.reduce(
+              (sum, rateLink) => sum + Number(rateLink.taxRate?.ratePercent ?? 0),
+              0,
+            ) ?? 0,
+        })),
+    [taxCodesQuery.data],
+  );
+
   const previewTotals = useMemo(
     () =>
       getDocumentPreviewTotals(
@@ -133,35 +184,49 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
   const [showAccountColumn, setShowAccountColumn] = useState(false);
-  // Reveal the per-line account picker automatically when a bill already has
-  // explicit account overrides, so power users don't lose visibility on edit.
   const hasLineAccountOverrides = (watchedLines ?? []).some((line) =>
     Boolean(line.expenseAccountId),
   );
   const accountColumnVisible = showAccountColumn || hasLineAccountOverrides;
 
+  const onInvalid = () => {
+    validationSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   if (!canManage) {
-    return <Alert title="Bill editing is unavailable" description="Your current company membership does not include bill management." variant="destructive" />;
+    return (
+      <Alert
+        description="Your current company membership does not include bill management."
+        title="Bill editing is unavailable"
+        variant="destructive"
+      />
+    );
   }
 
   return (
     <PageContainer
       header={
         <PageHeader
-          actions={<Button asChild variant="ghost"><Link to={`/app/company/${companyId}/bills`}>Back to bills</Link></Button>}
+          actions={
+            <Button asChild variant="ghost">
+              <Link to={`/app/company/${companyId}/bills`}>Back to bills</Link>
+            </Button>
+          }
           description="Create or edit a vendor bill with payable-focused line items."
           eyebrow="Payables"
           title={mode === "create" ? "New bill" : "Edit bill"}
         />
       }
     >
-      {billQuery.error ? <ErrorState title="Unable to load bill" description={billQuery.error.message} /> : null}
+      {billQuery.error ? (
+        <ErrorState description={billQuery.error.message} title="Unable to load bill" />
+      ) : null}
 
       <form
-        className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
+        
         onSubmit={form.handleSubmit(async (values) => {
           const payload = {
-            ...values,
+            vendorId: values.vendorId,
             billNumber: values.billNumber || undefined,
             referenceNumber: values.referenceNumber || undefined,
             issueDate: values.issueDate || undefined,
@@ -169,35 +234,51 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             currencyCode: values.currencyCode || undefined,
             exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
             notes: values.notes || undefined,
-            discountValue: values.discountValue === undefined ? null : Number(values.discountValue),
+            discountType: values.discountType || undefined,
+            discountValue: values.discountValue
+              ? toOptionalDecimalString(values.discountValue)
+              : undefined,
             lines: values.lines.map((line) => ({
-              itemId: line.itemId || null,
               description: line.description,
-              quantity: Number(line.quantity),
-              unitCost: Number(line.unitCost || 0),
-              discountType: line.discountType || undefined,
-              discountValue: line.discountValue === undefined ? null : Number(line.discountValue),
-              taxCodeId: (line as any).taxRateId || undefined,
-              expenseAccountId: line.expenseAccountId || null,
+              quantity: toDecimalString(line.quantity),
+              unitCost: toDecimalString(line.unitCost),
+              ...(line.itemId ? { itemId: line.itemId } : {}),
+              ...(line.expenseAccountId ? { expenseAccountId: line.expenseAccountId } : {}),
+              ...(line.taxCodeId ? { taxCodeId: line.taxCodeId } : {}),
+              ...(line.discountType ? { discountType: line.discountType } : {}),
+              ...(line.discountValue
+                ? { discountValue: toOptionalDecimalString(line.discountValue) }
+                : {}),
             })),
           };
 
-          const result = mode === "create"
-            ? await createMutation.mutateAsync(payload)
-            : await updateMutation.mutateAsync(payload);
+          const result =
+            mode === "create"
+              ? await createMutation.mutateAsync(payload)
+              : await updateMutation.mutateAsync(payload);
 
           navigate(`/app/company/${companyId}/bills/${result.id}`);
-        })}
+        }, onInvalid)}
       >
-        <div className="space-y-6">
-          {activeMutation.error ? <Alert title={activeMutation.error.message} variant="destructive" /> : null}
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 space-y-6">
+          <div ref={validationSummaryRef}>
+            <FormValidationSummary
+              errors={form.formState.errors}
+              submitCount={form.formState.submitCount}
+            />
+          </div>
+
+          {activeMutation.error ? (
+            <Alert title={activeMutation.error.message} variant="destructive" />
+          ) : null}
 
           <FormSection title="Bill header">
             <FieldGrid>
               <CounterpartySelect
                 error={form.formState.errors.vendorId?.message}
                 label="Vendor"
-                onChange={(value) => form.setValue("vendorId", value)}
+                onChange={(value) => form.setValue("vendorId", value, { shouldValidate: true })}
                 options={(vendorsQuery.data ?? []).map((vendor) => ({
                   id: vendor.id,
                   label: vendor.displayName,
@@ -206,10 +287,13 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 placeholder="Select vendor"
                 value={form.watch("vendorId")}
               />
-              <FormField label="Bill number">
+              <FormField error={form.formState.errors.billNumber?.message} label="Bill number">
                 <Input {...form.register("billNumber")} placeholder="BILL-00152" />
               </FormField>
-              <FormField label="Reference number">
+              <FormField
+                error={form.formState.errors.referenceNumber?.message}
+                label="Reference number"
+              >
                 <Input {...form.register("referenceNumber")} placeholder="Vendor ref" />
               </FormField>
               <DocumentCurrencyFields
@@ -223,65 +307,16 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 register={form.register}
                 setValue={form.setValue}
               />
-              <FormField label="Issue date">
+              <FormField error={form.formState.errors.issueDate?.message} label="Issue date">
                 <Input type="date" {...form.register("issueDate")} />
               </FormField>
-              <FormField label="Due date">
+              <FormField error={form.formState.errors.dueDate?.message} label="Due date">
                 <Input type="date" {...form.register("dueDate")} />
               </FormField>
             </FieldGrid>
           </FormSection>
-
-          <FormSection title="Line items">
-            <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-              <Checkbox
-                checked={accountColumnVisible}
-                onChange={(event) => setShowAccountColumn(event.target.checked)}
-              />
-              <span>
-                Advanced: choose an expense account per line (optional)
-              </span>
-            </label>
-            <LineItemsEditor
-              accountOptions={accountsQuery.data ?? []}
-              baseCurrencyCode={getCompanyBaseCurrency(company)}
-              control={form.control}
-              currencyCode={form.watch("currencyCode")}
-              exchangeRate={watchedExchangeRate}
-              itemOptions={itemsQuery.data ?? []}
-              mode="purchase"
-              name={"lines"}
-              preferredVendorId={watchedVendorId || undefined}
-              setValue={form.setValue}
-              showAccountColumn={accountColumnVisible}
-            />
-          </FormSection>
-
-          <FormSection title="Notes and discounts">
-            <FieldGrid>
-              <FormField label="Document discount type">
-                <Select
-                  onChange={(event) =>
-                    form.setValue("discountType", (event.target.value || undefined) as BillFormValues["discountType"])
-                  }
-                  value={form.watch("discountType") ?? ""}
-                >
-                  <option value="">No discount</option>
-                  <option value="amount">Amount</option>
-                  <option value="percentage">Percentage</option>
-                </Select>
-              </FormField>
-              <FormField label="Document discount value">
-                <Input type="number" step="0.01" {...form.register("discountValue")} />
-              </FormField>
-            </FieldGrid>
-            <FormField label="Notes">
-              <Textarea {...form.register("notes")} placeholder="Internal bill notes" />
-            </FormField>
-          </FormSection>
         </div>
-
-        <div className="space-y-4">
+          <div className="space-y-4">
           <DocumentTotalsCard
             currencyCode={form.watch("currencyCode")}
             discountTotal={previewTotals.discountTotal}
@@ -293,6 +328,71 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           <Button className="w-full" isLoading={activeMutation.isPending} type="submit">
             {mode === "create" ? "Create bill" : "Save bill"}
           </Button>
+        </div>
+          </div>
+        
+        <div className="min-w-0 space-y-6">
+          <FormSection title="Line items">
+            <label className="flex w-fit cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                checked={accountColumnVisible}
+                onChange={(event) => setShowAccountColumn(event.target.checked)}
+              />
+              <span>Advanced: choose an expense account per line (optional)</span>
+            </label>
+            {form.formState.errors.lines?.message ? (
+              <p className="text-sm text-destructive">{String(form.formState.errors.lines.message)}</p>
+            ) : null}
+            <LineItemsEditor
+              accountOptions={accountsQuery.data ?? []}
+              baseCurrencyCode={getCompanyBaseCurrency(company)}
+              control={form.control}
+              currencyCode={form.watch("currencyCode")}
+              errors={form.formState.errors}
+              exchangeRate={watchedExchangeRate}
+              itemOptions={itemsQuery.data ?? []}
+              mode="purchase"
+              name={"lines"}
+              preferredVendorId={watchedVendorId || undefined}
+              setValue={form.setValue}
+              showAccountColumn={accountColumnVisible}
+              taxCodeOptions={purchaseTaxCodeOptions}
+            />
+          </FormSection>
+        </div>
+
+        <div className="min-w-0 space-y-6">
+          <FormSection title="Notes and discounts">
+            <FieldGrid>
+              <FormField
+                error={form.formState.errors.discountType?.message}
+                label="Document discount type"
+              >
+                <Select
+                  onChange={(event) =>
+                    form.setValue(
+                      "discountType",
+                      (event.target.value || undefined) as BillFormValues["discountType"],
+                    )
+                  }
+                  value={form.watch("discountType") ?? ""}
+                >
+                  <option value="">No discount</option>
+                  <option value="FIXED">Amount</option>
+                  <option value="PERCENTAGE">Percentage</option>
+                </Select>
+              </FormField>
+              <FormField
+                error={form.formState.errors.discountValue?.message}
+                label="Document discount value"
+              >
+                <Input step="0.01" type="number" {...form.register("discountValue")} />
+              </FormField>
+            </FieldGrid>
+            <FormField error={form.formState.errors.notes?.message} label="Notes">
+              <Textarea {...form.register("notes")} placeholder="Internal bill notes" />
+            </FormField>
+          </FormSection>
         </div>
       </form>
     </PageContainer>

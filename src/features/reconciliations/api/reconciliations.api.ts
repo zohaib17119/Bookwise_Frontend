@@ -4,6 +4,16 @@ import type {
   Reconciliation,
   ReconciliationPayload,
 } from "@/features/reconciliations/types/reconciliation.types";
+import { omitEmptyFields, serializeMoneyField } from "@/features/shared/utils/api-payload";
+
+function serializeReconciliationPayload(payload: ReconciliationPayload): ReconciliationPayload {
+  return omitEmptyFields({
+    bankAccountId: payload.bankAccountId,
+    statementEndingBalance: serializeMoneyField(payload.statementEndingBalance),
+    startDate: payload.startDate || undefined,
+    endDate: payload.endDate || undefined,
+  }) as ReconciliationPayload;
+}
 
 export async function getReconciliations(companyId: string) {
   const { data } = await apiClient.get<Reconciliation[]>(
@@ -22,7 +32,7 @@ export async function getReconciliation(companyId: string, reconciliationSession
 export async function createReconciliation(companyId: string, payload: ReconciliationPayload) {
   const { data } = await apiClient.post<Reconciliation>(
     `/companies/${companyId}/reconciliations`,
-    payload,
+    serializeReconciliationPayload(payload),
   );
   return data;
 }

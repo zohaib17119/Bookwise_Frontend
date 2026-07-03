@@ -7,6 +7,7 @@ import type {
   BankTransactionListParams,
   BankTransactionPayload,
 } from "@/features/banking/types/banking.types";
+import { omitEmptyFields, serializeMoneyField, serializeOptionalMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildTransactionQuery(params: BankTransactionListParams) {
   const query = new URLSearchParams();
@@ -22,20 +23,47 @@ function buildTransactionQuery(params: BankTransactionListParams) {
   return query.toString() ? `?${query.toString()}` : "";
 }
 
+function serializeBankAccountPayload(payload: BankAccountPayload): BankAccountPayload {
+  return omitEmptyFields({
+    ...payload,
+    accountNumberMasked: payload.accountNumberMasked || undefined,
+    bankName: payload.bankName || undefined,
+    branchName: payload.branchName || undefined,
+    currencyCode: payload.currencyCode || undefined,
+    openingBalance: serializeOptionalMoneyField(payload.openingBalance),
+    openingBalanceDate: payload.openingBalanceDate || undefined,
+  }) as BankAccountPayload;
+}
+
+function serializeBankTransactionPayload(payload: BankTransactionPayload): BankTransactionPayload {
+  return omitEmptyFields({
+    bankAccountId: payload.bankAccountId,
+    amount: serializeMoneyField(payload.amount),
+    transactionDate: payload.transactionDate || undefined,
+    description: payload.description || undefined,
+    type: payload.type || undefined,
+    direction: payload.direction || undefined,
+    source: payload.source || undefined,
+  }) as BankTransactionPayload;
+}
+
 export async function getBankAccounts(companyId: string) {
   const { data } = await apiClient.get<BankAccount[]>(`/companies/${companyId}/bank-accounts?limit=100`);
   return extractListData(data);
 }
 
 export async function createBankAccount(companyId: string, payload: BankAccountPayload) {
-  const { data } = await apiClient.post<BankAccount>(`/companies/${companyId}/bank-accounts`, payload);
+  const { data } = await apiClient.post<BankAccount>(
+    `/companies/${companyId}/bank-accounts`,
+    serializeBankAccountPayload(payload),
+  );
   return data;
 }
 
 export async function updateBankAccount(companyId: string, bankAccountId: string, payload: BankAccountPayload) {
   const { data } = await apiClient.patch<BankAccount>(
     `/companies/${companyId}/bank-accounts/${bankAccountId}`,
-    payload,
+    serializeBankAccountPayload(payload),
   );
   return data;
 }
@@ -61,7 +89,7 @@ export async function getBankTransaction(companyId: string, bankTransactionId: s
 export async function createBankTransaction(companyId: string, payload: BankTransactionPayload) {
   const { data } = await apiClient.post<BankTransaction>(
     `/companies/${companyId}/bank-transactions`,
-    payload,
+    serializeBankTransactionPayload(payload),
   );
   return data;
 }
@@ -69,7 +97,7 @@ export async function createBankTransaction(companyId: string, payload: BankTran
 export async function updateBankTransaction(companyId: string, bankTransactionId: string, payload: BankTransactionPayload) {
   const { data } = await apiClient.patch<BankTransaction>(
     `/companies/${companyId}/bank-transactions/${bankTransactionId}`,
-    payload,
+    serializeBankTransactionPayload(payload),
   );
   return data;
 }

@@ -18,6 +18,7 @@ import {
   useUpdateBankAccount,
 } from "@/features/banking/hooks/use-banking";
 import type { BankAccount } from "@/features/banking/types/banking.types";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 export function BankAccountsPage() {
@@ -134,7 +135,9 @@ export function BankAccountsPage() {
             bankName: values.bankName || undefined,
             branchName: values.branchName || undefined,
             currencyCode: values.currencyCode || undefined,
-            openingBalance: values.openingBalance ?? null,
+            openingBalance: values.openingBalance
+              ? toOptionalDecimalString(values.openingBalance)
+              : undefined,
             openingBalanceDate: values.openingBalanceDate || undefined,
           };
           if (drawerMode === "create") {

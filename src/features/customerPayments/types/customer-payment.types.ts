@@ -24,13 +24,15 @@ export interface CustomerPaymentPayload {
   paymentDate?: string;
   paymentMethod: string;
   referenceNumber?: string;
-  amount: string;
+  currencyCode?: string;
+  exchangeRate?: string;
+  amount: string | number;
   notes?: string;
 }
 
 export interface CustomerPaymentAllocationPayload {
   allocations: Array<{
     invoiceId: string;
-    amount: string;
+    amount: string | number;
   }>;
 }

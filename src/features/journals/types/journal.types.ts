@@ -21,12 +21,19 @@ export interface JournalEntry {
   lines: JournalEntryLine[];
 }
 
+export interface JournalEntryLinePayload {
+  accountId: string;
+  description?: string;
+  debitAmount?: string | number;
+  creditAmount?: string | number;
+}
+
 export interface JournalEntryPayload {
   entryDate?: string;
   entryNumber?: string;
   description?: string;
   referenceNumber?: string;
-  lines: JournalEntryLine[];
+  lines: JournalEntryLinePayload[];
 }
 
 export interface JournalListParams extends BaseEntityListParams {

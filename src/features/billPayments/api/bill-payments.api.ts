@@ -6,6 +6,7 @@ import type {
   BillPaymentListParams,
   BillPaymentPayload,
 } from "@/features/billPayments/types/bill-payment.types";
+import { omitEmptyFields, serializeMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildQuery(params: BillPaymentListParams) {
   const query = new URLSearchParams();
@@ -15,6 +16,32 @@ function buildQuery(params: BillPaymentListParams) {
   if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function serializeBillPaymentPayload(payload: BillPaymentPayload): BillPaymentPayload {
+  return {
+    vendorId: payload.vendorId,
+    paymentMethod: payload.paymentMethod,
+    amount: serializeMoneyField(payload.amount),
+    ...omitEmptyFields({
+      paymentDate: payload.paymentDate || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+      currencyCode: payload.currencyCode || undefined,
+      exchangeRate: payload.exchangeRate || undefined,
+      notes: payload.notes || undefined,
+    }),
+  };
+}
+
+function serializeBillPaymentAllocationPayload(
+  payload: BillPaymentAllocationPayload,
+): BillPaymentAllocationPayload {
+  return {
+    allocations: payload.allocations.map((allocation) => ({
+      billId: allocation.billId,
+      amount: serializeMoneyField(allocation.amount),
+    })),
+  };
 }
 
 export async function getBillPayments(
@@ -40,7 +67,7 @@ export async function createBillPayment(
 ) {
   const { data } = await apiClient.post<BillPayment>(
     `/companies/${companyId}/bill-payments`,
-    payload,
+    serializeBillPaymentPayload(payload),
   );
   return data;
 }
@@ -51,7 +78,7 @@ export async function allocateBillPayment(
 ) {
   const { data } = await apiClient.post<BillPayment>(
     `/bill-payments/${paymentId}/allocate`,
-    payload,
+    serializeBillPaymentAllocationPayload(payload),
   );
   return data;
 }

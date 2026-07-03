@@ -6,6 +6,7 @@ import type {
   ExpensePayload,
   ExpenseUpdatePayload,
 } from "@/features/expenses/types/expense.types";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 
 function buildQuery(params: ExpenseListParams) {
   const query = new URLSearchParams();
@@ -20,7 +21,7 @@ function buildQuery(params: ExpenseListParams) {
 }
 
 function formatAmount(value: number) {
-  return value.toFixed(4);
+  return toDecimalString(value);
 }
 
 export async function getExpenses(companyId: string, params: ExpenseListParams = {}) {

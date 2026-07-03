@@ -49,11 +49,19 @@ export interface InventoryAdjustment {
   lines: InventoryAdjustmentLine[];
 }
 
+export interface InventoryAdjustmentLinePayload {
+  itemId: string;
+  quantity: string | number;
+  direction: "IN" | "OUT";
+  unitCost?: string | number;
+  notes?: string;
+}
+
 export interface InventoryAdjustmentPayload {
   adjustmentDate?: string;
   reason?: string;
   notes?: string;
-  lines: InventoryAdjustmentLine[];
+  lines: InventoryAdjustmentLinePayload[];
 }
 
 export interface StockMovementParams extends BaseEntityListParams {

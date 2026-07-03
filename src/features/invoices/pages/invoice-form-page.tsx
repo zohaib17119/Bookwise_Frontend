@@ -154,19 +154,18 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
               ? undefined
               : String(values.discountValue),
           lines: values.lines.map((line: any) => ({
-            itemId: line.itemId || null,
             description: line.description,
             quantity: String(line.quantity),
             unitPrice: String(line.unitPrice || ""),
-            discountType: line.discountType
-              ? (line.discountType as DiscountType)
-              : undefined,
-            discountValue:
-              line.discountValue === undefined
-                ? undefined
-                : String(line.discountValue),
-            taxRateId: line.taxRateId || undefined,
-            itemName: line.itemName || "",
+            ...(line.itemId ? { itemId: line.itemId } : {}),
+            ...(line.itemName ? { itemName: line.itemName } : {}),
+            ...(line.discountType
+              ? { discountType: line.discountType as DiscountType }
+              : {}),
+            ...(line.discountValue !== undefined
+              ? { discountValue: String(line.discountValue) }
+              : {}),
+            ...(line.taxRateId ? { taxRateId: line.taxRateId } : {}),
           })),
         };
         const result =

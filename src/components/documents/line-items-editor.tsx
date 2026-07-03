@@ -6,6 +6,7 @@ import {
   useWatch,
   type Control,
   type FieldArrayPath,
+  type FieldErrors,
   type FieldValues,
   type UseFormSetValue,
 } from "react-hook-form";
@@ -19,6 +20,7 @@ import {
 } from "@/features/shared/utils/document-calculations";
 import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import type { DiscountType } from "@/features/shared/types/documents";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 
 interface ItemOption {
   id: string;
@@ -69,6 +71,7 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
    * labelled "(preferred)".
    */
   preferredVendorId?: string;
+  errors?: FieldErrors;
 }
 
 const discountOptions: DiscountType[] = ["FIXED", "PERCENTAGE"];
@@ -88,6 +91,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   docDiscountValue,
   showAccountColumn = false,
   preferredVendorId,
+  errors,
 }: LineItemsEditorProps<TFieldValues>) {
   const accountColumnVisible = mode === "purchase" && showAccountColumn;
   const { fields, append, remove } = useFieldArray({
@@ -109,13 +113,13 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   }) as Array<{
     itemId?: string;
     description?: string;
-    quantity?: number;
-    unitPrice?: number;
-    unitCost?: number;
+    quantity?: string;
+    unitPrice?: string;
+    unitCost?: string;
     discountType?: DiscountType;
-    discountValue?: number;
+    discountValue?: string;
     taxCodeId?: string;
-    taxRate?: number;
+    taxRate?: string;
     expenseAccountId?: string;
   }>) ?? [];
 
@@ -165,9 +169,12 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
 
         setValue(
           `${name}.${index}.${priceField}` as never,
-          price as never,
+          toDecimalString(price) as never,
           { shouldDirty: true, shouldValidate: true },
         );
+        setValue(`${name}.${index}.itemName` as never, selectedItem.name as never, {
+          shouldDirty: true,
+        });
         if (selectedItem.description) {
           setValue(
             `${name}.${index}.description` as never,
@@ -189,10 +196,10 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       if (taxCode && taxCode.effectiveRatePercent != null) {
         setValue(
           `${name}.${index}.taxRate` as never,
-          taxCode.effectiveRatePercent as never,
+          toDecimalString(taxCode.effectiveRatePercent) as never,
         );
       } else {
-        setValue(`${name}.${index}.taxRate` as never, 0 as never);
+        setValue(`${name}.${index}.taxRate` as never, "" as never);
       }
     },
     [name, setValue, taxCodeMap],
@@ -203,9 +210,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   const colCount = accountColumnVisible ? 10 : 9;
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto rounded-xl border border-border bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
+    <div className="w-full min-w-0 space-y-3">
+      <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-border bg-white shadow-sm">
+        <table className="w-full min-w-full table-auto text-left text-sm">
           <thead>
             <tr className="border-b border-border bg-[hsl(var(--secondary)/0.4)]">
               <th className="w-8 px-2 py-3" />
@@ -243,6 +250,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
           </thead>
           <tbody className="divide-y divide-border/50">
             {fields.map((field, index) => {
+              const lineErrors = Array.isArray(errors?.lines)
+                ? (errors.lines[index] as FieldErrors | undefined)
+                : undefined;
               const lineTotal = getLinePreviewTotal({
                 description: watchedLines[index]?.description ?? "",
                 quantity: Number(watchedLines[index]?.quantity ?? 0),
@@ -304,12 +314,19 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       control={control}
                       name={`${name}.${index}.description` as never}
                       render={({ field: inputField }) => (
-                        <Input
-                          {...inputField}
-                          className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
-                          placeholder="Enter description"
-                          value={(inputField.value as string) ?? ""}
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            {...inputField}
+                            className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            placeholder="Enter description"
+                            value={(inputField.value as string) ?? ""}
+                          />
+                          {lineErrors?.description?.message ? (
+                            <p className="text-xs text-destructive">
+                              {String(lineErrors.description.message)}
+                            </p>
+                          ) : null}
+                        </div>
                       )}
                     />
                   </td>
@@ -320,26 +337,30 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       control={control}
                       name={`${name}.${index}.quantity` as never}
                       render={({ field: inputField }) => (
-                        <Input
-                          className="h-9 rounded-lg border-transparent bg-transparent text-center text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
-                          min="0"
-                          onBlur={inputField.onBlur}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            inputField.onChange(
-                              val === "" ? "" : Number(val),
-                            );
-                          }}
-                          ref={inputField.ref}
-                          step="any"
-                          type="number"
-                          value={
-                            inputField.value === undefined ||
-                            inputField.value === null
-                              ? ""
-                              : String(inputField.value)
-                          }
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            className="h-9 rounded-lg border-transparent bg-transparent text-center text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            min="0"
+                            onBlur={inputField.onBlur}
+                            onChange={(e) => {
+                              inputField.onChange(e.target.value);
+                            }}
+                            ref={inputField.ref}
+                            step="any"
+                            type="number"
+                            value={
+                              inputField.value === undefined ||
+                              inputField.value === null
+                                ? ""
+                                : String(inputField.value)
+                            }
+                          />
+                          {lineErrors?.quantity?.message ? (
+                            <p className="text-xs text-destructive">
+                              {String(lineErrors.quantity.message)}
+                            </p>
+                          ) : null}
+                        </div>
                       )}
                     />
                   </td>
@@ -357,10 +378,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                           min="0"
                           onBlur={inputField.onBlur}
                           onChange={(e) => {
-                            const val = e.target.value;
-                            inputField.onChange(
-                              val === "" ? "" : Number(val),
-                            );
+                            inputField.onChange(e.target.value);
                           }}
                           ref={inputField.ref}
                           step="any"
@@ -398,7 +416,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                             <option value="">—</option>
                             {discountOptions.map((option) => (
                               <option key={option} value={option}>
-                                {option === "amount" ? "$" : "%"}
+                                {option === "FIXED" ? "$" : "%"}
                               </option>
                             ))}
                           </Select>
@@ -415,10 +433,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                             min="0"
                             onBlur={inputField.onBlur}
                             onChange={(e) => {
-                              const val = e.target.value;
-                              inputField.onChange(
-                                val === "" ? "" : Number(val),
-                              );
+                              inputField.onChange(e.target.value);
                             }}
                             ref={inputField.ref}
                             step="any"
@@ -586,13 +601,14 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
             append({
               itemId: "",
               description: "",
-              quantity: 1,
+              quantity: "1",
               unitPrice: mode === "sales" ? "" : undefined,
               unitCost: mode === "purchase" ? "" : undefined,
               discountType: undefined,
-              discountValue: undefined,
+              discountValue: "",
               taxCodeId: "",
-              taxRate: undefined,
+              taxRate: "",
+              itemName: "",
               expenseAccountId: "",
             } as never)
           }

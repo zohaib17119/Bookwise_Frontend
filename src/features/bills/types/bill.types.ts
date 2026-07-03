@@ -30,7 +30,7 @@ export interface Bill {
   exchangeRate?: string | null;
   notes?: string | null;
   discountType?: DiscountType | null;
-  discountValue?: number | null;
+  discountValue?: string | null;
   status?: BillStatus | null;
   rawStatus?: BillStatus | null;
   total?: string | null;
@@ -55,6 +55,6 @@ export interface BillPayload {
   exchangeRate?: string;
   notes?: string;
   discountType?: DiscountType;
-  discountValue?: number | null;
+  discountValue?: string;
   lines: BillLine[];
 }

@@ -2,9 +2,12 @@ import { apiClient } from "@/lib/api/client";
 import { extractListData, extractPaginated } from "@/lib/api/response";
 import type {
   Invoice,
+  InvoiceLine,
   InvoiceListParams,
   InvoicePayload,
 } from "@/features/invoices/types/invoice.types";
+import { omitEmptyFields, serializeDocumentLineMoney } from "@/features/shared/utils/api-payload";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 function buildQuery(params: InvoiceListParams) {
   const query = new URLSearchParams();
@@ -15,6 +18,41 @@ function buildQuery(params: InvoiceListParams) {
   if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function serializeInvoiceLine(line: InvoiceLine): InvoiceLine {
+  return omitEmptyFields({
+    description: line.description,
+    ...serializeDocumentLineMoney(line as Record<string, unknown>),
+    itemId: line.itemId || undefined,
+    itemName: line.itemName || undefined,
+    discountType: line.discountType || undefined,
+    taxRateId: line.taxRateId || undefined,
+  }) as InvoiceLine;
+}
+
+function serializeInvoicePayload(payload: InvoicePayload): InvoicePayload {
+  return {
+    customerId: payload.customerId,
+    ...omitEmptyFields({
+      estimateId: payload.estimateId || undefined,
+      invoiceNumber: payload.invoiceNumber || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+      issueDate: payload.issueDate || undefined,
+      dueDate: payload.dueDate || undefined,
+      currencyCode: payload.currencyCode || undefined,
+      exchangeRate: payload.exchangeRate || undefined,
+      notes: payload.notes || undefined,
+      terms: payload.terms || undefined,
+      memoOnStatement: payload.memoOnStatement || undefined,
+      paymentOptions: payload.paymentOptions?.length ? payload.paymentOptions : undefined,
+      discountType: payload.discountType || undefined,
+      discountValue: payload.discountValue
+        ? toOptionalDecimalString(payload.discountValue)
+        : undefined,
+    }),
+    lines: payload.lines.map(serializeInvoiceLine),
+  };
 }
 
 export async function getInvoices(companyId: string, params: InvoiceListParams = {}) {
@@ -41,7 +79,7 @@ export async function getInvoice(companyId: string, invoiceId: string) {
 export async function createInvoice(companyId: string, payload: InvoicePayload) {
   const { data } = await apiClient.post<Invoice>(
     `/companies/${companyId}/invoices`,
-    payload,
+    serializeInvoicePayload(payload),
   );
   return data;
 }
@@ -53,7 +91,7 @@ export async function updateInvoice(
 ) {
   const { data } = await apiClient.patch<Invoice>(
     `/companies/${companyId}/invoices/${invoiceId}`,
-    payload,
+    serializeInvoicePayload(payload),
   );
   return data;
 }

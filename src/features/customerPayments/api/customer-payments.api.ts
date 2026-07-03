@@ -6,6 +6,7 @@ import type {
   CustomerPaymentListParams,
   CustomerPaymentPayload,
 } from "@/features/customerPayments/types/customer-payment.types";
+import { omitEmptyFields, serializeMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildQuery(params: CustomerPaymentListParams) {
   const query = new URLSearchParams();
@@ -15,6 +16,32 @@ function buildQuery(params: CustomerPaymentListParams) {
   if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function serializeCustomerPaymentPayload(payload: CustomerPaymentPayload): CustomerPaymentPayload {
+  return {
+    customerId: payload.customerId,
+    paymentMethod: payload.paymentMethod,
+    amount: serializeMoneyField(payload.amount),
+    ...omitEmptyFields({
+      paymentDate: payload.paymentDate || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+      currencyCode: payload.currencyCode || undefined,
+      exchangeRate: payload.exchangeRate || undefined,
+      notes: payload.notes || undefined,
+    }),
+  };
+}
+
+function serializeCustomerPaymentAllocationPayload(
+  payload: CustomerPaymentAllocationPayload,
+): CustomerPaymentAllocationPayload {
+  return {
+    allocations: payload.allocations.map((allocation) => ({
+      invoiceId: allocation.invoiceId,
+      amount: serializeMoneyField(allocation.amount),
+    })),
+  };
 }
 
 export async function getCustomerPayments(
@@ -40,7 +67,7 @@ export async function createCustomerPayment(
 ) {
   const { data } = await apiClient.post<CustomerPayment>(
     `/companies/${companyId}/customer-payments`,
-    payload,
+    serializeCustomerPaymentPayload(payload),
   );
   return data;
 }
@@ -51,7 +78,7 @@ export async function allocateCustomerPayment(
 ) {
   const { data } = await apiClient.post<CustomerPayment>(
     `/customer-payments/${paymentId}/allocate`,
-    payload,
+    serializeCustomerPaymentAllocationPayload(payload),
   );
   return data;
 }

@@ -34,6 +34,7 @@ import {
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
+import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 interface EstimateFormPageProps {
   mode: "create" | "edit";
@@ -182,16 +183,19 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             notes: values.notes || undefined,
             terms: values.terms || undefined,
             discountValue:
-              values.discountValue === undefined ? null : Number(values.discountValue),
+              values.discountValue === undefined || values.discountValue === null
+                ? undefined
+                : toOptionalDecimalString(values.discountValue),
             lines: values.lines.map((line) => ({
-              itemId: line.itemId || null,
               description: line.description,
-              quantity: Number(line.quantity),
-              unitPrice: Number(line.unitPrice || 0),
-              discountType: line.discountType || undefined,
-              discountValue:
-                line.discountValue === undefined ? null : Number(line.discountValue),
-              taxCode: line.taxCode || undefined,
+              quantity: toDecimalString(line.quantity),
+              unitPrice: toDecimalString(line.unitPrice ?? ""),
+              ...(line.itemId ? { itemId: line.itemId } : {}),
+              ...(line.discountType ? { discountType: line.discountType } : {}),
+              ...(line.discountValue !== undefined && line.discountValue !== null
+                ? { discountValue: toOptionalDecimalString(line.discountValue) }
+                : {}),
+              ...(line.taxCode ? { taxCode: line.taxCode } : {}),
             })),
           };
 

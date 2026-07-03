@@ -2,10 +2,12 @@ import { apiClient } from "@/lib/api/client";
 import { extractListData } from "@/lib/api/response";
 import type {
   JournalEntry,
+  JournalEntryLinePayload,
   JournalEntryPayload,
   JournalListParams,
   LedgerRow,
 } from "@/features/journals/types/journal.types";
+import { omitEmptyFields, serializeOptionalMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildQuery(params: JournalListParams) {
   const query = new URLSearchParams();
@@ -18,6 +20,27 @@ function buildQuery(params: JournalListParams) {
   if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function serializeJournalLine(line: JournalEntryLinePayload): JournalEntryLinePayload {
+  return omitEmptyFields({
+    accountId: line.accountId,
+    description: line.description || undefined,
+    debitAmount: serializeOptionalMoneyField(line.debitAmount),
+    creditAmount: serializeOptionalMoneyField(line.creditAmount),
+  }) as JournalEntryLinePayload;
+}
+
+function serializeJournalPayload(payload: JournalEntryPayload): JournalEntryPayload {
+  return {
+    ...omitEmptyFields({
+      entryDate: payload.entryDate || undefined,
+      entryNumber: payload.entryNumber || undefined,
+      description: payload.description || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+    }),
+    lines: payload.lines.map(serializeJournalLine),
+  };
 }
 
 export async function getJournalEntries(companyId: string, params: JournalListParams = {}) {
@@ -40,7 +63,7 @@ export async function createJournalEntry(
 ) {
   const { data } = await apiClient.post<JournalEntry>(
     `/companies/${companyId}/journal-entries`,
-    payload,
+    serializeJournalPayload(payload),
   );
   return data;
 }
@@ -52,7 +75,7 @@ export async function updateJournalEntry(
 ) {
   const { data } = await apiClient.patch<JournalEntry>(
     `/companies/${companyId}/journal-entries/${journalEntryId}`,
-    payload,
+    serializeJournalPayload(payload),
   );
   return data;
 }

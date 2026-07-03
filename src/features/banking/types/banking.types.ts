@@ -22,7 +22,7 @@ export interface BankAccountPayload {
   bankName?: string;
   branchName?: string;
   currencyCode?: string;
-  openingBalance?: number | null;
+  openingBalance?: string | number;
   openingBalanceDate?: string;
   isPrimary?: boolean;
   isActive: boolean;
@@ -47,7 +47,7 @@ export interface BankTransactionPayload {
   bankAccountId: string;
   transactionDate?: string;
   description?: string;
-  amount: number;
+  amount: string | number;
   type?: string;
   direction?: string;
   source?: string;

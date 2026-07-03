@@ -25,6 +25,7 @@ import {
   useUpdateBankTransaction,
 } from "@/features/banking/hooks/use-banking";
 import type { BankTransaction } from "@/features/banking/types/banking.types";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 export function BankTransactionsPage() {
@@ -241,7 +242,7 @@ export function BankTransactionsPage() {
             type: values.type || undefined,
             direction: values.direction || undefined,
             source: values.source || undefined,
-            amount: Number(values.amount),
+            amount: toDecimalString(values.amount),
           };
 
           if (drawerMode === "create") {

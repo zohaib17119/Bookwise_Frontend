@@ -52,6 +52,6 @@ export interface EstimatePayload {
   notes?: string;
   terms?: string;
   discountType?: DiscountType;
-  discountValue?: number | null;
+  discountValue?: string | number;
   lines: EstimateLine[];
 }

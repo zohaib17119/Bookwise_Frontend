@@ -23,5 +23,5 @@ export interface ReconciliationPayload {
   bankAccountId: string;
   startDate?: string;
   endDate?: string;
-  statementEndingBalance: number;
+  statementEndingBalance: string | number;
 }

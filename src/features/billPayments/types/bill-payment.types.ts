@@ -24,13 +24,15 @@ export interface BillPaymentPayload {
   paymentDate?: string;
   paymentMethod: string;
   referenceNumber?: string;
-  amount: number;
+  currencyCode?: string;
+  exchangeRate?: string;
+  amount: string | number;
   notes?: string;
 }
 
 export interface BillPaymentAllocationPayload {
   allocations: Array<{
     billId: string;
-    amount: number;
+    amount: string | number;
   }>;
 }

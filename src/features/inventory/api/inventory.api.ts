@@ -2,12 +2,14 @@ import { apiClient } from "@/lib/api/client";
 import { extractListData } from "@/lib/api/response";
 import type {
   InventoryAdjustment,
+  InventoryAdjustmentLinePayload,
   InventoryAdjustmentPayload,
   InventoryValuationSummary,
   StockMovement,
   StockMovementParams,
   StockOnHandRow,
 } from "@/features/inventory/types/inventory.types";
+import { omitEmptyFields, serializeMoneyField, serializeOptionalMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildMovementQuery(params: StockMovementParams) {
   const query = new URLSearchParams();
@@ -20,6 +22,29 @@ function buildMovementQuery(params: StockMovementParams) {
   if (params.sourceModule) query.set("sourceModule", params.sourceModule);
   query.set("limit", "100");
   return query.toString() ? `?${query.toString()}` : "";
+}
+
+function serializeInventoryLine(line: InventoryAdjustmentLinePayload): InventoryAdjustmentLinePayload {
+  return omitEmptyFields({
+    itemId: line.itemId,
+    direction: line.direction,
+    quantity: serializeMoneyField(line.quantity),
+    unitCost: serializeOptionalMoneyField(line.unitCost),
+    notes: line.notes || undefined,
+  }) as InventoryAdjustmentLinePayload;
+}
+
+function serializeInventoryAdjustmentPayload(
+  payload: InventoryAdjustmentPayload,
+): InventoryAdjustmentPayload {
+  return {
+    ...omitEmptyFields({
+      adjustmentDate: payload.adjustmentDate || undefined,
+      reason: payload.reason || undefined,
+      notes: payload.notes || undefined,
+    }),
+    lines: payload.lines.map(serializeInventoryLine),
+  };
 }
 
 export async function getStockOnHand(companyId: string) {
@@ -69,7 +94,7 @@ export async function createInventoryAdjustment(
 ) {
   const { data } = await apiClient.post<InventoryAdjustment>(
     `/companies/${companyId}/inventory-adjustments`,
-    payload,
+    serializeInventoryAdjustmentPayload(payload),
   );
   return data;
 }
@@ -81,7 +106,7 @@ export async function updateInventoryAdjustment(
 ) {
   const { data } = await apiClient.patch<InventoryAdjustment>(
     `/companies/${companyId}/inventory-adjustments/${inventoryAdjustmentId}`,
-    payload,
+    serializeInventoryAdjustmentPayload(payload),
   );
   return data;
 }

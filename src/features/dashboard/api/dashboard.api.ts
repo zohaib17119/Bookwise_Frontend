@@ -1,33 +1,125 @@
 import { apiClient } from "@/lib/api/client";
 import type {
-  AnalyticsPoint,
   DashboardOverview,
+  DashboardQueryParams,
 } from "@/features/dashboard/types/dashboard.types";
 
-export async function getCompanyDashboard(companyId: string) {
-  const { data } = await apiClient.get<DashboardOverview>(
-    `/companies/${companyId}/dashboard`,
-  );
-  return data;
+function parseNumber(value: unknown): number {
+  if (value === null || value === undefined || value === "") {
+    return 0;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function getRevenueAnalytics(companyId: string) {
-  const { data } = await apiClient.get<AnalyticsPoint[]>(
-    `/companies/${companyId}/analytics/revenue`,
-  );
-  return data;
+function parseNullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-export async function getExpenseAnalytics(companyId: string) {
-  const { data } = await apiClient.get<AnalyticsPoint[]>(
-    `/companies/${companyId}/analytics/expenses`,
-  );
-  return data;
+function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview {
+  const metrics = (raw.metrics ?? {}) as Record<string, unknown>;
+  const previous = (metrics.previous ?? {}) as Record<string, unknown>;
+  const changePercent = (metrics.changePercent ?? {}) as Record<string, unknown>;
+  const period = (raw.period ?? {}) as Record<string, unknown>;
+  const cashFlowOverview = (raw.cashFlowOverview ?? {}) as Record<string, unknown>;
+  const sparklines = (raw.sparklines ?? {}) as Record<string, unknown>;
+  const counts = (raw.counts ?? {}) as Record<string, unknown>;
+  const company = raw.company as DashboardOverview["company"];
+
+  const financialOverview = Array.isArray(raw.financialOverview)
+    ? raw.financialOverview.map((point) => {
+        const row = point as Record<string, unknown>;
+        return {
+          date: String(row.date ?? ""),
+          revenue: parseNumber(row.revenue),
+          expenses: parseNumber(row.expenses),
+          netProfit: parseNumber(row.netProfit),
+        };
+      })
+    : [];
+
+  const parseSparkline = (value: unknown) =>
+    Array.isArray(value)
+      ? value.map((point) => {
+          const row = point as Record<string, unknown>;
+          return {
+            date: String(row.date ?? ""),
+            value: parseNumber(row.value),
+          };
+        })
+      : [];
+
+  return {
+    currencyCode: String(raw.currencyCode ?? company?.baseCurrencyCode ?? "USD"),
+    company,
+    period: {
+      fromDate: String(period.fromDate ?? ""),
+      toDate: String(period.toDate ?? ""),
+      previousFromDate: String(period.previousFromDate ?? ""),
+      previousToDate: String(period.previousToDate ?? ""),
+    },
+    metrics: {
+      totalRevenue: parseNumber(metrics.totalRevenue),
+      totalExpenses: parseNumber(metrics.totalExpenses),
+      netProfit: parseNumber(metrics.netProfit),
+      profitMargin: parseNumber(metrics.profitMargin),
+      cashBalance: parseNumber(metrics.cashBalance),
+      accountsReceivable: parseNumber(metrics.accountsReceivable),
+      accountsPayable: parseNumber(metrics.accountsPayable),
+      previous: {
+        totalRevenue: parseNumber(previous.totalRevenue),
+        totalExpenses: parseNumber(previous.totalExpenses),
+        netProfit: parseNumber(previous.netProfit),
+        profitMargin: parseNumber(previous.profitMargin),
+      },
+      changePercent: {
+        totalRevenue: parseNullableNumber(changePercent.totalRevenue),
+        totalExpenses: parseNullableNumber(changePercent.totalExpenses),
+        netProfit: parseNullableNumber(changePercent.netProfit),
+        profitMargin: parseNullableNumber(changePercent.profitMargin),
+      },
+    },
+    financialOverview,
+    cashFlowOverview: {
+      cashBalance: parseNumber(cashFlowOverview.cashBalance),
+      accountsReceivable: parseNumber(cashFlowOverview.accountsReceivable),
+      accountsPayable: parseNumber(cashFlowOverview.accountsPayable),
+      netCashFlow: parseNumber(cashFlowOverview.netCashFlow),
+    },
+    sparklines: {
+      cashBalance: parseSparkline(sparklines.cashBalance),
+      accountsReceivable: parseSparkline(sparklines.accountsReceivable),
+      accountsPayable: parseSparkline(sparklines.accountsPayable),
+    },
+    counts: {
+      totalCustomers: parseNumber(counts.totalCustomers),
+      totalVendors: parseNumber(counts.totalVendors),
+      totalInvoices: parseNumber(counts.totalInvoices),
+      totalBills: parseNumber(counts.totalBills),
+    },
+  };
 }
 
-export async function getCashflowAnalytics(companyId: string) {
-  const { data } = await apiClient.get<AnalyticsPoint[]>(
-    `/companies/${companyId}/analytics/cashflow`,
+function buildQuery(params: DashboardQueryParams = {}) {
+  const query = new URLSearchParams();
+  if (params.fromDate) query.set("fromDate", params.fromDate);
+  if (params.toDate) query.set("toDate", params.toDate);
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : "";
+}
+
+export async function getCompanyDashboard(
+  companyId: string,
+  params: DashboardQueryParams = {},
+) {
+  const { data } = await apiClient.get<Record<string, unknown>>(
+    `/companies/${companyId}/dashboard${buildQuery(params)}`,
   );
-  return data;
+  return parseDashboardResponse(data);
 }

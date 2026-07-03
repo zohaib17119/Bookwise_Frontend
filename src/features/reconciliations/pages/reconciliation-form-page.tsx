@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { useBankAccounts } from "@/features/banking/hooks/use-banking";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canUsePermission } from "@/features/permissions/utils/module-permissions";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 import {
   reconciliationSchema,
   type ReconciliationFormInput,
@@ -57,7 +58,7 @@ export function ReconciliationFormPage() {
             ...values,
             startDate: values.startDate || undefined,
             endDate: values.endDate || undefined,
-            statementEndingBalance: Number(values.statementEndingBalance),
+            statementEndingBalance: toDecimalString(values.statementEndingBalance),
           });
           navigate(`/app/company/${companyId}/banking/reconciliations/${result.id}`);
         })}

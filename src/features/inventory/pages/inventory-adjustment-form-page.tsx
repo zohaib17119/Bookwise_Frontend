@@ -24,6 +24,7 @@ import {
 } from "@/features/inventory/schemas/inventory-adjustment.schema";
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
+import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 interface InventoryAdjustmentFormPageProps {
   mode: "create" | "edit";
@@ -106,9 +107,9 @@ export function InventoryAdjustmentFormPage({ mode }: InventoryAdjustmentFormPag
             notes: values.notes || undefined,
             lines: values.lines.map((line) => ({
               itemId: line.itemId,
-              quantity: Number(line.quantity),
+              quantity: toDecimalString(line.quantity),
               direction: line.direction,
-              unitCost: Number(line.unitCost || 0),
+              ...(line.unitCost ? { unitCost: toOptionalDecimalString(line.unitCost) } : {}),
               notes: line.notes || undefined,
             })),
           };

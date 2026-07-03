@@ -26,6 +26,7 @@ import {
   type JournalEntryFormValues,
 } from "@/features/journals/schemas/journal.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { formatCurrency } from "@/lib/utils/format";
 
 interface JournalFormPageProps {
@@ -139,8 +140,8 @@ export function JournalFormPage({ mode }: JournalFormPageProps) {
             lines: values.lines.map((line) => ({
               accountId: line.accountId,
               description: line.description || undefined,
-              debitAmount: Number(line.debitAmount || 0),
-              creditAmount: Number(line.creditAmount || 0),
+              ...(line.debitAmount ? { debitAmount: toOptionalDecimalString(line.debitAmount) } : {}),
+              ...(line.creditAmount ? { creditAmount: toOptionalDecimalString(line.creditAmount) } : {}),
             })),
           };
 

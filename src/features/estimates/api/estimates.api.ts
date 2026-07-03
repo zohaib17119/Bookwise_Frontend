@@ -2,9 +2,12 @@ import { apiClient } from "@/lib/api/client";
 import { extractListData } from "@/lib/api/response";
 import type {
   Estimate,
+  EstimateLine,
   EstimateListParams,
   EstimatePayload,
 } from "@/features/estimates/types/estimate.types";
+import { omitEmptyFields, serializeDocumentLineMoney } from "@/features/shared/utils/api-payload";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 function buildQuery(params: EstimateListParams) {
   const query = new URLSearchParams();
@@ -15,6 +18,37 @@ function buildQuery(params: EstimateListParams) {
   if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function serializeEstimateLine(line: EstimateLine): EstimateLine {
+  return omitEmptyFields({
+    description: line.description,
+    ...serializeDocumentLineMoney(line as Record<string, unknown>),
+    itemId: line.itemId || undefined,
+    discountType: line.discountType || undefined,
+    taxCode: (line as EstimateLine & { taxCode?: string }).taxCode || undefined,
+  }) as EstimateLine;
+}
+
+function serializeEstimatePayload(payload: EstimatePayload): EstimatePayload {
+  return {
+    customerId: payload.customerId,
+    ...omitEmptyFields({
+      estimateNumber: payload.estimateNumber || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+      issueDate: payload.issueDate || undefined,
+      expiryDate: payload.expiryDate || undefined,
+      currencyCode: payload.currencyCode || undefined,
+      exchangeRate: payload.exchangeRate || undefined,
+      notes: payload.notes || undefined,
+      terms: payload.terms || undefined,
+      discountType: payload.discountType || undefined,
+      discountValue: payload.discountValue
+        ? toOptionalDecimalString(payload.discountValue)
+        : undefined,
+    }),
+    lines: payload.lines.map(serializeEstimateLine),
+  };
 }
 
 export async function getEstimates(companyId: string, params: EstimateListParams = {}) {
@@ -34,7 +68,7 @@ export async function getEstimate(companyId: string, estimateId: string) {
 export async function createEstimate(companyId: string, payload: EstimatePayload) {
   const { data } = await apiClient.post<Estimate>(
     `/companies/${companyId}/estimates`,
-    payload,
+    serializeEstimatePayload(payload),
   );
   return data;
 }
@@ -46,7 +80,7 @@ export async function updateEstimate(
 ) {
   const { data } = await apiClient.patch<Estimate>(
     `/companies/${companyId}/estimates/${estimateId}`,
-    payload,
+    serializeEstimatePayload(payload),
   );
   return data;
 }

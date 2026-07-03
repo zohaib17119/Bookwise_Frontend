@@ -27,6 +27,7 @@ import {
 import { useOpenBillsByVendor } from "@/features/bills/hooks/use-bills";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { getAllocatedTotal } from "@/features/shared/utils/document-calculations";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -99,13 +100,13 @@ export function BillPaymentFormPage() {
             paymentDate: values.paymentDate || undefined,
             paymentMethod: values.paymentMethod,
             referenceNumber: values.referenceNumber || undefined,
-            amount: Number(values.amount),
+            amount: toDecimalString(values.amount),
             notes: values.notes || undefined,
           });
 
           const nonZeroAllocations = Object.entries(allocations)
             .filter(([, amount]) => amount > 0)
-            .map(([billId, amount]) => ({ billId, amount }));
+            .map(([billId, amount]) => ({ billId, amount: toDecimalString(amount) }));
 
           if (nonZeroAllocations.length) {
             await allocateMutation.mutateAsync({

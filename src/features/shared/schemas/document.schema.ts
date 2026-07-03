@@ -1,34 +1,57 @@
 import { z } from "zod";
+import {
+  DECIMAL_STRING_REGEX,
+  toDecimalString,
+  toOptionalDecimalString,
+} from "@/features/shared/utils/decimal-string";
 
 const optionalString = z.string().optional().or(z.literal(""));
 const optionalDate = optionalString;
-const optionalDecimalString = z.string().optional().or(z.literal(""));
+
+const moneyStringSchema = z.preprocess(
+  (value) => toOptionalDecimalString(value),
+  z
+    .string()
+    .regex(DECIMAL_STRING_REGEX, "Enter a valid amount")
+    .or(z.literal("")),
+);
+
+const requiredQuantitySchema = z.preprocess(
+  (value) => toDecimalString(value),
+  z
+    .string()
+    .regex(DECIMAL_STRING_REGEX, "Enter a valid quantity")
+    .refine((value) => Number(value) >= 0.01, {
+      message: "Quantity must be greater than zero",
+    }),
+);
 
 export const lineItemSchema = z.object({
   itemId: optionalString,
   description: z.string().min(1, "Line description is required").max(500),
-  quantity: z.coerce.number().min(0.01, "Quantity must be greater than zero"),
-  unitPrice: optionalDecimalString,
-  unitCost: optionalDecimalString,
+  quantity: requiredQuantitySchema,
+  unitPrice: moneyStringSchema,
+  unitCost: moneyStringSchema,
   discountType: z.enum(["FIXED", "PERCENTAGE"]).optional(),
-  discountValue: optionalDecimalString,
+  discountValue: moneyStringSchema,
+  taxCodeId: optionalString,
   taxRateId: optionalString,
-  taxRate: optionalDecimalString,
-  itemName: z.string().min(1).max(500),
+  taxRate: moneyStringSchema,
+  itemName: z.string().max(500).optional().or(z.literal("")),
   expenseAccountId: optionalString,
 });
 
 export const documentBaseSchema = z.object({
   referenceNumber: optionalString,
   currencyCode: z.string().min(3).max(3).optional().or(z.literal("")),
-  exchangeRate: optionalDecimalString.refine(
+  exchangeRate: moneyStringSchema.refine(
     (value) => !value || (Number(value) > 0 && Number.isFinite(Number(value))),
     { message: "Exchange rate must be a positive number" },
   ),
   notes: optionalString,
   terms: z.enum(["", "0", "15", "30", "45", "60", "90"]).optional().or(z.literal("")),
   discountType: z.enum(["FIXED", "PERCENTAGE"]).optional().or(z.literal("")),
-  discountValue: optionalDecimalString,
+  discountValue: moneyStringSchema,
 });
 
 export const allocationLineSchema = z.object({
