@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { BadgeDollarSign, Boxes, Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { FilterBar } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
+import { InventoryStatusBadge } from "@/components/accounting/inventory-status-badge";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
@@ -59,6 +60,21 @@ export function ItemsPage() {
   const deleteMutation = useDeleteItem(companyId);
   const canView = canViewEntity(permissions, "items");
   const canManage = canManageEntity(permissions, "items");
+
+  const vendorNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const vendor of vendorsQuery.data ?? []) {
+      map.set(vendor.id, vendor.displayName);
+    }
+    return map;
+  }, [vendorsQuery.data]);
+
+  const isLowStock = (item: Item) => {
+    if (!item.trackQuantity) return false;
+    const reorder = Number(item.reorderLevel ?? 0);
+    if (reorder <= 0) return false;
+    return Number(item.quantityOnHand ?? 0) <= reorder;
+  };
 
   if (!canView) {
     return (
@@ -111,12 +127,22 @@ export function ItemsPage() {
       header: "On hand",
       className: "text-right",
       render: (item) =>
-        item.trackQuantity ? (item.quantityOnHand ?? "0") : <span className="text-muted-foreground">-</span>,
+        item.trackQuantity ? (
+          <div className="flex items-center justify-end gap-2">
+            <span>{item.quantityOnHand ?? "0"}</span>
+            {isLowStock(item) ? <InventoryStatusBadge lowStock /> : null}
+          </div>
+        ) : (
+          <span className="text-muted-foreground">-</span>
+        ),
     },
     {
       key: "vendor",
       header: "Preferred Vendor",
-      render: (item) => item.preferredVendorName || "Not set",
+      render: (item) =>
+        item.preferredVendorId
+          ? vendorNameById.get(item.preferredVendorId) ?? item.preferredVendorName ?? "Not set"
+          : "Not set",
     },
     {
       key: "status",

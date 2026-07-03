@@ -5,6 +5,7 @@ import {
   BookOpenText,
   Boxes,
   Building2,
+  CircleDollarSign,
   FileBarChart2,
   FileClock,
   FolderKanban,
@@ -100,6 +101,12 @@ export const companyNavigationGroups: CompanyNavigationGroup[] = [
         segment: "bills",
         icon: Receipt,
         permissionKeys: ["bills.view", "bills.read", "bills.manage"],
+      },
+      {
+        label: "Expenses",
+        segment: "expenses",
+        icon: CircleDollarSign,
+        permissionKeys: ["expenses.view", "expenses.read", "expenses.manage"],
       },
       {
         label: "Bill Payments",

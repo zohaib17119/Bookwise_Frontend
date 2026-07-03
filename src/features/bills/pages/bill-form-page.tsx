@@ -66,10 +66,10 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 itemId: line.itemId ?? "",
                 description: line.description,
                 quantity: line.quantity,
-                unitCost: line.unitCost ?? undefined,
+                unitCost: line.unitCost ?? "",
                 discountType: line.discountType ?? undefined,
                 discountValue: line.discountValue ?? undefined,
-                taxCode: line.taxCode ?? "",
+                taxRateId: (line as any).taxCodeId ?? "",
                 expenseAccountId: line.expenseAccountId ?? "",
               })) ?? [],
           }
@@ -90,10 +90,10 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 itemId: "",
                 description: "",
                 quantity: 1,
-                unitCost: 0,
+                unitCost: "",
                 discountType: undefined,
                 discountValue: undefined,
-                taxCode: "",
+                taxRateId: "",
                 expenseAccountId: "",
               },
             ],
@@ -124,7 +124,6 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           unitCost: Number(line.unitCost || 0),
           discountType: line.discountType,
           discountValue: Number(line.discountValue || 0),
-          taxCode: line.taxCode || undefined,
           expenseAccountId: line.expenseAccountId || undefined,
         })),
       ),
@@ -178,7 +177,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               unitCost: Number(line.unitCost || 0),
               discountType: line.discountType || undefined,
               discountValue: line.discountValue === undefined ? null : Number(line.discountValue),
-              taxCode: line.taxCode || undefined,
+              taxCodeId: (line as any).taxRateId || undefined,
               expenseAccountId: line.expenseAccountId || null,
             })),
           };
@@ -252,6 +251,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               itemOptions={itemsQuery.data ?? []}
               mode="purchase"
               name={"lines"}
+              preferredVendorId={watchedVendorId || undefined}
               setValue={form.setValue}
               showAccountColumn={accountColumnVisible}
             />

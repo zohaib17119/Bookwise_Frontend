@@ -32,6 +32,17 @@ export function useStockOnHand(companyId: string | undefined) {
   });
 }
 
+export function useLowStockCount(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ["companies", companyId, "inventory", "low-stock-count"],
+    queryFn: async () => {
+      const rows = await getStockOnHand(companyId!);
+      return rows.filter((row) => row.lowStock).length;
+    },
+    enabled: Boolean(companyId),
+  });
+}
+
 export function useStockMovements(companyId: string | undefined, params: StockMovementParams) {
   return useQuery({
     queryKey: ["companies", companyId, "inventory", "stock-movements", params],

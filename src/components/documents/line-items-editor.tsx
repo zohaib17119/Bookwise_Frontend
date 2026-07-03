@@ -26,6 +26,7 @@ interface ItemOption {
   description?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
+  preferredVendorId?: string | null;
 }
 
 interface AccountOption {
@@ -62,6 +63,12 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
    * The backend falls back to the company's default accounts in that case.
    */
   showAccountColumn?: boolean;
+  /**
+   * When set (e.g. the vendorId on a bill), items with preferredVendorId
+   * matching this value are sorted to the top of the item dropdown and
+   * labelled "(preferred)".
+   */
+  preferredVendorId?: string;
 }
 
 const discountOptions: DiscountType[] = ["FIXED", "PERCENTAGE"];
@@ -80,12 +87,22 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   docDiscountType,
   docDiscountValue,
   showAccountColumn = false,
+  preferredVendorId,
 }: LineItemsEditorProps<TFieldValues>) {
   const accountColumnVisible = mode === "purchase" && showAccountColumn;
   const { fields, append, remove } = useFieldArray({
     control,
     name,
   });
+
+  // Sort: preferred items float to top when a vendor is selected
+  const sortedItemOptions = useMemo(() => {
+    if (!preferredVendorId) return itemOptions;
+    const preferred = itemOptions.filter((item) => item.preferredVendorId === preferredVendorId);
+    const rest = itemOptions.filter((item) => item.preferredVendorId !== preferredVendorId);
+    return [...preferred, ...rest];
+  }, [itemOptions, preferredVendorId]);
+
   const watchedLines = (useWatch({
     control,
     name: name as never,
@@ -148,12 +165,14 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
 
         setValue(
           `${name}.${index}.${priceField}` as never,
-          String(price) as never,
+          price as never,
+          { shouldDirty: true, shouldValidate: true },
         );
         if (selectedItem.description) {
           setValue(
             `${name}.${index}.description` as never,
             selectedItem.description as never,
+            { shouldDirty: true },
           );
         }
       }
@@ -266,9 +285,12 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                           }
                         >
                           <option value="">Select item...</option>
-                          {itemOptions.map((item) => (
+                          {sortedItemOptions.map((item) => (
                             <option key={item.id} value={item.id}>
                               {item.name}
+                              {preferredVendorId && item.preferredVendorId === preferredVendorId
+                                ? " (preferred)"
+                                : ""}
                             </option>
                           ))}
                         </Select>
@@ -565,8 +587,8 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               itemId: "",
               description: "",
               quantity: 1,
-              unitPrice: mode === "sales" ? 0 : undefined,
-              unitCost: mode === "purchase" ? 0 : undefined,
+              unitPrice: mode === "sales" ? "" : undefined,
+              unitCost: mode === "purchase" ? "" : undefined,
               discountType: undefined,
               discountValue: undefined,
               taxCodeId: "",

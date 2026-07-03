@@ -26,7 +26,13 @@ export async function getStockOnHand(companyId: string) {
   const { data } = await apiClient.get<StockOnHandRow[]>(
     `/companies/${companyId}/inventory/stock-on-hand`,
   );
-  return extractListData(data);
+  return extractListData(data).map((row) => {
+    const raw = row as StockOnHandRow & { isBelowReorderLevel?: boolean };
+    return {
+      ...row,
+      lowStock: raw.isBelowReorderLevel ?? raw.lowStock ?? false,
+    };
+  });
 }
 
 export async function getStockMovements(companyId: string, params: StockMovementParams = {}) {

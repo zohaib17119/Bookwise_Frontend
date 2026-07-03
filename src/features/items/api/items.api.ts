@@ -11,6 +11,7 @@ function buildQuery(params: ItemListParams) {
   if (typeof params.trackQuantity === "boolean") {
     query.set("trackQuantity", String(params.trackQuantity));
   }
+  if (params.preferredVendorId) query.set("preferredVendorId", params.preferredVendorId);
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();

@@ -19,6 +19,9 @@ import { BankTransactionsPage } from "@/features/banking/pages/bank-transactions
 import { BillDetailPage } from "@/features/bills/pages/bill-detail-page";
 import { BillFormPage } from "@/features/bills/pages/bill-form-page";
 import { BillsPage } from "@/features/bills/pages/bills-page";
+import { ExpenseDetailPage } from "@/features/expenses/pages/expense-detail-page";
+import { ExpenseFormPage } from "@/features/expenses/pages/expense-form-page";
+import { ExpensesPage } from "@/features/expenses/pages/expenses-page";
 import { BillPaymentDetailPage } from "@/features/billPayments/pages/bill-payment-detail-page";
 import { BillPaymentFormPage } from "@/features/billPayments/pages/bill-payment-form-page";
 import { BillPaymentsPage } from "@/features/billPayments/pages/bill-payments-page";
@@ -132,6 +135,9 @@ const router = createBrowserRouter([
                   { path: "bills/new", element: <BillFormPage mode="create" /> },
                   { path: "bills/:billId", element: <BillDetailPage /> },
                   { path: "bills/:billId/edit", element: <BillFormPage mode="edit" /> },
+                  { path: "expenses", element: <ExpensesPage /> },
+                  { path: "expenses/new", element: <ExpenseFormPage /> },
+                  { path: "expenses/:expenseId", element: <ExpenseDetailPage /> },
                   { path: "customer-payments", element: <CustomerPaymentsPage /> },
                   { path: "customer-payments/new", element: <CustomerPaymentFormPage /> },
                   { path: "customer-payments/:paymentId", element: <CustomerPaymentDetailPage /> },

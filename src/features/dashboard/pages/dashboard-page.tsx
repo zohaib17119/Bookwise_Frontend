@@ -1,5 +1,7 @@
-import { Clock3, FileText, Landmark, Users } from "lucide-react";
+import { useState } from "react";
+import { Clock3, FileText, Landmark, Users, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Alert } from "@/components/ui/alert";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { QuickActions } from "@/components/dashboard/quick-actions";
@@ -15,12 +17,15 @@ import {
   useCompanyDashboard,
   useDashboardAnalytics,
 } from "@/features/dashboard/hooks/use-dashboard";
+import { useLowStockCount } from "@/features/inventory/hooks/use-inventory";
 import { formatCurrency, formatNumber } from "@/lib/utils/format";
 
 export function DashboardPage() {
   const { companyId, company, currency } = useActiveCompany();
   const dashboardQuery = useCompanyDashboard(companyId);
   const analytics = useDashboardAnalytics(companyId);
+  const lowStockQuery = useLowStockCount(companyId);
+  const [lowStockAlertDismissed, setLowStockAlertDismissed] = useState(false);
 
   if (!companyId) {
     return null;
@@ -45,6 +50,8 @@ export function DashboardPage() {
   const counts = dashboard?.counts;
   const activity = dashboard?.recentActivity ?? [];
   const displayCurrency = getCompanyBaseCurrency(company, dashboard?.currency ?? currency);
+  const lowStockCount = lowStockQuery.data ?? 0;
+  const showLowStockAlert = lowStockCount > 0 && !lowStockAlertDismissed;
 
   return (
     <PageContainer
@@ -61,6 +68,34 @@ export function DashboardPage() {
         />
       }
     >
+      {showLowStockAlert ? (
+        <div className="relative mb-4">
+          <Alert
+            description={`${formatNumber(lowStockCount)} item${lowStockCount === 1 ? "" : "s"} ${lowStockCount === 1 ? "is" : "are"} at or below reorder level.`}
+            title="Low stock alert"
+            variant="destructive"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button asChild size="sm" variant="secondary">
+              <Link to={`/app/company/${companyId}/inventory/stock-on-hand`}>View stock on hand</Link>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link to={`/app/company/${companyId}/items`}>View items</Link>
+            </Button>
+            <Button
+              aria-label="Dismiss low stock alert"
+              className="ml-auto"
+              onClick={() => setLowStockAlertDismissed(true)}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 xl:grid-cols-3">
         <MetricCard
           description="Recognized across the active reporting period"

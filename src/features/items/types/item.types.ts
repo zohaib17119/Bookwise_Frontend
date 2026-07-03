@@ -29,6 +29,7 @@ export interface ItemListParams extends BaseEntityListParams {
   type?: string;
   taxable?: boolean;
   trackQuantity?: boolean;
+  preferredVendorId?: string;
 }
 
 export interface ItemPayload {

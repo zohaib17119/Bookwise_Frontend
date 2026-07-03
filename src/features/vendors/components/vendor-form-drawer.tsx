@@ -18,11 +18,13 @@ import {
   type VendorFormValues,
 } from "@/features/vendors/schemas/vendor.schema";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import { VendorLinkedItems } from "@/features/vendors/components/vendor-linked-items";
 
 interface VendorFormDrawerProps {
   open: boolean;
   mode: "create" | "edit";
   vendor?: Vendor | null;
+  companyId?: string;
   companyCurrency?: string | null;
   isPending?: boolean;
   error?: ApiError | null;
@@ -34,6 +36,7 @@ export function VendorFormDrawer({
   open,
   mode,
   vendor,
+  companyId,
   companyCurrency,
   isPending,
   error,
@@ -228,6 +231,10 @@ export function VendorFormDrawer({
           </div>
         </FormSection>
       </form>
+
+      {mode === "edit" && vendor?.id ? (
+        <VendorLinkedItems companyId={companyId} vendorId={vendor.id} />
+      ) : null}
     </CreateEditDrawer>
   );
 }

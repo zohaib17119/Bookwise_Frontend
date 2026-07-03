@@ -199,6 +199,7 @@ export function VendorsPage() {
       />
 
       <VendorFormDrawer
+        companyId={companyId}
         companyCurrency={company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"}
         error={activeMutation.error}
         isPending={activeMutation.isPending}
