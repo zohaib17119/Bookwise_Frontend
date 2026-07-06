@@ -1,20 +1,14 @@
 import { apiClient } from "@/lib/api/client";
 import type {
   AuthResponse,
-  AuthTokens,
   LoginPayload,
+  RefreshResponse,
   RegisterPayload,
   ResendVerificationPayload,
   UserCompanyMembership,
   User,
   VerifyEmailPayload,
 } from "@/features/auth/types/auth.types";
-
-interface ApiEnvelope<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
 
 interface ApiUser {
   id: string;
@@ -27,13 +21,19 @@ interface ApiUser {
 
 interface ApiAuthData {
   user: ApiUser;
-  tokens: AuthTokens;
+  accessToken: string;
 }
 
-type ApiAuthResponse = ApiEnvelope<ApiAuthData>;
-type ApiCurrentUserResponse = ApiEnvelope<ApiUser | { user: ApiUser }> | ApiUser;
+interface ApiCurrentUserResponse {
+  id: string;
+  name?: string;
+  fullName?: string;
+  email: string;
+  isEmailVerified?: boolean;
+  memberships?: UserCompanyMembership[];
+}
 
-function normalizeUser(user: ApiUser): User {
+function normalizeUser(user: ApiUser | ApiCurrentUserResponse): User {
   const fullName = user.fullName ?? user.name ?? user.email;
 
   return {
@@ -46,40 +46,39 @@ function normalizeUser(user: ApiUser): User {
   };
 }
 
-function normalizeAuthResponse(response: ApiAuthResponse): AuthResponse {
+function normalizeAuthResponse(data: ApiAuthData): AuthResponse {
   return {
-    token: response.tokens.accessToken,
-    refreshToken: response.tokens.refreshToken,
-    user: normalizeUser(response.user),
+    token: data.accessToken,
+    user: normalizeUser(data.user),
   };
 }
 
-function normalizeCurrentUser(response: ApiCurrentUserResponse): User {
-  if ("data" in response) {
-    const payload = response.data;
-    return normalizeUser("user" in payload ? payload.user : payload);
-  }
-
-  return normalizeUser(response);
-}
-
 export async function login(payload: LoginPayload) {
-  const { data } = await apiClient.post<ApiAuthResponse>("/auth/login", payload);
+  const { data } = await apiClient.post<ApiAuthData>("/auth/login", payload);
   return normalizeAuthResponse(data);
 }
 
 export async function register(payload: RegisterPayload) {
-  const { data } = await apiClient.post<ApiAuthResponse>("/auth/register", payload);
+  const { data } = await apiClient.post<ApiAuthData>("/auth/register", payload);
   return normalizeAuthResponse(data);
+}
+
+export async function refreshSession() {
+  const { data } = await apiClient.post<RefreshResponse>("/auth/refresh");
+  return data;
+}
+
+export async function logout() {
+  await apiClient.post<{ loggedOut: boolean }>("/auth/logout");
 }
 
 export async function getCurrentUser() {
   const { data } = await apiClient.get<ApiCurrentUserResponse>("/auth/me");
-  return normalizeCurrentUser(data);
+  return normalizeUser(data);
 }
 
 export async function verifyEmail(payload: VerifyEmailPayload) {
-  const { data } = await apiClient.post<ApiAuthResponse>("/auth/verify-email", payload);
+  const { data } = await apiClient.post<ApiAuthData>("/auth/verify-email", payload);
   return normalizeAuthResponse(data);
 }
 

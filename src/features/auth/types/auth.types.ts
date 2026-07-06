@@ -14,14 +14,8 @@ export interface User {
   memberships: UserCompanyMembership[];
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
   user: User;
 }
 
@@ -43,4 +37,8 @@ export interface VerifyEmailPayload {
 
 export interface ResendVerificationPayload {
   email: string;
+}
+
+export interface RefreshResponse {
+  accessToken: string;
 }

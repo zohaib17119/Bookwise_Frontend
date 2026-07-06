@@ -6,9 +6,8 @@ import { cn } from "@/lib/utils/cn";
 export const SIDEBAR_WIDTH_EXPANDED = 280;
 export const SIDEBAR_WIDTH_COLLAPSED = 72;
 
-export function getSidebarOffset(collapsed: boolean, isDesktop: boolean) {
-  if (!isDesktop) return 0;
-  return collapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;
+export function getSidebarOffset(isDesktop: boolean) {
+  return isDesktop ? SIDEBAR_WIDTH_COLLAPSED : 0;
 }
 
 interface SidebarCollapseButtonProps {
@@ -38,15 +37,25 @@ export function SidebarCollapseButton({
 
 interface AppShellMainProps {
   children: ReactNode;
-  sidebarOffset: number;
+  sidebarOffset?: number;
   className?: string;
 }
 
-export function AppShellMain({ children, sidebarOffset, className }: AppShellMainProps) {
+export function AppShellMain({ children, sidebarOffset = 0, className }: AppShellMainProps) {
+  const hasOffset = sidebarOffset > 0;
+
   return (
     <div
-      className={cn("min-h-screen transition-[margin-left] duration-200", className)}
-      style={{ marginLeft: sidebarOffset > 0 ? sidebarOffset : undefined }}
+      className={cn(
+        "min-h-screen min-w-0 transition-[margin-left,width] duration-200",
+        !hasOffset && "w-full",
+        className,
+      )}
+      style={
+        hasOffset
+          ? { marginLeft: sidebarOffset, width: `calc(100% - ${sidebarOffset}px)` }
+          : undefined
+      }
     >
       {children}
     </div>

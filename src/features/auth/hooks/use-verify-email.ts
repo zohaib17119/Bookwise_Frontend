@@ -4,13 +4,13 @@ import { useAuthStore } from "@/features/auth/store/auth.store";
 import { queryClient } from "@/lib/query/query-client";
 
 export function useVerifyEmail() {
-  const setTokens = useAuthStore((state) => state.setTokens);
+  const setToken = useAuthStore((state) => state.setToken);
   const setUser = useAuthStore((state) => state.setUser);
 
   return useMutation({
     mutationFn: verifyEmail,
     onSuccess: (data) => {
-      setTokens({ accessToken: data.token, refreshToken: data.refreshToken });
+      setToken(data.token);
       setUser(data.user);
       queryClient.setQueryData(["auth", "me"], data.user);
     },

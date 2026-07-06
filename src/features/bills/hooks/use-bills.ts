@@ -9,6 +9,7 @@ import {
   issueBill,
 } from "@/features/bills/api/bills.api";
 import type { BillListParams, BillPayload } from "@/features/bills/types/bill.types";
+import { isAllocatableBillStatus, parseMoney } from "@/lib/utils/money";
 import { queryClient } from "@/lib/query/query-client";
 
 function invalidateBillQueries(companyId: string) {
@@ -51,7 +52,12 @@ export function useOpenBillsByVendor(
     queryKey: ["companies", companyId, "bills", "open", vendorId],
     queryFn: () => getBills(companyId!, { vendorId, limit: 100 }),
     enabled: Boolean(companyId && vendorId),
-    select: (data) => data.filter((bill) => (bill.amountDue ?? 0) > 0),
+    select: (data) =>
+      data.filter(
+        (bill) =>
+          isAllocatableBillStatus(bill.status, bill.rawStatus) &&
+          parseMoney(bill.amountDue) > 0,
+      ),
   });
 }
 

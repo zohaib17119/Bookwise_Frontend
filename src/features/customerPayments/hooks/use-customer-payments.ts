@@ -60,7 +60,7 @@ export function useAllocateCustomerPayment(companyId: string | undefined) {
       paymentId: string;
       payload: CustomerPaymentAllocationPayload;
     }) => allocateCustomerPayment(paymentId, payload),
-    onSuccess: async () => {
+    onSettled: async () => {
       if (companyId) await invalidateCustomerPaymentQueries(companyId);
     },
   });

@@ -108,10 +108,58 @@ function sanitizePayload(obj: any): any {
 
 export const apiClient = axios.create({
   baseURL: env.VITE_API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+const AUTH_PATHS_WITHOUT_REFRESH = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/verify-email",
+  "/auth/resend-verification",
+];
+
+let isRefreshing = false;
+let refreshQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
+
+function shouldAttemptRefresh(url?: string) {
+  if (!url) {
+    return true;
+  }
+
+  return !AUTH_PATHS_WITHOUT_REFRESH.some((path) => url.includes(path));
+}
+
+function flushRefreshQueue(error: unknown, token?: string) {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) {
+      reject(error);
+      return;
+    }
+
+    resolve(token);
+  });
+  refreshQueue = [];
+}
+
+function forceLogout() {
+  useAuthStore.getState().clearAuth();
+
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
+async function refreshAccessToken() {
+  const response = await apiClient.post("/auth/refresh");
+  const payload = response.data?.data ?? response.data;
+  return payload.accessToken as string;
+}
 
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
@@ -148,11 +196,61 @@ apiClient.interceptors.response.use(
   (error) => {
     const normalized = normalizeApiError(error);
 
-    if (normalized.status === 401) {
-      useAuthStore.getState().clearAuth();
-      window.location.href = "/login";
+    return Promise.reject(normalized);
+  },
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const normalized = normalizeApiError(error);
+
+    if (normalized.status !== 401 || !originalRequest) {
+      return Promise.reject(normalized);
     }
 
-    return Promise.reject(normalized);
+    const requestUrl = originalRequest.url as string | undefined;
+
+    if (requestUrl?.includes("/auth/refresh")) {
+      forceLogout();
+      return Promise.reject(normalized);
+    }
+
+    if (!shouldAttemptRefresh(requestUrl) || originalRequest._retry) {
+      if (shouldAttemptRefresh(requestUrl)) {
+        forceLogout();
+      }
+
+      return Promise.reject(normalized);
+    }
+
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        refreshQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(originalRequest);
+        })
+        .catch((queueError) => Promise.reject(queueError));
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const newToken = await refreshAccessToken();
+      useAuthStore.getState().setToken(newToken);
+      flushRefreshQueue(null, newToken);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      return apiClient(originalRequest);
+    } catch (refreshError) {
+      flushRefreshQueue(refreshError);
+      forceLogout();
+      return Promise.reject(normalizeApiError(refreshError));
+    } finally {
+      isRefreshing = false;
+    }
   },
 );

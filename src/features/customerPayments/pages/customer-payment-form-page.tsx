@@ -30,6 +30,7 @@ import { canManageEntity } from "@/features/permissions/utils/module-permissions
 import { formatCurrency } from "@/lib/utils/format";
 import { getAllocatedTotal } from "@/features/shared/utils/document-calculations";
 import { toDecimalString } from "@/features/shared/utils/decimal-string";
+import { parseMoney, validateAllocations } from "@/lib/utils/money";
 
 export function CustomerPaymentFormPage() {
   const navigate = useNavigate();
@@ -55,18 +56,17 @@ export function CustomerPaymentFormPage() {
   const selectedCustomerId = form.watch("customerId");
   const openInvoicesQuery = useOpenInvoicesByCustomer(companyId, selectedCustomerId || undefined);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
+  const [allocationError, setAllocationError] = useState<string | null>(null);
 
   const allocationDocuments = useMemo(
     () =>
-      (openInvoicesQuery.data ?? [])
-        .filter((invoice) => (invoice.amountDue ?? 0) > 0)
-        .map((invoice) => ({
-          id: invoice.id,
-          number: invoice.invoiceNumber || "Invoice",
-          documentDate: invoice.issueDate,
-          dueDate: invoice.dueDate,
-          amountDue: invoice.amountDue ?? 0,
-        })),
+      (openInvoicesQuery.data ?? []).map((invoice) => ({
+        id: invoice.id,
+        number: invoice.invoiceNumber || "Invoice",
+        documentDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        amountDue: parseMoney(invoice.amountDue),
+      })),
     [openInvoicesQuery.data],
   );
   const allocatedTotal = getAllocatedTotal(
@@ -95,6 +95,19 @@ export function CustomerPaymentFormPage() {
       <form
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
         onSubmit={form.handleSubmit(async (values) => {
+          const validationErrors = validateAllocations({
+            paymentAmount: parseMoney(values.amount),
+            allocations,
+            documents: allocationDocuments,
+          });
+
+          if (validationErrors.length) {
+            setAllocationError(validationErrors[0]);
+            return;
+          }
+
+          setAllocationError(null);
+
           const payment = await createMutation.mutateAsync({
             customerId: values.customerId,
             paymentDate: values.paymentDate || undefined,
@@ -121,6 +134,7 @@ export function CustomerPaymentFormPage() {
         <div className="space-y-6">
           {createMutation.error ? <Alert title={createMutation.error.message} variant="destructive" /> : null}
           {allocateMutation.error ? <Alert title={allocateMutation.error.message} variant="destructive" /> : null}
+          {allocationError ? <Alert title={allocationError} variant="destructive" /> : null}
 
           <FormSection title="Payment details">
             <FieldGrid>
@@ -159,9 +173,10 @@ export function CustomerPaymentFormPage() {
               allocations={allocations}
               currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
               documents={allocationDocuments}
-              onAllocationChange={(documentId, amount) =>
-                setAllocations((current) => ({ ...current, [documentId]: amount }))
-              }
+              onAllocationChange={(documentId, amount) => {
+                setAllocationError(null);
+                setAllocations((current) => ({ ...current, [documentId]: amount }));
+              }}
             />
           </FormSection>
         </div>

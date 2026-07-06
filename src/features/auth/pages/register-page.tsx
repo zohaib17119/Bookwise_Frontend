@@ -1,7 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Mail, UserRound } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthFormShell } from "@/features/auth/components/auth-form-shell";
+import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
+import { AuthIconInput } from "@/features/auth/components/auth-icon-input";
+import { AuthPasswordInput } from "@/features/auth/components/auth-password-input";
+import { AuthSocialButtons } from "@/features/auth/components/auth-social-buttons";
 import { useRegister } from "@/features/auth/hooks/use-register";
 import {
   type RegisterFormValues,
@@ -9,8 +13,6 @@ import {
 } from "@/features/auth/schemas/register.schema";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { FormField } from "@/components/shared/form-field";
 import type { ApiError } from "@/lib/api/types";
 
 export function RegisterPage() {
@@ -39,17 +41,17 @@ export function RegisterPage() {
   const alreadyRegistered = registerError?.status === 409;
 
   return (
-    <AuthFormShell
-      title="Create your Bookwise account"
-      description="This account becomes the entry point for multi-company access and permissions."
+    <AuthFormPanel
+      description="Create your BooksWise account to get started"
       footer={
-        <span className="text-muted-foreground">
-          Already registered?{" "}
-          <Link className="font-medium text-primary" to="/login">
+        <>
+          Already have an account?{" "}
+          <Link className="font-medium text-[#2dd4bf] hover:underline" to="/login">
             Sign in
           </Link>
-        </span>
+        </>
       }
+      title="Create your account"
     >
       <form className="space-y-5" onSubmit={onSubmit}>
         {registerMutation.error ? (
@@ -63,19 +65,62 @@ export function RegisterPage() {
             <Alert variant="destructive" title={registerError?.message ?? "Registration failed"} />
           )
         ) : null}
-        <FormField label="Full name" error={form.formState.errors.fullName?.message}>
-          <Input placeholder="Ayesha Khan" {...form.register("fullName")} />
-        </FormField>
-        <FormField label="Email" error={form.formState.errors.email?.message}>
-          <Input type="email" placeholder="finance@company.com" {...form.register("email")} />
-        </FormField>
-        <FormField label="Password" error={form.formState.errors.password?.message}>
-          <Input type="password" placeholder="At least 8 characters" {...form.register("password")} />
-        </FormField>
-        <Button className="w-full" isLoading={registerMutation.isPending} type="submit">
-          Create account
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-300" htmlFor="fullName">
+            Full name
+          </label>
+          <AuthIconInput
+            icon={UserRound}
+            id="fullName"
+            placeholder="Ayesha Khan"
+            {...form.register("fullName")}
+          />
+          {form.formState.errors.fullName?.message ? (
+            <p className="text-xs text-red-400">{form.formState.errors.fullName.message}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-300" htmlFor="email">
+            Email address
+          </label>
+          <AuthIconInput
+            icon={Mail}
+            id="email"
+            placeholder="you@company.com"
+            type="email"
+            {...form.register("email")}
+          />
+          {form.formState.errors.email?.message ? (
+            <p className="text-xs text-red-400">{form.formState.errors.email.message}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-300" htmlFor="password">
+            Password
+          </label>
+          <AuthPasswordInput
+            id="password"
+            placeholder="At least 8 characters"
+            {...form.register("password")}
+          />
+          {form.formState.errors.password?.message ? (
+            <p className="text-xs text-red-400">{form.formState.errors.password.message}</p>
+          ) : null}
+        </div>
+
+        <Button
+          className="h-12 w-full rounded-xl bg-[#2dd4bf] text-base font-semibold text-[#0a192f] hover:bg-[#2dd4bf]/90"
+          isLoading={registerMutation.isPending}
+          type="submit"
+        >
+          Sign Up
         </Button>
+
+        <AuthSocialButtons />
       </form>
-    </AuthFormShell>
+    </AuthFormPanel>
   );
 }

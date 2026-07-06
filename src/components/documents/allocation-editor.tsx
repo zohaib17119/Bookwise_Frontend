@@ -1,5 +1,7 @@
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { clampAllocationAmount, parseMoney } from "@/lib/utils/money";
 import { getAllocatedTotal } from "@/features/shared/utils/document-calculations";
 
 export interface AllocationDocumentOption {
@@ -44,27 +46,47 @@ export function AllocationEditor({
             </tr>
           </thead>
           <tbody>
-            {documents.map((document) => (
-              <tr className="border-t border-border/60" key={document.id}>
-                <td className="px-4 py-3 font-medium">{document.number}</td>
-                <td className="px-4 py-3">{formatDate(document.documentDate)}</td>
-                <td className="px-4 py-3">{formatDate(document.dueDate)}</td>
-                <td className="px-4 py-3">
-                  {formatCurrency(document.amountDue ?? 0, currencyCode ?? "USD")}
-                </td>
-                <td className="px-4 py-3">
-                  <Input
-                    min="0"
-                    onChange={(event) =>
-                      onAllocationChange(document.id, Number(event.target.value || 0))
-                    }
-                    step="0.01"
-                    type="number"
-                    value={allocations[document.id] ?? ""}
-                  />
-                </td>
-              </tr>
-            ))}
+            {documents.map((document) => {
+              const amountDue = parseMoney(document.amountDue);
+              const currentValue = allocations[document.id] ?? "";
+
+              return (
+                <tr className="border-t border-border/60" key={document.id}>
+                  <td className="px-4 py-3 font-medium">{document.number}</td>
+                  <td className="px-4 py-3">{formatDate(document.documentDate)}</td>
+                  <td className="px-4 py-3">{formatDate(document.dueDate)}</td>
+                  <td className="px-4 py-3">
+                    {formatCurrency(amountDue, currencyCode ?? "USD")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        max={amountDue > 0 ? amountDue : undefined}
+                        min="0"
+                        onChange={(event) =>
+                          onAllocationChange(
+                            document.id,
+                            clampAllocationAmount(Number(event.target.value || 0), amountDue),
+                          )
+                        }
+                        step="0.01"
+                        type="number"
+                        value={currentValue}
+                      />
+                      <Button
+                        disabled={amountDue <= 0}
+                        onClick={() => onAllocationChange(document.id, amountDue)}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        Apply due
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

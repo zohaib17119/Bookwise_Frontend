@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { AuthFormShell } from "@/features/auth/components/auth-form-shell";
+import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import {
   useResendVerification,
   useVerifyEmail,
@@ -155,17 +155,17 @@ export function VerifyEmailPage() {
   };
 
   return (
-    <AuthFormShell
-      title="Verify your email"
+    <AuthFormPanel
       description={`Enter the 6-digit code we sent to ${email}.`}
       footer={
-        <span className="text-muted-foreground">
+        <>
           Wrong address?{" "}
-          <Link className="font-medium text-primary" to="/register">
+          <Link className="font-medium text-[#2dd4bf] hover:underline" to="/register">
             Start over
           </Link>
-        </span>
+        </>
       }
+      title="Verify your email"
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
         {verifyMutation.error ? (
@@ -193,13 +193,13 @@ export function VerifyEmailPage() {
               maxLength={1}
               aria-label={`Digit ${index + 1}`}
               autoFocus={index === 0}
-              className="h-14 w-full rounded-lg border border-input bg-background text-center text-xl font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+              className="h-14 w-full rounded-lg border border-white/10 bg-[#112240] text-center text-xl font-semibold text-white outline-none transition focus:border-[#2dd4bf] focus:ring-2 focus:ring-[#2dd4bf]/30"
             />
           ))}
         </div>
 
         <Button
-          className="w-full"
+          className="h-12 w-full rounded-xl bg-[#2dd4bf] text-base font-semibold text-[#0a192f] hover:bg-[#2dd4bf]/90"
           isLoading={verifyMutation.isPending}
           disabled={code.length !== CODE_LENGTH}
           type="submit"
@@ -207,11 +207,11 @@ export function VerifyEmailPage() {
           Verify email
         </Button>
 
-        <div className="text-center text-sm text-muted-foreground">
+        <div className="text-center text-sm text-slate-400">
           Didn&apos;t get it?{" "}
           <button
             type="button"
-            className="font-medium text-primary disabled:cursor-not-allowed disabled:opacity-60"
+            className="font-medium text-[#2dd4bf] disabled:cursor-not-allowed disabled:opacity-60"
             onClick={handleResend}
             disabled={cooldown > 0 || resendMutation.isPending}
           >
@@ -219,6 +219,6 @@ export function VerifyEmailPage() {
           </button>
         </div>
       </form>
-    </AuthFormShell>
+    </AuthFormPanel>
   );
 }

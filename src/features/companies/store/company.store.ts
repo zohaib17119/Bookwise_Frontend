@@ -17,7 +17,7 @@ export const useCompanyStore = create<CompanyState>()(
     (set, get) => ({
       activeCompanyId: null,
       sidebarOpen: false,
-      sidebarCollapsed: false,
+      sidebarCollapsed: true,
       setActiveCompanyId: (companyId) => set({ activeCompanyId: companyId }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),

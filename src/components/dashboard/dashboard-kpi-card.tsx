@@ -82,11 +82,13 @@ export function DashboardKpiCard({
 
   return (
     <div className="surface flex h-full min-h-[140px] flex-col p-4">
+      <div className="flex">
       <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", styles.icon)}>
         <Icon className="h-5 w-5" />
       </div>
 
-      <p className="mt-3 text-sm text-muted-foreground">{title}</p>
+      <p className="mt-3 px-4 text-sm text-muted-foreground">{title}</p>
+      </div>
 
       <div className="mt-1 flex items-end justify-between gap-3">
         <p className="text-2xl font-semibold tracking-tight">{value}</p>

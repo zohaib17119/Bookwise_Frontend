@@ -1,10 +1,14 @@
 import { Outlet } from "react-router-dom";
+import { AuthMarketingPanel } from "@/features/auth/components/auth-marketing-panel";
 
 export function AuthLayout() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-hero-grid px-4 py-10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.15),transparent_28%)]" />
-      <div className="relative w-full flex items-center justify-center">
+    <main className="min-h-screen lg:grid lg:h-screen lg:max-h-screen lg:grid-cols-5 lg:overflow-hidden">
+      <div className="hidden lg:flex lg:col-span-2 lg:flex-col lg:overflow-hidden">
+      <AuthMarketingPanel />
+
+      </div>
+      <div className="min-h-screen lg:h-full lg:overflow-y-auto lg:col-span-3 lg:border-l lg:border-white/10 lg:bg-[#0a192f]">
         <Outlet />
       </div>
     </main>

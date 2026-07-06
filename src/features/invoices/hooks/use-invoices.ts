@@ -13,6 +13,7 @@ import type {
   InvoiceListParams,
   InvoicePayload,
 } from "@/features/invoices/types/invoice.types";
+import { isAllocatableInvoiceStatus, parseMoney } from "@/lib/utils/money";
 import { queryClient } from "@/lib/query/query-client";
 
 function invalidateInvoiceQueries(companyId: string) {
@@ -55,7 +56,12 @@ export function useOpenInvoicesByCustomer(
     queryKey: ["companies", companyId, "invoices", "open", customerId],
     queryFn: () => getInvoices(companyId!, { customerId, limit: 100 }),
     enabled: Boolean(companyId && customerId),
-    select: (data) => data.filter((invoice) => (invoice.amountDue ?? 0) > 0),
+    select: (data) =>
+      data.filter(
+        (invoice) =>
+          isAllocatableInvoiceStatus(invoice.status, invoice.rawStatus) &&
+          parseMoney(invoice.amountDue) > 0,
+      ),
   });
 }
 

@@ -57,7 +57,7 @@ export function useAllocateBillPayment(companyId: string | undefined) {
       paymentId: string;
       payload: BillPaymentAllocationPayload;
     }) => allocateBillPayment(paymentId, payload),
-    onSuccess: async () => {
+    onSettled: async () => {
       if (companyId) await invalidateBillPaymentQueries(companyId);
     },
   });
