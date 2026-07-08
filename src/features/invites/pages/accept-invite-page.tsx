@@ -1,11 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/shared/loading-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { useAcceptInvite, useInvitePreview } from "@/features/invites/hooks/use-invites";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import type { ApiError } from "@/lib/api/types";
 
 export function AcceptInvitePage() {
   const { token } = useParams<{ token: string }>();
@@ -33,7 +33,6 @@ export function AcceptInvitePage() {
   }
 
   const preview = previewQuery.data;
-  const acceptError = acceptMutation.error as ApiError | null;
 
   const handleAccept = async () => {
     if (!token) return;
@@ -58,9 +57,7 @@ export function AcceptInvitePage() {
         />
       ) : null}
 
-      {acceptError ? (
-        <Alert variant="destructive" title={acceptError.message ?? "Unable to accept invite"} />
-      ) : null}
+      <ApiErrorAlert error={acceptMutation.error} fallback="Unable to accept invite" />
 
       {!user ? (
         <div className="space-y-3">

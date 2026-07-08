@@ -13,9 +13,9 @@ import {
   type RegisterFormValues,
   registerSchema,
 } from "@/features/auth/schemas/register.schema";
-import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
-import type { ApiError } from "@/lib/api/types";
+import { toApiError } from "@/lib/api/error";
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ export function RegisterPage() {
     });
   });
 
-  const registerError = registerMutation.error as ApiError | null;
+  const registerError = registerMutation.error ? toApiError(registerMutation.error) : null;
   const alreadyRegistered = registerError?.status === 409;
 
   return (
@@ -78,13 +78,13 @@ export function RegisterPage() {
       <form className="space-y-5" onSubmit={onSubmit}>
         {registerMutation.error ? (
           alreadyRegistered ? (
-            <Alert
-              variant="destructive"
-              title="This email is already registered"
+            <ApiErrorAlert
               description="Try signing in instead, or use a different email address."
+              error={registerMutation.error}
+              title="This email is already registered"
             />
           ) : (
-            <Alert variant="destructive" title={registerError?.message ?? "Registration failed"} />
+            <ApiErrorAlert error={registerMutation.error} fallback="Registration failed" />
           )
         ) : null}
 

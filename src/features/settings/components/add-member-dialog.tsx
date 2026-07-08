@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -74,13 +74,7 @@ export function AddMemberDialog({
       title="Invite team member"
     >
       <form className="space-y-6">
-        {error ? (
-          <Alert
-            title={error.message}
-            variant="destructive"
-            className="mb-4"
-          />
-        ) : null}
+        <ApiErrorAlert className="mb-4" error={error} />
 
         <FormSection
           title="Member Information"

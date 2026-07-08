@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useState } from "react";
+import { env } from "@/lib/env";
 
 interface FileInputProps {
   logo?: string;
@@ -21,7 +22,7 @@ export default function FileInput({ logo, setlogo }: FileInputProps) {
 
       // 1. auth parameters lo
       const { data: auth } = await axios.get(
-        "http://localhost:5001/api/imagekit/auth",
+        `${env.VITE_API_BASE_URL}/imagekit/auth`,
         {
           withCredentials: true,
         }

@@ -12,7 +12,7 @@ import {
   type LoginFormValues,
   loginSchema,
 } from "@/features/auth/schemas/login.schema";
-import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -73,9 +73,7 @@ export function LoginPage() {
       title="Welcome back!"
     >
       <form className="space-y-5" onSubmit={onSubmit}>
-        {loginMutation.error ? (
-          <Alert variant="destructive" title={loginMutation.error.message} />
-        ) : null}
+        <ApiErrorAlert error={loginMutation.error} fallback="Unable to sign in" />
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-300" htmlFor="email">

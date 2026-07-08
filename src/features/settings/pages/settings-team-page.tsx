@@ -233,10 +233,7 @@ export function SettingsTeamPage() {
           </div>
 
           {membersQuery.error ? (
-            <ErrorState
-              title="Unable to load team members"
-              description={membersQuery.error.message}
-            />
+            <ErrorState error={membersQuery.error} title="Unable to load team members" />
           ) : (
             <DataTable
               columns={columns}

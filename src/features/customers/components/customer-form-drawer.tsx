@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
-import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -136,7 +136,7 @@ export function CustomerFormDrawer({
       title={mode === "create" ? "New customer" : `Edit ${customer?.displayName ?? "customer"}`}
     >
       <form className="space-y-6">
-        {error ? <Alert title={error.message} variant="destructive" /> : null}
+        <ApiErrorAlert error={error} />
         <FormSection title="Profile" description="Basic customer identity and contact details.">
           <FieldGrid>
             <FormField label="Customer code">

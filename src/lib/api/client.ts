@@ -1,7 +1,7 @@
 import axios from "axios";
 import { env } from "@/lib/env";
 import { useAuthStore } from "@/features/auth/store/auth.store";
-import { normalizeApiError } from "@/lib/api/error";
+import { isApiError, normalizeApiError } from "@/lib/api/error";
 
 function sanitizePayload(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -193,31 +193,27 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
-    const normalized = normalizeApiError(error);
-
-    return Promise.reject(normalized);
-  },
-);
-
-apiClient.interceptors.response.use(
-  (response) => response,
   async (error) => {
-    const originalRequest = error.config;
-    const normalized = normalizeApiError(error);
+    if (isApiError(error)) {
+      return Promise.reject(error);
+    }
 
-    if (normalized.status !== 401 || !originalRequest) {
+    const originalRequest = axios.isAxiosError(error) ? error.config : undefined;
+    const normalized = normalizeApiError(error);
+    const retryableRequest = originalRequest as typeof originalRequest & { _retry?: boolean };
+
+    if (normalized.status !== 401 || !retryableRequest) {
       return Promise.reject(normalized);
     }
 
-    const requestUrl = originalRequest.url as string | undefined;
+    const requestUrl = retryableRequest.url as string | undefined;
 
     if (requestUrl?.includes("/auth/refresh")) {
       forceLogout();
       return Promise.reject(normalized);
     }
 
-    if (!shouldAttemptRefresh(requestUrl) || originalRequest._retry) {
+    if (!shouldAttemptRefresh(requestUrl) || retryableRequest._retry) {
       if (shouldAttemptRefresh(requestUrl)) {
         forceLogout();
       }
@@ -230,21 +226,21 @@ apiClient.interceptors.response.use(
         refreshQueue.push({ resolve, reject });
       })
         .then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return apiClient(originalRequest);
+          retryableRequest.headers.Authorization = `Bearer ${token}`;
+          return apiClient(retryableRequest);
         })
         .catch((queueError) => Promise.reject(queueError));
     }
 
-    originalRequest._retry = true;
+    retryableRequest._retry = true;
     isRefreshing = true;
 
     try {
       const newToken = await refreshAccessToken();
       useAuthStore.getState().setToken(newToken);
       flushRefreshQueue(null, newToken);
-      originalRequest.headers.Authorization = `Bearer ${newToken}`;
-      return apiClient(originalRequest);
+      retryableRequest.headers.Authorization = `Bearer ${newToken}`;
+      return apiClient(retryableRequest);
     } catch (refreshError) {
       flushRefreshQueue(refreshError);
       forceLogout();

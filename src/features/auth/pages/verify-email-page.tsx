@@ -6,6 +6,7 @@ import {
   useVerifyEmail,
 } from "@/features/auth/hooks/use-verify-email";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -168,12 +169,8 @@ export function VerifyEmailPage() {
       title="Verify your email"
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
-        {verifyMutation.error ? (
-          <Alert variant="destructive" title={verifyMutation.error.message} />
-        ) : null}
-        {resendMutation.error ? (
-          <Alert variant="destructive" title={resendMutation.error.message} />
-        ) : null}
+        <ApiErrorAlert error={verifyMutation.error} fallback="Unable to verify email" />
+        <ApiErrorAlert error={resendMutation.error} fallback="Unable to resend verification code" />
         {resendNotice ? <Alert variant="success" title={resendNotice} /> : null}
 
         <div className="flex justify-between gap-2" onPaste={handlePaste}>

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Alert } from "@/components/ui/alert";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import type { ApiError } from "@/lib/api/types";
+import { getFirstFieldError } from "@/lib/api/error";
 import {
   accountSchema,
   type AccountFormValues,
@@ -110,7 +111,7 @@ export function AccountFormDrawer({
       title={mode === "create" ? "New account" : `Edit ${account?.name ?? "account"}`}
     >
       <form className="space-y-6">
-        {error ? <Alert title={error.message} variant="destructive" /> : null}
+        <ApiErrorAlert error={error} />
 
         <FormSection
           description="Core account identity and financial behavior."
@@ -118,19 +119,19 @@ export function AccountFormDrawer({
         >
           <FieldGrid>
             <FormField
-              error={form.formState.errors.code?.message ?? error?.fieldErrors?.code?.[0]}
+              error={form.formState.errors.code?.message ?? getFirstFieldError(error, "code")}
               label="Code"
             >
               <Input placeholder="1000" {...form.register("code")} />
             </FormField>
             <FormField
-              error={form.formState.errors.name?.message ?? error?.fieldErrors?.name?.[0]}
+              error={form.formState.errors.name?.message ?? getFirstFieldError(error, "name")}
               label="Name"
             >
               <Input placeholder="Cash on Hand" {...form.register("name")} />
             </FormField>
             <FormField
-              error={form.formState.errors.type?.message ?? error?.fieldErrors?.type?.[0]}
+              error={form.formState.errors.type?.message ?? getFirstFieldError(error, "type")}
               label="Type"
             >
               <Select {...form.register("type")}>
@@ -144,7 +145,7 @@ export function AccountFormDrawer({
             <FormField
               error={
                 form.formState.errors.normalSide?.message ??
-                error?.fieldErrors?.normalSide?.[0]
+                getFirstFieldError(error, "normalSide")
               }
               label="Normal side"
             >
@@ -154,7 +155,7 @@ export function AccountFormDrawer({
               </Select>
             </FormField>
             <FormField
-              error={form.formState.errors.subtype?.message ?? error?.fieldErrors?.subtype?.[0]}
+              error={form.formState.errors.subtype?.message ?? getFirstFieldError(error, "subtype")}
               label="Subtype"
             >
               <Input placeholder="Current asset" {...form.register("subtype")} />
@@ -162,7 +163,7 @@ export function AccountFormDrawer({
             <FormField
               error={
                 form.formState.errors.currencyCode?.message ??
-                error?.fieldErrors?.currencyCode?.[0]
+                getFirstFieldError(error, "currencyCode")
               }
               label="Currency"
             >
@@ -171,7 +172,7 @@ export function AccountFormDrawer({
             <FormField
               error={
                 form.formState.errors.parentAccountId?.message ??
-                error?.fieldErrors?.parentAccountId?.[0]
+                getFirstFieldError(error, "parentAccountId")
               }
               label="Parent account"
             >
@@ -202,7 +203,7 @@ export function AccountFormDrawer({
           <FormField
             error={
               form.formState.errors.description?.message ??
-              error?.fieldErrors?.description?.[0]
+              getFirstFieldError(error, "description")
             }
             label="Description"
           >
