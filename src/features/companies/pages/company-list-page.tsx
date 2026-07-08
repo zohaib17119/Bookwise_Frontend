@@ -2,6 +2,7 @@ import { PlusCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CompanyCard } from "@/features/companies/components/company-card";
 import { useCompanies } from "@/features/companies/hooks/use-companies";
+import { PendingInvitesBanner } from "@/features/invites/components/pending-invites-banner";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { LoadingState } from "@/components/shared/loading-state";
@@ -35,6 +36,8 @@ export function CompanyListPage() {
           </Button>
         }
       />
+
+      <PendingInvitesBanner />
 
       {companies.length ? (
         <div className="grid gap-4 lg:grid-cols-2">

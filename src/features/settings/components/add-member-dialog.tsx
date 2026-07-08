@@ -54,7 +54,7 @@ export function AddMemberDialog({
 
   return (
     <CreateEditDrawer
-      description="Type in a registered user's email and select their company access role."
+      description="Invite a team member by email. They can create a free account or sign in to join your company."
       footer={
         <div className="flex justify-end gap-3">
           <Button onClick={onClose} type="button" variant="ghost">
@@ -65,13 +65,13 @@ export function AddMemberDialog({
             onClick={form.handleSubmit(async (values) => onSubmit(values))}
             type="button"
           >
-            Add Team Member
+            Send invite
           </Button>
         </div>
       }
       onClose={onClose}
       open={open}
-      title="Add Team Member"
+      title="Invite team member"
     >
       <form className="space-y-6">
         {error ? (

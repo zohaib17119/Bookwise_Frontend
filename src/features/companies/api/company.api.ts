@@ -4,6 +4,11 @@ import type {
   CreateCompanyPayload,
 } from "@/features/companies/types/company.types";
 
+export async function getMyCompanies() {
+  const { data } = await apiClient.get<Company[]>("/companies/me");
+  return data;
+}
+
 export async function getCompaniesByOwner(ownerUserId: string) {
   const { data } = await apiClient.get<Company[]>(
     `/companies/owner/${ownerUserId}`,

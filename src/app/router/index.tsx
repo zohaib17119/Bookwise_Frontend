@@ -45,6 +45,7 @@ import { StockOnHandPage } from "@/features/inventory/pages/stock-on-hand-page";
 import { InvoiceDetailPage } from "@/features/invoices/pages/invoice-detail-page";
 import { InvoiceFormPage } from "@/features/invoices/pages/invoice-form-page";
 import { InvoicesPage } from "@/features/invoices/pages/invoices-page";
+import { AcceptInvitePage } from "@/features/invites/pages/accept-invite-page";
 import { ItemsPage } from "@/features/items/pages/items-page";
 import { JournalDetailPage } from "@/features/journals/pages/journal-detail-page";
 import { JournalFormPage } from "@/features/journals/pages/journal-form-page";
@@ -86,6 +87,10 @@ const router = createBrowserRouter([
   {
     element: <AuthLayout />,
     children: [{ path: "/verify-email", element: <VerifyEmailPage /> }],
+  },
+  {
+    path: "/invites/:token",
+    element: <AcceptInvitePage />,
   },
   {
     element: <PublicRoute />,

@@ -28,6 +28,7 @@ export interface RegisterPayload {
   fullName: string;
   email: string;
   password: string;
+  inviteToken?: string;
 }
 
 export interface VerifyEmailPayload {

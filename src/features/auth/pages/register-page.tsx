@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, UserRound } from "lucide-react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AuthFormPanel } from "@/features/auth/components/auth-form-panel";
 import { AuthIconInput } from "@/features/auth/components/auth-icon-input";
 import { AuthPasswordInput } from "@/features/auth/components/auth-password-input";
 import { AuthSocialButtons } from "@/features/auth/components/auth-social-buttons";
 import { useRegister } from "@/features/auth/hooks/use-register";
+import { useInvitePreview } from "@/features/invites/hooks/use-invites";
 import {
   type RegisterFormValues,
   registerSchema,
@@ -17,24 +19,40 @@ import type { ApiError } from "@/lib/api/types";
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") ?? undefined;
+  const invitedEmail = searchParams.get("email") ?? undefined;
   const registerMutation = useRegister();
+  const invitePreviewQuery = useInvitePreview(inviteToken);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       fullName: "",
-      email: "",
+      email: invitedEmail ?? "",
       password: "",
     },
   });
 
+  useEffect(() => {
+    if (invitedEmail) {
+      form.setValue("email", invitedEmail);
+    }
+  }, [invitedEmail, form]);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    const result = await registerMutation.mutateAsync(values);
+    const result = await registerMutation.mutateAsync({
+      ...values,
+      inviteToken,
+    });
     if (result.user.isEmailVerified) {
       navigate("/app/companies", { replace: true });
       return;
     }
-    navigate("/verify-email", { replace: true, state: { email: result.user.email } });
+    navigate("/verify-email", {
+      replace: true,
+      state: { email: result.user.email, inviteToken },
+    });
   });
 
   const registerError = registerMutation.error as ApiError | null;
@@ -42,7 +60,11 @@ export function RegisterPage() {
 
   return (
     <AuthFormPanel
-      description="Create your BooksWise account to get started"
+      description={
+        invitePreviewQuery.data
+          ? `You've been invited to join ${invitePreviewQuery.data.companyName} as ${invitePreviewQuery.data.role}. Create your free team account — no subscription required.`
+          : "Create your BooksWise account to get started"
+      }
       footer={
         <>
           Already have an account?{" "}
@@ -51,7 +73,7 @@ export function RegisterPage() {
           </Link>
         </>
       }
-      title="Create your account"
+      title={invitePreviewQuery.data ? "Join your team" : "Create your account"}
     >
       <form className="space-y-5" onSubmit={onSubmit}>
         {registerMutation.error ? (
@@ -90,6 +112,7 @@ export function RegisterPage() {
             id="email"
             placeholder="you@company.com"
             type="email"
+            readOnly={Boolean(invitedEmail)}
             {...form.register("email")}
           />
           {form.formState.errors.email?.message ? (

@@ -8,8 +8,9 @@ import { ErrorState } from "@/components/shared/error-state";
 import { SettingsSectionCard } from "@/components/settings/settings-section-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canUsePermission } from "@/features/permissions/utils/module-permissions";
+import { useCreateCompanyInvite } from "@/features/invites/hooks/use-invites";
+import type { InviteRole } from "@/features/invites/api/invite.api";
 import {
-  useAddCompanyMember,
   useCompanyMembers,
   useUpdateCompanyMember,
 } from "@/features/permissions/hooks/use-team";
@@ -33,7 +34,7 @@ export function SettingsTeamPage() {
   ]);
 
   const membersQuery = useCompanyMembers(companyId);
-  const addMemberMutation = useAddCompanyMember(companyId);
+  const inviteMutation = useCreateCompanyInvite(companyId);
   const updateMemberMutation = useUpdateCompanyMember(companyId);
 
   if (!canView) {
@@ -47,13 +48,12 @@ export function SettingsTeamPage() {
 
   const handleInviteSubmit = async (values: { email: string; role: string }) => {
     try {
-      await addMemberMutation.mutateAsync({
+      await inviteMutation.mutateAsync({
         email: values.email,
-        role: values.role as CompanyMemberRole,
-        status: "ACTIVE",
+        role: values.role as InviteRole,
       });
       setIsInviteOpen(false);
-    } catch (e) {
+    } catch {
       // Handled inside mutation error state
     }
   };
@@ -227,7 +227,7 @@ export function SettingsTeamPage() {
             {canManage ? (
               <Button size="sm" onClick={() => setIsInviteOpen(true)}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add Team Member
+                Invite Team Member
               </Button>
             ) : null}
           </div>
@@ -252,8 +252,8 @@ export function SettingsTeamPage() {
 
       <AddMemberDialog
         open={isInviteOpen}
-        isPending={addMemberMutation.isPending}
-        error={addMemberMutation.error as ApiError | null}
+        isPending={inviteMutation.isPending}
+        error={inviteMutation.error as ApiError | null}
         onClose={() => setIsInviteOpen(false)}
         onSubmit={handleInviteSubmit}
       />

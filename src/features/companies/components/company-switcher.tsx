@@ -27,6 +27,7 @@ export function CompanySwitcher() {
         {companies?.map((company) => (
           <option key={company.id} value={company.id}>
             {company.name}
+            {company.accessType === "MEMBER" ? ` (${company.role ?? "Member"})` : ""}
           </option>
         ))}
       </select>

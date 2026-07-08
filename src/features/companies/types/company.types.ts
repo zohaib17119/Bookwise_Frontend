@@ -26,6 +26,9 @@ export interface Company {
   status?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  accessType?: "OWNER" | "MEMBER";
+  role?: "OWNER" | "ADMIN" | "ACCOUNTANT" | "STAFF" | "VIEWER";
+  membershipStatus?: "ACTIVE" | "INVITED" | "SUSPENDED" | "REMOVED";
   setup?: {
     coaTemplate: string;
     accountsCreated: number;
