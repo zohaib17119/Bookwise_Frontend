@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -17,15 +18,16 @@ const variantClasses: Record<AlertVariant, string> = {
 
 interface AlertProps {
   title: string;
-  description?: string;
+  description?: ReactNode;
   variant?: AlertVariant;
+  className?: string;
 }
 
-export function Alert({ title, description, variant = "default" }: AlertProps) {
+export function Alert({ title, description, variant = "default", className }: AlertProps) {
   const Icon = iconMap[variant];
 
   return (
-    <div className={cn("rounded-xl border px-4 py-3", variantClasses[variant])}>
+    <div className={cn("rounded-xl border px-4 py-3", variantClasses[variant], className)}>
       <div className="flex gap-3">
         <Icon className="mt-0.5 h-4 w-4 shrink-0" />
         <div>

@@ -1,5 +1,9 @@
 import html2pdf from "html2pdf.js";
 
+type PdfContainerStyle = CSSStyleDeclaration & {
+  webkitFontSmoothing?: string;
+};
+
 export const createPdfUrl = async (
   htmlString: string
 ): Promise<string> => {
@@ -7,14 +11,13 @@ export const createPdfUrl = async (
 
   container.innerHTML = htmlString;
 
-  // 👇 light improvements (safe, no break risk)
   container.style.background = "#ffffff";
   container.style.color = "#111";
-  container.style.width = "794px"; // A4 width fix (IMPORTANT but safe)
+  container.style.width = "794px";
 
-  // 👇 smoother text rendering
-  container.style.fontFamily = "Arial, sans-serif";
-  container.style.webkitFontSmoothing = "antialiased";
+  const containerStyle = container.style as PdfContainerStyle;
+  containerStyle.fontFamily = "Arial, sans-serif";
+  containerStyle.webkitFontSmoothing = "antialiased";
   container.style.textRendering = "geometricPrecision";
 
   document.body.appendChild(container);
@@ -23,15 +26,15 @@ export const createPdfUrl = async (
     .from(container)
     .set({
       image: {
-        type: "jpeg",
+        type: "jpeg" as const,
         quality: 1,
       },
 
       html2canvas: {
-        scale: 2, // SAFE (don’t increase too much warna break ho jata hai)
+        scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
-        letterRendering: true, // 👈 helps text sharpness
+        letterRendering: true,
       },
 
       jsPDF: {

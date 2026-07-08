@@ -23,7 +23,7 @@ function buildQuery(params: InvoiceListParams) {
 function serializeInvoiceLine(line: InvoiceLine): InvoiceLine {
   return omitEmptyFields({
     description: line.description,
-    ...serializeDocumentLineMoney(line as Record<string, unknown>),
+    ...serializeDocumentLineMoney(line as unknown as Record<string, unknown>),
     itemId: line.itemId || undefined,
     itemName: line.itemName || undefined,
     discountType: line.discountType || undefined,

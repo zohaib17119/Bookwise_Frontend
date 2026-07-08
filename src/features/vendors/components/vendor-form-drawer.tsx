@@ -18,6 +18,7 @@ import {
   type VendorFormValues,
 } from "@/features/vendors/schemas/vendor.schema";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { VendorLinkedItems } from "@/features/vendors/components/vendor-linked-items";
 
 interface VendorFormDrawerProps {
@@ -86,7 +87,10 @@ export function VendorFormDrawer({
       taxRegistrationNumber: vendor?.taxRegistrationNumber ?? "",
       currencyCode: vendor?.currencyCode ?? companyCurrency ?? "USD",
       paymentTermsDays: vendor?.paymentTermsDays ?? undefined,
-      openingBalance: vendor?.openingBalance ?? undefined,
+      openingBalance:
+        vendor?.openingBalance != null
+          ? toOptionalDecimalString(vendor.openingBalance)
+          : undefined,
       openingBalanceDate: vendor?.openingBalanceDate ?? "",
       billingAddressLine1: vendor?.billingAddressLine1 ?? "",
       billingAddressLine2: vendor?.billingAddressLine2 ?? "",

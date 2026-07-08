@@ -19,9 +19,24 @@ import {
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
+import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schema";
 import type { DiscountType } from "@/features/shared/types/documents";
+import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
 import InvoiceEditorPage from "./invoice-editor-page";
+
+const invoicePaymentOptions = ["BANK_TRANSFER", "CARD", "CASH", "CHEQUE"] as const;
+type InvoicePaymentOption = (typeof invoicePaymentOptions)[number];
+
+function normalizePaymentOptions(options?: string[] | null): InvoicePaymentOption[] {
+  if (!options?.length) {
+    return [];
+  }
+
+  return options.filter((option): option is InvoicePaymentOption =>
+    invoicePaymentOptions.includes(option as InvoicePaymentOption),
+  );
+}
 
 interface InvoiceFormPageProps {
   mode: "create" | "edit";
@@ -55,22 +70,26 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             currencyCode: invoiceQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
             exchangeRate: invoiceQuery.data.exchangeRate ?? "",
             notes: invoiceQuery.data.notes ?? "",
-            terms: invoiceQuery.data.terms ?? "",
+            terms: normalizeDocumentTerms(invoiceQuery.data.terms),
             memoOnStatement: invoiceQuery.data.memoOnStatement ?? "",
-            paymentOptions: invoiceQuery.data.paymentOptions ?? [],
+            paymentOptions: normalizePaymentOptions(invoiceQuery.data.paymentOptions),
             discountType: invoiceQuery.data.discountType ?? undefined,
-            discountValue: invoiceQuery.data.discountValue ?? undefined,
+            discountValue:
+              invoiceQuery.data.discountValue != null
+                ? toOptionalDecimalString(invoiceQuery.data.discountValue)
+                : "",
             lines:
               invoiceQuery.data.lines?.map((line) => ({
                 itemId: line.itemId ?? "",
                 description: line.description,
-                quantity: Number(line.quantity),
-                unitPrice: line.unitPrice ?? undefined,
+                quantity: toDecimalString(line.quantity),
+                unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
                 discountType: line.discountType ?? undefined,
-                discountValue: line.discountValue ?? undefined,
+                discountValue:
+                  line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
                 taxCodeId: line.taxCodeId ?? "",
-                taxRate: line.taxRate ?? undefined,
-                itemName: line.itemName ??  "",
+                taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+                itemName: line.itemName ?? "",
               })) ?? [],
           }
         : {
@@ -87,12 +106,12 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             memoOnStatement: "",
             paymentOptions: [],
             discountType: undefined,
-            discountValue: undefined,
+            discountValue: "",
             lines: [
               {
                 itemId: "",
                 description: "",
-                quantity: 1,
+                quantity: "1",
                 unitPrice: "",
                 discountType: undefined,
                 discountValue: "",
@@ -177,7 +196,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
       }}
       isLoading={activeMutation.isPending}
       mode={mode}
-      companyId={companyId}
+      companyId={companyId ?? ""}
     />
   );
 }

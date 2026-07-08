@@ -1,13 +1,20 @@
 export function formatCurrency(
-  value: number,
+  value: number | string | null | undefined,
   currency = "USD",
   locale = "en-US",
 ) {
+  const numericValue =
+    typeof value === "number"
+      ? value
+      : value === null || value === undefined || value === ""
+        ? 0
+        : Number(value);
+
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
 }
 
 export function formatNumber(value: number, locale = "en-US") {

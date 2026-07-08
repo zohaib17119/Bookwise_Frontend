@@ -71,3 +71,14 @@ export type LineItemInput = z.input<typeof lineItemSchema>;
 export type LineItemValues = z.output<typeof lineItemSchema>;
 export type AllocationLineInput = z.input<typeof allocationLineSchema>;
 export type AllocationLineValues = z.output<typeof allocationLineSchema>;
+
+export const documentTermsValues = ["", "0", "15", "30", "45", "60", "90"] as const;
+export type DocumentTermsValue = (typeof documentTermsValues)[number];
+
+export function normalizeDocumentTerms(terms?: string | null): DocumentTermsValue {
+  if (terms && documentTermsValues.includes(terms as DocumentTermsValue)) {
+    return terms as DocumentTermsValue;
+  }
+
+  return "";
+}

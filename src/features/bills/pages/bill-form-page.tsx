@@ -25,6 +25,7 @@ import { useBill, useCreateBill, useUpdateBill } from "@/features/bills/hooks/us
 import { billSchema, type BillFormInput, type BillFormValues } from "@/features/bills/schemas/bill.schema";
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
+import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
@@ -164,20 +165,11 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     [taxCodesQuery.data],
   );
 
+  const exchangeRateString =
+    typeof watchedExchangeRate === "string" ? watchedExchangeRate : String(watchedExchangeRate ?? "");
+
   const previewTotals = useMemo(
-    () =>
-      getDocumentPreviewTotals(
-        (watchedLines ?? []).map((line) => ({
-          itemId: line.itemId || undefined,
-          description: line.description,
-          quantity: Number(line.quantity || 0),
-          unitPrice: undefined,
-          unitCost: Number(line.unitCost || 0),
-          discountType: line.discountType,
-          discountValue: Number(line.discountValue || 0),
-          expenseAccountId: line.expenseAccountId || undefined,
-        })),
-      ),
+    () => getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview)),
     [watchedLines],
   );
 
@@ -296,14 +288,14 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               >
                 <Input {...form.register("referenceNumber")} placeholder="Vendor ref" />
               </FormField>
-              <DocumentCurrencyFields
+              <DocumentCurrencyFields<BillFormInput>
                 company={company}
                 companyId={companyId}
                 control={form.control}
                 currencyLocked={Boolean(watchedVendorId)}
                 documentCurrencyCode={watchedCurrencyCode}
                 errors={form.formState.errors}
-                exchangeRateValue={watchedExchangeRate}
+                exchangeRateValue={exchangeRateString}
                 register={form.register}
                 setValue={form.setValue}
               />
@@ -343,13 +335,13 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             {form.formState.errors.lines?.message ? (
               <p className="text-sm text-destructive">{String(form.formState.errors.lines.message)}</p>
             ) : null}
-            <LineItemsEditor
+            <LineItemsEditor<BillFormInput>
               accountOptions={accountsQuery.data ?? []}
               baseCurrencyCode={getCompanyBaseCurrency(company)}
               control={form.control}
               currencyCode={form.watch("currencyCode")}
               errors={form.formState.errors}
-              exchangeRate={watchedExchangeRate}
+              exchangeRate={exchangeRateString}
               itemOptions={itemsQuery.data ?? []}
               mode="purchase"
               name={"lines"}

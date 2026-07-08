@@ -21,6 +21,7 @@ import {
 import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import type { DiscountType } from "@/features/shared/types/documents";
 import { toDecimalString } from "@/features/shared/utils/decimal-string";
+import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 
 interface ItemOption {
   id: string;
@@ -133,18 +134,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
 
   const totals = useMemo(() => {
     return getDocumentPreviewTotals(
-      watchedLines.map((line) => ({
-        itemId: line.itemId,
-        description: line.description ?? "",
-        quantity: Number(line.quantity ?? 0),
-        unitPrice: Number(line.unitPrice ?? 0),
-        unitCost: Number(line.unitCost ?? 0),
-        discountType: line.discountType,
-        discountValue: Number(line.discountValue ?? 0),
-        taxCodeId: line.taxCodeId,
-        taxRate: Number(line.taxRate ?? 0),
-        expenseAccountId: line.expenseAccountId,
-      })),
+      watchedLines.map((line) => toDocumentLinePreview(line)),
       { discountType: docDiscountType, discountValue: docDiscountValue },
     );
   }, [watchedLines, docDiscountType, docDiscountValue]);
@@ -253,17 +243,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               const lineErrors = Array.isArray(errors?.lines)
                 ? (errors.lines[index] as FieldErrors | undefined)
                 : undefined;
-              const lineTotal = getLinePreviewTotal({
-                description: watchedLines[index]?.description ?? "",
-                quantity: Number(watchedLines[index]?.quantity ?? 0),
-                unitPrice: Number(watchedLines[index]?.unitPrice ?? 0),
-                unitCost: Number(watchedLines[index]?.unitCost ?? 0),
-                discountType: watchedLines[index]?.discountType,
-                discountValue: Number(
-                  watchedLines[index]?.discountValue ?? 0,
-                ),
-                taxRate: Number(watchedLines[index]?.taxRate ?? 0),
-              });
+              const lineTotal = getLinePreviewTotal(
+                toDocumentLinePreview(watchedLines[index] ?? { description: "" }),
+              );
 
               return (
                 <tr

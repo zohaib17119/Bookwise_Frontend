@@ -17,6 +17,7 @@ export type InvoiceStatus =
 export interface InvoiceLine extends DocumentLineInput {
   id?: string;
   taxCodeId?: string | null;
+  taxRateId?: string | null;
 }
 
 export interface Invoice {

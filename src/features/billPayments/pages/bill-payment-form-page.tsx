@@ -188,8 +188,8 @@ export function BillPaymentFormPage() {
               .map((document) => ({
                 documentId: document.id,
                 documentNumber: document.number,
-                amountDue: document.amountDue,
-                allocatedAmount: allocations[document.id],
+                amountDue: toDecimalString(document.amountDue),
+                allocatedAmount: toDecimalString(allocations[document.id] ?? 0),
               }))}
             currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
             title="Allocation preview"

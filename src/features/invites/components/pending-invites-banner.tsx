@@ -23,7 +23,7 @@ export function PendingInvitesBanner() {
                 <Mail className="h-4 w-4" />
                 {invite.company.name} — {invite.role}
               </span>
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" variant="secondary">
                 <Link to={`/invites/${invite.token}`}>Review invite</Link>
               </Button>
             </li>

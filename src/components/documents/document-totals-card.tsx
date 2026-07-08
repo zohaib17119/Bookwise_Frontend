@@ -3,10 +3,10 @@ import { formatCurrency } from "@/lib/utils/format";
 interface DocumentTotalsCardProps {
   currencyCode?: string | null;
   fallbackCurrency?: string;
-  subtotal?: number | null;
-  discountTotal?: number | null;
-  taxTotal?: number | null;
-  total?: number | null;
+  subtotal?: number | string | null;
+  discountTotal?: number | string | null;
+  taxTotal?: number | string | null;
+  total?: number | string | null;
   title?: string;
 }
 

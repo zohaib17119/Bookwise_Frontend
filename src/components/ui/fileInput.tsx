@@ -1,7 +1,12 @@
 import axios from "axios";
 import { useState } from "react";
 
-export default function FileInput({logo,setlogo}) {
+interface FileInputProps {
+  logo?: string;
+  setlogo: (url: string) => void;
+}
+
+export default function FileInput({ logo, setlogo }: FileInputProps) {
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (

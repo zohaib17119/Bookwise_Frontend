@@ -77,7 +77,7 @@ export function AcceptInvitePage() {
           </Button>
           <Button
             className="w-full"
-            variant="outline"
+            variant="secondary"
             onClick={() =>
               navigate(
                 `/register?invite=${token}&email=${encodeURIComponent(preview.email)}`,

@@ -3,7 +3,7 @@ import { formatCurrency } from "@/lib/utils/format";
 interface AmountSummaryCardProps {
   currencyCode?: string | null;
   fallbackCurrency?: string;
-  amount?: number | null;
+  amount?: number | string | null;
   label: string;
 }
 

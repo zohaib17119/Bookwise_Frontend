@@ -1,5 +1,14 @@
 const DECIMAL_PATTERN = /^\d+(\.\d{1,4})?$/;
 
+export function toNumber(value: string | number | null | undefined): number {
+  if (value === null || value === undefined || value === "") {
+    return 0;
+  }
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export function toDecimalString(value: unknown, decimals = 4): string {
   if (value === "" || value === null || value === undefined) {
     return "";

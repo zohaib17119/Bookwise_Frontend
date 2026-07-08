@@ -33,6 +33,9 @@ import {
 } from "@/features/estimates/schemas/estimate.schema";
 import { useItemOptions } from "@/features/items/hooks/use-items";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
+import type { EstimatePayload } from "@/features/estimates/types/estimate.types";
+import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schema";
+import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
@@ -64,18 +67,22 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             currencyCode: estimateQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
             exchangeRate: estimateQuery.data.exchangeRate ?? "",
             notes: estimateQuery.data.notes ?? "",
-            terms: estimateQuery.data.terms ?? "",
+            terms: normalizeDocumentTerms(estimateQuery.data.terms),
             discountType: estimateQuery.data.discountType ?? undefined,
-            discountValue: estimateQuery.data.discountValue ?? undefined,
+            discountValue:
+              estimateQuery.data.discountValue != null
+                ? toOptionalDecimalString(estimateQuery.data.discountValue)
+                : "",
             lines:
               estimateQuery.data.lines?.map((line) => ({
                 itemId: line.itemId ?? "",
                 description: line.description,
-                quantity: line.quantity,
-                unitPrice: line.unitPrice ?? undefined,
+                quantity: toDecimalString(line.quantity),
+                unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
                 discountType: line.discountType ?? undefined,
-                discountValue: line.discountValue ?? undefined,
-                taxCode: line.taxCode ?? "",
+                discountValue:
+                  line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
+                taxCodeId: line.taxCodeId ?? "",
               })) ?? [],
           }
         : {
@@ -89,16 +96,16 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             notes: "",
             terms: "",
             discountType: undefined,
-            discountValue: undefined,
+            discountValue: "",
             lines: [
               {
                 itemId: "",
                 description: "",
-                quantity: 1,
-                unitPrice: 0,
+                quantity: "1",
+                unitPrice: "",
                 discountType: undefined,
-                discountValue: undefined,
-                taxCode: "",
+                discountValue: "",
+                taxCodeId: "",
               },
             ],
           },
@@ -117,21 +124,11 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
     company,
     mode,
   });
+  const exchangeRateString =
+    typeof watchedExchangeRate === "string" ? watchedExchangeRate : String(watchedExchangeRate ?? "");
+
   const previewTotals = useMemo(
-    () =>
-      getDocumentPreviewTotals(
-        (watchedLines ?? []).map((line) => ({
-          itemId: line.itemId || undefined,
-          description: line.description,
-          quantity: Number(line.quantity || 0),
-          unitPrice: Number(line.unitPrice || 0),
-          unitCost: undefined,
-          discountType: line.discountType,
-          discountValue: Number(line.discountValue || 0),
-          taxCode: line.taxCode || undefined,
-          expenseAccountId: undefined,
-        })),
-      ),
+    () => getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview)),
     [watchedLines],
   );
 
@@ -172,8 +169,8 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
       <form
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
         onSubmit={form.handleSubmit(async (values) => {
-          const payload = {
-            ...values,
+          const payload: EstimatePayload = {
+            customerId: values.customerId,
             estimateNumber: values.estimateNumber || undefined,
             referenceNumber: values.referenceNumber || undefined,
             issueDate: values.issueDate || undefined,
@@ -182,8 +179,9 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
             notes: values.notes || undefined,
             terms: values.terms || undefined,
+            ...(values.discountType ? { discountType: values.discountType } : {}),
             discountValue:
-              values.discountValue === undefined || values.discountValue === null
+              values.discountValue === undefined || values.discountValue === null || values.discountValue === ""
                 ? undefined
                 : toOptionalDecimalString(values.discountValue),
             lines: values.lines.map((line) => ({
@@ -192,10 +190,10 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               unitPrice: toDecimalString(line.unitPrice ?? ""),
               ...(line.itemId ? { itemId: line.itemId } : {}),
               ...(line.discountType ? { discountType: line.discountType } : {}),
-              ...(line.discountValue !== undefined && line.discountValue !== null
+              ...(line.discountValue !== undefined && line.discountValue !== null && line.discountValue !== ""
                 ? { discountValue: toOptionalDecimalString(line.discountValue) }
                 : {}),
-              ...(line.taxCode ? { taxCode: line.taxCode } : {}),
+              ...(line.taxCodeId ? { taxCodeId: line.taxCodeId } : {}),
             })),
           };
 
@@ -232,14 +230,14 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               <FormField label="Reference number">
                 <Input {...form.register("referenceNumber")} placeholder="PO-1049" />
               </FormField>
-              <DocumentCurrencyFields
+              <DocumentCurrencyFields<EstimateFormInput>
                 company={company}
                 companyId={companyId}
                 control={form.control}
                 currencyLocked={Boolean(watchedCustomerId)}
                 documentCurrencyCode={watchedCurrencyCode}
                 errors={form.formState.errors}
-                exchangeRateValue={watchedExchangeRate}
+                exchangeRateValue={exchangeRateString}
                 register={form.register}
                 setValue={form.setValue}
               />
@@ -253,11 +251,11 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
           </FormSection>
 
           <FormSection title="Line items" description="Frontend previews are provisional. Backend totals remain authoritative.">
-            <LineItemsEditor
+            <LineItemsEditor<EstimateFormInput>
               baseCurrencyCode={getCompanyBaseCurrency(company)}
               control={form.control}
               currencyCode={form.watch("currencyCode")}
-              exchangeRate={watchedExchangeRate}
+              exchangeRate={exchangeRateString}
               itemOptions={itemsQuery.data ?? []}
               mode="sales"
               name={"lines"}

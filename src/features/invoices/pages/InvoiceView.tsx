@@ -5,32 +5,36 @@ import { escapeHtml, safeHttpUrl } from "@/lib/utils/html";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
 
-function buildInvoicePdfHtml(invoice: Record<string, unknown> | null | undefined): string {
+import type { Invoice } from "@/features/invoices/types/invoice.types";
+
+function buildInvoicePdfHtml(invoice: Invoice | null | undefined): string {
+  const invoiceRecord = invoice as unknown as Record<string, unknown>;
   const e = escapeHtml;
-  const company = (invoice?.company ?? {}) as Record<string, unknown>;
-  const customer = (invoice?.customer ?? {}) as Record<string, unknown>;
+  const company = (invoiceRecord?.company ?? {}) as Record<string, unknown>;
+  const customer = (invoiceRecord?.customer ?? {}) as Record<string, unknown>;
   const logoUrl = safeHttpUrl(company.logoUrl);
   const currencyCode = e(invoice?.currencyCode);
   const lines = Array.isArray(invoice?.lines) ? invoice.lines : [];
 
   const lineRows = lines
-    .map((line: Record<string, unknown>, index: number) => {
-      const item = (line?.item ?? {}) as Record<string, unknown>;
-      const taxRate = Number.parseFloat(String(line?.taxRate ?? "0"));
+    .map((line, index) => {
+      const lineRecord = line as unknown as Record<string, unknown>;
+      const item = (lineRecord.item ?? {}) as Record<string, unknown>;
+      const taxRate = Number.parseFloat(String(lineRecord.taxRate ?? "0"));
       const taxCell =
-        line?.lineTaxAmount && line?.lineTaxAmount !== 0
-          ? `${e(line?.taxName)}@ ${e(Number.isFinite(taxRate) ? taxRate.toFixed(1) : "0")}% ${currencyCode} ${e(line?.lineTaxAmount)}`
+        lineRecord.lineTaxAmount && lineRecord.lineTaxAmount !== 0
+          ? `${e(lineRecord.taxName)}@ ${e(Number.isFinite(taxRate) ? taxRate.toFixed(1) : "0")}% ${currencyCode} ${e(lineRecord.lineTaxAmount)}`
           : "-";
 
       return `<tr>
         <td>${index + 1}</td>
-        <td>${e(item?.name)}</td>
+        <td>${e(item.name)}</td>
         <td>${e(line.description)}</td>
         <td>${e(line.quantity)}</td>
         <td>${currencyCode} ${e(line.unitPrice)}</td>
-        <td>${currencyCode} ${e(line?.lineSubtotal)}</td>
+        <td>${currencyCode} ${e(lineRecord.lineSubtotal)}</td>
         <td>${taxCell}</td>
-        <td>${currencyCode} ${e(line?.lineTotal)}</td>
+        <td>${currencyCode} ${e(lineRecord.lineTotal)}</td>
       </tr>`;
     })
     .join("");
@@ -200,9 +204,9 @@ function buildInvoicePdfHtml(invoice: Record<string, unknown> | null | undefined
         <td></td>
         <td></td>
         <td></td>
-        <td><b>${currencyCode} ${e(invoice?.subtotal)}</b></td>
-        <td><b>${currencyCode} ${e(invoice?.taxAmount)}</b></td>
-        <td><b>${currencyCode} ${e(invoice?.total)}</b></td>
+        <td><b>${currencyCode} ${e(invoiceRecord.subtotal ?? invoice?.totals?.subtotal)}</b></td>
+        <td><b>${currencyCode} ${e(invoiceRecord.taxAmount ?? invoice?.totals?.taxTotal)}</b></td>
+        <td><b>${currencyCode} ${e(invoiceRecord.total ?? invoice?.totals?.total)}</b></td>
       </tbody>
     </table>
     <div class="summary"></div>
@@ -214,7 +218,7 @@ function buildInvoicePdfHtml(invoice: Record<string, unknown> | null | undefined
 </html>`;
 }
 
-export default function InvoiceView({ invoice }: { invoice: Record<string, unknown> }) {
+export default function InvoiceView({ invoice }: { invoice: Invoice }) {
   const [isOpen, setIsOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
   const pdfInvoice = useMemo(() => buildInvoicePdfHtml(invoice), [invoice]);

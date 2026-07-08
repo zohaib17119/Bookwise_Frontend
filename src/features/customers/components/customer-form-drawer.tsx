@@ -18,6 +18,7 @@ import {
   type CustomerFormValues,
 } from "@/features/customers/schemas/customer.schema";
 import type { Customer } from "@/features/customers/types/customer.types";
+import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 interface CustomerFormDrawerProps {
   open: boolean;
@@ -91,7 +92,10 @@ export function CustomerFormDrawer({
       taxRegistrationNumber: customer?.taxRegistrationNumber ?? "",
       currencyCode: customer?.currencyCode ?? companyCurrency ?? "USD",
       paymentTermsDays: customer?.paymentTermsDays ?? undefined,
-      openingBalance: customer?.openingBalance ?? undefined,
+      openingBalance:
+        customer?.openingBalance != null
+          ? toOptionalDecimalString(customer.openingBalance)
+          : undefined,
       openingBalanceDate: customer?.openingBalanceDate ?? "",
       billingAddressLine1: customer?.billingAddressLine1 ?? "",
       billingAddressLine2: customer?.billingAddressLine2 ?? "",

@@ -1,5 +1,9 @@
 import html2pdf from "html2pdf.js";
 
+type PdfContainerStyle = CSSStyleDeclaration & {
+  webkitFontSmoothing?: string;
+};
+
 export const generateInvoicePdf = async (
   htmlString: string,
   fileName = "invoice.pdf"
@@ -10,23 +14,23 @@ export const generateInvoicePdf = async (
 
  const options = {
   margin: 10,
-  filename: "invoice.pdf",
+  filename: fileName,
 
   image: {
-    type: "jpeg",
+    type: "jpeg" as const,
     quality: 1,
   },
 
   html2canvas: {
-    scale: 4, // default 1 hota hai
+    scale: 4,
     useCORS: true,
     letterRendering: true,
   },
 
   jsPDF: {
-    unit: "mm",
-    format: "a4",
-    orientation: "portrait",
+    unit: "mm" as const,
+    format: "a4" as const,
+    orientation: "portrait" as const,
   },
 };
 

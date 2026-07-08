@@ -2,29 +2,32 @@ import type {
   DiscountType,
   DocumentLineInput,
 } from "@/features/shared/types/documents";
+import { toNumber } from "@/features/shared/utils/decimal-string";
 
 export function getDiscountAmount(
   baseAmount: number,
   discountType?: DiscountType | null,
-  discountValue?: number | null,
+  discountValue?: string | number | null,
 ) {
-  if (!discountType || !discountValue) {
+  const numericDiscountValue = toNumber(discountValue);
+
+  if (!discountType || !numericDiscountValue) {
     return 0;
   }
 
-  if (discountType === "percentage") {
-    return (baseAmount * discountValue) / 100;
+  if (discountType === "PERCENTAGE") {
+    return (baseAmount * numericDiscountValue) / 100;
   }
 
-  return discountValue;
+  return numericDiscountValue;
 }
 
 export function getLineUnitAmount(line: DocumentLineInput) {
-  return line.unitPrice ?? line.unitCost ?? 0;
+  return toNumber(line.unitPrice ?? line.unitCost);
 }
 
 export function getLineBaseAmount(line: DocumentLineInput) {
-  return Number(line.quantity || 0) * Number(getLineUnitAmount(line) || 0);
+  return toNumber(line.quantity) * getLineUnitAmount(line);
 }
 
 export function getLinePreviewTotal(line: DocumentLineInput) {
@@ -36,7 +39,7 @@ export function getLinePreviewTotal(line: DocumentLineInput) {
   );
   const discountedAmount = Math.max(baseAmount - discount, 0);
 
-  const taxRate = line.taxRate ?? 0;
+  const taxRate = toNumber(line.taxRate);
   const tax = taxRate > 0 ? (discountedAmount * taxRate) / 100 : 0;
 
   return Math.max(discountedAmount + tax, 0);
@@ -44,7 +47,7 @@ export function getLinePreviewTotal(line: DocumentLineInput) {
 
 export interface GetDocumentPreviewTotalsOptions {
   discountType?: DiscountType | null;
-  discountValue?: number | null;
+  discountValue?: string | number | null;
 }
 
 export function getDocumentPreviewTotals(
@@ -89,7 +92,7 @@ export function getDocumentPreviewTotals(
         : 0;
     const taxableAmount = Math.max(discountedAmount - docDiscountShare, 0);
 
-    const taxRate = line.taxRate ?? 0;
+    const taxRate = toNumber(line.taxRate);
     return sum + (taxRate > 0 ? (taxableAmount * taxRate) / 100 : 0);
   }, 0);
 
@@ -101,9 +104,9 @@ export function getDocumentPreviewTotals(
   };
 }
 
-export function getAllocatedTotal(allocations: { allocatedAmount: number }[]) {
+export function getAllocatedTotal(allocations: { allocatedAmount: number | string }[]) {
   return allocations.reduce(
-    (sum, allocation) => sum + Number(allocation.allocatedAmount || 0),
+    (sum, allocation) => sum + toNumber(allocation.allocatedAmount),
     0,
   );
 }

@@ -63,10 +63,10 @@ export function DocumentLinesTable({
               </td>
               <td className="px-4 py-4 text-right tabular-nums">
                 {line.discountType && line.discountValue
-                  ? `${line.discountValue} ${line.discountType === "percentage" ? "%" : ""}`
+                  ? `${line.discountValue} ${line.discountType === "PERCENTAGE" ? "%" : ""}`
                   : "-"}
               </td>
-              <td className="px-4 py-4 text-right tabular-nums">{line.taxCode || "-"}</td>
+              <td className="px-4 py-4 text-right tabular-nums">{line.taxCodeId || "-"}</td>
               <td className="px-4 py-4 text-right font-medium tabular-nums">
                 {formatCurrency(getLinePreviewTotal(line), currency)}
               </td>

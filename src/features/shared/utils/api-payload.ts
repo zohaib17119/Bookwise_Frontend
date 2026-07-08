@@ -1,3 +1,4 @@
+import type { DiscountType, DocumentLineInput } from "@/features/shared/types/documents";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 /** Omit keys whose value is null, undefined, or "" — for Zod .optional() fields */
@@ -37,4 +38,44 @@ export function serializeDocumentLineMoney<T extends Record<string, unknown>>(li
     discountValue: line.discountValue ? toOptionalDecimalString(line.discountValue) : undefined,
     taxRate: line.taxRate ? toOptionalDecimalString(line.taxRate) : undefined,
   }) as Partial<T>;
+}
+
+type FormLinePreviewInput = {
+  itemId?: string | null;
+  description?: string;
+  quantity?: unknown;
+  unitPrice?: unknown;
+  unitCost?: unknown;
+  discountType?: DiscountType | null;
+  discountValue?: unknown;
+  taxCodeId?: string | null;
+  taxRate?: unknown;
+  expenseAccountId?: string | null;
+};
+
+export function toDocumentLinePreview(line: FormLinePreviewInput): DocumentLineInput {
+  return {
+    itemId: line.itemId || undefined,
+    description: line.description ?? "",
+    quantity: toDecimalString(line.quantity),
+    unitPrice:
+      line.unitPrice !== null && line.unitPrice !== undefined && line.unitPrice !== ""
+        ? toOptionalDecimalString(line.unitPrice)
+        : undefined,
+    unitCost:
+      line.unitCost !== null && line.unitCost !== undefined && line.unitCost !== ""
+        ? toOptionalDecimalString(line.unitCost)
+        : undefined,
+    discountType: line.discountType ?? undefined,
+    discountValue:
+      line.discountValue !== null && line.discountValue !== undefined && line.discountValue !== ""
+        ? toOptionalDecimalString(line.discountValue)
+        : undefined,
+    taxCodeId: line.taxCodeId || undefined,
+    taxRate:
+      line.taxRate !== null && line.taxRate !== undefined && line.taxRate !== ""
+        ? toOptionalDecimalString(line.taxRate)
+        : undefined,
+    expenseAccountId: line.expenseAccountId || undefined,
+  };
 }

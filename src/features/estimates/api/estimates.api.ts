@@ -23,10 +23,10 @@ function buildQuery(params: EstimateListParams) {
 function serializeEstimateLine(line: EstimateLine): EstimateLine {
   return omitEmptyFields({
     description: line.description,
-    ...serializeDocumentLineMoney(line as Record<string, unknown>),
+    ...serializeDocumentLineMoney(line as unknown as Record<string, unknown>),
     itemId: line.itemId || undefined,
     discountType: line.discountType || undefined,
-    taxCode: (line as EstimateLine & { taxCode?: string }).taxCode || undefined,
+    taxCodeId: line.taxCodeId || undefined,
   }) as EstimateLine;
 }
 
