@@ -1,6 +1,7 @@
 import { AlertTriangle, Send } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { cn } from "@/lib/utils/cn";
 
 type ConfirmTone = "default" | "destructive";
@@ -14,7 +15,7 @@ interface ConfirmDialogProps {
   tone?: ConfirmTone;
   isPending?: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }
 
 export function ConfirmDialog({
@@ -24,11 +25,12 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   tone = "default",
-  isPending,
+  isPending = false,
   onClose,
   onConfirm,
 }: ConfirmDialogProps) {
   const isDestructive = tone === "destructive";
+  const handleConfirm = useSubmitLock(onConfirm, isPending);
 
   if (!open) {
     return null;
@@ -41,7 +43,7 @@ export function ConfirmDialog({
           "fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm transition",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-        onClick={onClose}
+        onClick={isPending ? undefined : onClose}
       />
       <div
         className={cn(
@@ -65,12 +67,12 @@ export function ConfirmDialog({
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">
-            <Button onClick={onClose} type="button" variant="ghost">
+            <Button disabled={isPending} onClick={onClose} type="button" variant="ghost">
               {cancelLabel}
             </Button>
             <Button
               isLoading={isPending}
-              onClick={onConfirm}
+              onClick={handleConfirm}
               type="button"
               variant={isDestructive ? "destructive" : "primary"}
             >

@@ -103,18 +103,24 @@ export function ReconciliationDetailPage() {
         actions={
           <>
             <Button
-              disabled={!selectedIds.length || isLocked || !canManage}
+              disabled={!selectedIds.length || isLocked || !canManage || clearMutation.isPending || unclearMutation.isPending}
               isLoading={clearMutation.isPending}
-              onClick={() => clearMutation.mutate(selectedIds)}
+              onClick={() => {
+                if (clearMutation.isPending) return;
+                clearMutation.mutate(selectedIds);
+              }}
               type="button"
               variant="secondary"
             >
               Clear selected
             </Button>
             <Button
-              disabled={!selectedIds.length || isLocked || !canManage}
+              disabled={!selectedIds.length || isLocked || !canManage || clearMutation.isPending || unclearMutation.isPending}
               isLoading={unclearMutation.isPending}
-              onClick={() => unclearMutation.mutate(selectedIds)}
+              onClick={() => {
+                if (unclearMutation.isPending) return;
+                unclearMutation.mutate(selectedIds);
+              }}
               type="button"
               variant="ghost"
             >

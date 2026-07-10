@@ -1,5 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { cn } from "@/lib/utils/cn";
 
 interface ConfirmDeleteDialogProps {
@@ -8,17 +9,19 @@ interface ConfirmDeleteDialogProps {
   description: string;
   isPending?: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }
 
 export function ConfirmDeleteDialog({
   open,
   title,
   description,
-  isPending,
+  isPending = false,
   onClose,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
+  const handleConfirm = useSubmitLock(onConfirm, isPending);
+
   if (!open) {
     return null;
   }
@@ -30,7 +33,7 @@ export function ConfirmDeleteDialog({
           "fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-sm transition",
           open ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-        onClick={onClose}
+        onClick={isPending ? undefined : onClose}
       />
       <div
         className={cn(
@@ -49,12 +52,12 @@ export function ConfirmDeleteDialog({
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">
-            <Button onClick={onClose} type="button" variant="ghost">
+            <Button disabled={isPending} onClick={onClose} type="button" variant="ghost">
               Cancel
             </Button>
             <Button
               isLoading={isPending}
-              onClick={onConfirm}
+              onClick={handleConfirm}
               type="button"
               variant="destructive"
             >

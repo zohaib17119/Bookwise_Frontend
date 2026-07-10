@@ -73,7 +73,7 @@ export function LoginPage() {
       title="Welcome back!"
     >
       <form className="space-y-5" onSubmit={onSubmit}>
-        <ApiErrorAlert error={loginMutation.error} fallback="Unable to sign in" />
+        <ApiErrorAlert error={loginMutation.error} />
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-slate-300" htmlFor="email">

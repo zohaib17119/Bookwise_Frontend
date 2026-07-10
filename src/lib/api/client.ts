@@ -194,7 +194,7 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error) => {
-    if (isApiError(error)) {
+    if (!axios.isAxiosError(error) && isApiError(error)) {
       return Promise.reject(error);
     }
 

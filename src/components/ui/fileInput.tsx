@@ -1,6 +1,13 @@
 import axios from "axios";
 import { useState } from "react";
-import { env } from "@/lib/env";
+import { ApiErrorAlert } from "@/components/shared/api-error-alert";
+import { apiClient } from "@/lib/api/client";
+
+interface ImageKitAuthParams {
+  token: string;
+  expire: number | string;
+  signature: string;
+}
 
 interface FileInputProps {
   logo?: string;
@@ -9,73 +16,57 @@ interface FileInputProps {
 
 export default function FileInput({ logo, setlogo }: FileInputProps) {
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<unknown>(null);
 
-  const handleUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (!file) return;
 
     try {
       setUploading(true);
+      setUploadError(null);
 
-      // 1. auth parameters lo
-      const { data: auth } = await axios.get(
-        `${env.VITE_API_BASE_URL}/imagekit/auth`,
-        {
-          withCredentials: true,
-        }
-      );
+      const { data: auth } = await apiClient.get<ImageKitAuthParams>("/imagekit/auth");
 
-      // 2. form data banao
       const formData = new FormData();
-
       formData.append("file", file);
       formData.append("fileName", file.name);
-
       formData.append("publicKey", import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY);
-
       formData.append("signature", auth.signature);
-      formData.append("expire", auth.expire);
+      formData.append("expire", String(auth.expire));
       formData.append("token", auth.token);
-
-      // optional
       formData.append("folder", "/companies");
 
-      // 3. direct ImageKit upload
-      const { data } = await axios.post(
+      const { data } = await axios.post<{ url: string; fileId: string }>(
         "https://upload.imagekit.io/api/v1/files/upload",
-        formData
+        formData,
       );
-      setlogo(data.url)
-      console.log("Uploaded URL:", data.url);
-      console.log("File ID:", data.fileId);
 
-      // save URL in DB
-      /*
-      await axios.post("/api/company/logo", {
-        logoUrl: data.url,
-        fileId: data.fileId
-      });
-      */
-
+      setlogo(data.url);
     } catch (error) {
-      console.error(error);
+      setUploadError(error);
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
   return (
-    <div className="flex h-11 w-full rounded-xl border bg-white px-4 py-2 text-sm outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20">
-      <input
-        type="file"
-        accept="image/*"
-        onChange={handleUpload}
-      />
-
-      {uploading && <p>Uploading...</p>}
+    <div className="space-y-3">
+      <ApiErrorAlert error={uploadError} fallback="Unable to upload logo. Please try again." />
+      <div className="flex h-11 w-full items-center gap-3 rounded-xl border bg-white px-4 py-2 text-sm outline-none transition placeholder:text-muted-foreground focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+        <input
+          accept="image/*"
+          disabled={uploading}
+          onChange={handleUpload}
+          type="file"
+        />
+        {uploading ? <p className="text-muted-foreground">Uploading...</p> : null}
+      </div>
+      {logo ? (
+        <img alt="Company logo preview" className="h-16 w-16 rounded-lg border object-cover" src={logo} />
+      ) : null}
     </div>
   );
 }

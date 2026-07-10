@@ -21,7 +21,7 @@ export function ExportActions({
   const [activeFormat, setActiveFormat] = useState<ExportFormat | null>(null);
 
   async function handleExport(format: ExportFormat) {
-    if (!onExport) {
+    if (!onExport || activeFormat !== null) {
       return;
     }
 
@@ -43,7 +43,7 @@ export function ExportActions({
       ) : null}
       {(["csv", "xlsx", "pdf"] as ExportFormat[]).map((format) => (
         <Button
-          disabled={disabled || !onExport}
+          disabled={disabled || !onExport || activeFormat !== null}
           isLoading={activeFormat === format}
           key={format}
           onClick={() => handleExport(format)}

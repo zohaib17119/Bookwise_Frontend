@@ -32,27 +32,38 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       variant = "primary",
       size = "default",
-      isLoading,
+      isLoading = false,
+      disabled,
       asChild,
       ...props
     },
     ref,
   ) => {
+    const isDisabled = Boolean(disabled || isLoading);
+
     const classes = cn(
       "inline-flex items-center justify-center rounded-xl text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
       variantClasses[variant],
       sizeClasses[size],
+      isLoading && asChild && "pointer-events-none opacity-50",
       className,
     );
 
     if (asChild && React.isValidElement<{ className?: string }>(children)) {
       return React.cloneElement(children, {
         className: cn(classes, children.props.className),
-      });
+        ...(isLoading ? { "aria-busy": true, "aria-disabled": true } : {}),
+      } as React.HTMLAttributes<HTMLElement> & { className?: string });
     }
 
     return (
-      <button className={classes} ref={ref} {...props}>
+      <button
+        aria-busy={isLoading || undefined}
+        className={classes}
+        disabled={isDisabled}
+        ref={ref}
+        {...props}
+      >
         {isLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
         {children}
       </button>
