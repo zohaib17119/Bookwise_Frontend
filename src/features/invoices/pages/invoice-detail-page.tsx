@@ -14,7 +14,13 @@ import { DocumentMetaSection } from "@/components/documents/document-meta-sectio
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { useDeleteInvoice, useInvoice, useSendInvoice } from "@/features/invoices/hooks/use-invoices";
+import { canShowZatca } from "@/features/compliance/utils/compliance-access";
+import {
+  useDeleteInvoice,
+  useInvoice,
+  useSendInvoice,
+  useSubmitInvoiceCompliance,
+} from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
 import { formatPaymentOptions } from "@/features/invoices/constants/payment-options";
@@ -29,8 +35,10 @@ export function InvoiceDetailPage() {
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
   const deleteMutation = useDeleteInvoice(companyId);
   const sendMutation = useSendInvoice(companyId);
+  const complianceMutation = useSubmitInvoiceCompliance(companyId);
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
+  const showZatca = canShowZatca(company);
 
   if (!canView) {
     return <ErrorState title="Invoice access restricted" description="Your current company membership does not include invoice access." />;
@@ -46,7 +54,12 @@ export function InvoiceDetailPage() {
 
   const invoice = invoiceQuery.data;
   const documentCurrency = invoice.currencyCode ?? getCompanyBaseCurrency(company);
-
+  const complianceStatus = invoice.complianceStatus ?? "NOT_APPLICABLE";
+  const canRetryCompliance =
+    showZatca &&
+    invoice.status !== "DRAFT" &&
+    invoice.status !== "CANCELLED" &&
+    ["NOT_APPLICABLE", "ERROR", "REJECTED", "PENDING"].includes(complianceStatus);
 
   return (
     <PageContainer className="space-y-6">
@@ -57,6 +70,15 @@ export function InvoiceDetailPage() {
               {invoice &&<InvoiceView invoice={invoice}  /> }
               {invoice.status === "DRAFT" ? (
                 <Button onClick={() => setSendOpen(true)} variant="primary">Send invoice</Button>
+              ) : null}
+              {canRetryCompliance ? (
+                <Button
+                  isLoading={complianceMutation.isPending}
+                  onClick={() => void complianceMutation.mutateAsync(invoice.id)}
+                  variant="secondary"
+                >
+                  Submit to ZATCA
+                </Button>
               ) : null}
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/invoices/${invoice.id}/edit`}>Edit invoice</Link>
@@ -100,6 +122,21 @@ export function InvoiceDetailPage() {
                   { label: "Estimate", value: invoice.estimateId || "-" },
                   { label: "Currency", value: documentCurrency },
                   { label: "Terms", value: invoice.terms || "-" },
+                  ...(showZatca
+                    ? [
+                        {
+                          label: "ZATCA compliance",
+                          value: complianceStatus.replace(/_/g, " "),
+                        },
+                        ...(invoice.complianceUuid
+                          ? [{ label: "Compliance UUID", value: invoice.complianceUuid }]
+                          : []),
+                        ...(invoice.complianceLastError &&
+                        ["ERROR", "REJECTED"].includes(complianceStatus)
+                          ? [{ label: "ZATCA last error", value: invoice.complianceLastError }]
+                          : []),
+                      ]
+                    : []),
                   ...(invoice.paymentOptions?.length
                     ? [{
                         label: "Accepted payment methods",

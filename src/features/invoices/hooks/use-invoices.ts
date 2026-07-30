@@ -8,6 +8,7 @@ import {
   updateInvoice,
   getNextInvoiceNumber,
   sendInvoice,
+  submitInvoiceCompliance,
 } from "@/features/invoices/api/invoices.api";
 import type {
   InvoiceListParams,
@@ -98,6 +99,21 @@ export function useSendInvoice(companyId: string | undefined) {
     mutationFn: (invoiceId: string) => sendInvoice(companyId!, invoiceId),
     onSuccess: async () => {
       if (companyId) await invalidateInvoiceQueries(companyId);
+    },
+  });
+}
+
+export function useSubmitInvoiceCompliance(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => submitInvoiceCompliance(companyId!, invoiceId),
+    onSuccess: async (_data, invoiceId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "invoices", invoiceId],
+        }),
+      ]);
     },
   });
 }

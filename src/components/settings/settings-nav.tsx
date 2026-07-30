@@ -1,7 +1,9 @@
 import { NavLink, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils/cn";
+import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { canShowZatca } from "@/features/compliance/utils/compliance-access";
 
-const settingsItems = [
+const baseSettingsItems = [
   { segment: "company", label: "Company" },
   { segment: "accounting", label: "Accounting" },
   { segment: "tax", label: "Tax" },
@@ -11,6 +13,12 @@ const settingsItems = [
 
 export function SettingsNav() {
   const { companyId } = useParams();
+  const { company } = useActiveCompany();
+  const settingsItems = [
+    ...baseSettingsItems.slice(0, 3),
+    ...(canShowZatca(company) ? [{ segment: "zatca", label: "ZATCA" }] : []),
+    ...baseSettingsItems.slice(3),
+  ];
 
   return (
     <nav className="surface h-fit p-3">

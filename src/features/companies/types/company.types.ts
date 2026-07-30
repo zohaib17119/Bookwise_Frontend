@@ -7,6 +7,8 @@ export interface Company {
   currencyCode?: string | null;
   baseCurrencyCode?: string | null;
   country?: string | null;
+  countryCode?: string | null;
+  complianceModule?: "ZATCA" | "FBR" | null;
   state?: string | null;
   city?: string | null;
   postalCode?: string | null;
@@ -44,6 +46,7 @@ export interface CreateCompanyPayload {
   currency?: string;
   currencyCode?: string;
   country?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   postalCode?: string;

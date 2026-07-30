@@ -73,6 +73,12 @@ export const companyNavigationGroups: CompanyNavigationGroup[] = [
         permissionKeys: ["invoices.view", "invoices.read", "invoices.manage"],
       },
       {
+        label: "POS",
+        segment: "pos",
+        icon: CircleDollarSign,
+        permissionKeys: ["pos.manage", "invoices.manage"],
+      },
+      {
         label: "Customer Payments",
         segment: "customer-payments",
         icon: BadgeDollarSign,

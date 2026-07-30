@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import FileInput from "@/components/ui/fileInput";
 import { CurrencySelect } from "@/components/shared/currency-select";
 import { useAuthStore } from "@/features/auth/store/auth.store";
+import { useCountryPacks } from "@/features/companies/hooks/use-country-packs";
 import { cn } from "@/lib/utils/cn";
 
 const STEPS = [
@@ -27,7 +28,7 @@ const STEPS = [
 
 const STEP_FIELDS: Record<number, Path<CreateCompanyFormValues>[]> = {
   1: ["name", "legalName", "coaTemplate", "currencyCode", "baseCurrencyCode", "timezone", "fiscalYearStartMonth"],
-  2: ["addressLine1", "addressLine2", "city", "state", "postalCode", "country", "email", "phone", "website"],
+  2: ["addressLine1", "addressLine2", "city", "state", "postalCode", "countryCode", "country", "email", "phone", "website"],
   3: ["taxRegistrationNumber", "taxLabel"],
 };
 
@@ -40,6 +41,7 @@ export function CompanyCreatePage() {
   const navigate = useNavigate();
   const createCompanyMutation = useCreateCompany();
   const user = useAuthStore((state) => state.user);
+  const countryPacksQuery = useCountryPacks();
 
   const [step, setStep] = useState(1);
   const [logo, setLogo] = useState("");
@@ -67,6 +69,7 @@ export function CompanyCreatePage() {
       state: "",
       postalCode: "",
       country: "",
+      countryCode: "",
       email: "",
       phone: "",
       website: "",
@@ -78,7 +81,13 @@ export function CompanyCreatePage() {
   });
 
   const selectedTemplate = form.watch("coaTemplate");
+  const selectedCountryCode = form.watch("countryCode");
   const createdCompany = createCompanyMutation.data;
+
+  const selectedPack = useMemo(
+    () => countryPacksQuery.data?.find((pack) => pack.countryCode === selectedCountryCode),
+    [countryPacksQuery.data, selectedCountryCode]
+  );
 
   const goNext = async () => {
     const valid = await form.trigger(STEP_FIELDS[step]);
@@ -105,12 +114,13 @@ export function CompanyCreatePage() {
       city: values.city.trim(),
       state: cleanText(values.state),
       postalCode: cleanText(values.postalCode),
-      country: cleanText(values.country),
+      country: cleanText(values.country) ?? selectedPack?.displayName,
+      countryCode: cleanText(values.countryCode)?.toUpperCase(),
       email: values.email.trim(),
       phone: values.phone.trim(),
       website: cleanText(values.website),
       taxRegistrationNumber: cleanText(values.taxRegistrationNumber),
-      taxLabel: cleanText(values.taxLabel),
+      taxLabel: cleanText(values.taxLabel) ?? selectedPack?.taxLabel,
       logoUrl: cleanText(logo),
     });
   });
@@ -326,8 +336,32 @@ export function CompanyCreatePage() {
                 <FormField label="Postal code (optional)" error={form.formState.errors.postalCode?.message}>
                   <Input placeholder="74000" {...form.register("postalCode")} />
                 </FormField>
-                <FormField label="Country (optional)" error={form.formState.errors.country?.message}>
-                  <Input placeholder="Pakistan" {...form.register("country")} />
+                <FormField label="Country pack" error={form.formState.errors.countryCode?.message}>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    {...form.register("countryCode", {
+                      onChange: (event) => {
+                        const code = event.target.value;
+                        const pack = countryPacksQuery.data?.find((item) => item.countryCode === code);
+                        if (pack) {
+                          form.setValue("country", pack.displayName);
+                          form.setValue("currencyCode", pack.defaultCurrency);
+                          form.setValue("taxLabel", pack.taxLabel);
+                        }
+                      },
+                    })}
+                  >
+                    <option value="">Select country (optional)</option>
+                    {(countryPacksQuery.data ?? []).map((pack) => (
+                      <option key={pack.countryCode} value={pack.countryCode}>
+                        {pack.displayName} ({pack.defaultCurrency}
+                        {pack.complianceModule ? ` · ${pack.complianceModule}` : ""})
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Country display name (optional)" error={form.formState.errors.country?.message}>
+                  <Input placeholder="Saudi Arabia" {...form.register("country")} />
                 </FormField>
                 <FormField label="Email" error={form.formState.errors.email?.message}>
                   <Input type="email" placeholder="billing@company.com" {...form.register("email")} />

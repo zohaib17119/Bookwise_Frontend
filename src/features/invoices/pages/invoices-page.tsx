@@ -11,6 +11,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { canShowZatca } from "@/features/compliance/utils/compliance-access";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
@@ -20,6 +21,7 @@ import InvoiceEditorPage from "./invoice-editor-page";
 
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
+  const showZatca = canShowZatca(company);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -69,6 +71,17 @@ export function InvoicesPage() {
     { key: "issueDate", header: "Issue Date", render: (invoice) => formatDate(invoice.issueDate) },
     { key: "dueDate", header: "Due Date", render: (invoice) => formatDate(invoice.dueDate) },
     { key: "status", header: "Status", render: (invoice) => <DocumentStatusBadge status={invoice.status} /> },
+    ...(showZatca
+      ? [
+          {
+            key: "complianceStatus",
+            header: "ZATCA",
+            render: (invoice: Invoice) => (
+              <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
+            ),
+          } satisfies DataTableColumn<Invoice>,
+        ]
+      : []),
     {
       key: "total",
       header: "Total",

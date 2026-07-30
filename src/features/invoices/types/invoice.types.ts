@@ -14,6 +14,15 @@ export type InvoiceStatus =
   | "VOID"
   | "CANCELLED";
 
+export type InvoiceComplianceStatus =
+  | "NOT_APPLICABLE"
+  | "PENDING"
+  | "SUBMITTED"
+  | "CLEARED"
+  | "REPORTED"
+  | "REJECTED"
+  | "ERROR";
+
 export interface InvoiceLine extends DocumentLineInput {
   id?: string;
   taxCodeId?: string | null;
@@ -39,6 +48,11 @@ export interface Invoice {
   discountValue?: string | null;
   status?: InvoiceStatus | null;
   rawStatus?: InvoiceStatus | null;
+  sourceChannel?: "ACCOUNTING" | "POS" | null;
+  complianceStatus?: InvoiceComplianceStatus | null;
+  complianceUuid?: string | null;
+  invoiceHash?: string | null;
+  complianceLastError?: string | null;
   total?: string | null;
   amountPaid?: string | null;
   amountDue?: string | null;

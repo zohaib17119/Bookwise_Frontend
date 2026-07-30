@@ -65,13 +65,13 @@ export function CustomerPaymentDetailPage() {
           />
         </div>
 
-        <AllocationSummaryCard
+        {/* <AllocationSummaryCard
           allocations={payment.allocations ?? []}
           currencyCode={payment.currencyCode}
           title="Allocation summary"
           totalAmount={payment.amount}
           unappliedAmount={payment.unappliedAmount}
-        />
+        /> */}
       </div>
     </PageContainer>
   );

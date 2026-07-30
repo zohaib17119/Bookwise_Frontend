@@ -18,6 +18,14 @@ const statusClassMap: Record<string, string> = {
   OPEN: "bg-blue-50 text-blue-700",
   VOID: "bg-slate-100 text-slate-700",
   RECORDED: "bg-cyan-50 text-cyan-700",
+  // ZATCA / compliance
+  NOT_APPLICABLE: "bg-slate-100 text-slate-600",
+  PENDING: "bg-amber-50 text-amber-800",
+  SUBMITTED: "bg-blue-50 text-blue-700",
+  CLEARED: "bg-emerald-50 text-emerald-700",
+  REPORTED: "bg-emerald-50 text-emerald-700",
+  REJECTED: "bg-rose-50 text-rose-700",
+  ERROR: "bg-rose-50 text-rose-700",
 };
 
 export function DocumentStatusBadge({ status }: DocumentStatusBadgeProps) {

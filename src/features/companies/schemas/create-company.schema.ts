@@ -64,6 +64,12 @@ export const createCompanySchema = z.object({
   state: optionalText,
   postalCode: optionalText,
   country: optionalText,
+  countryCode: z
+    .string()
+    .trim()
+    .length(2, "Use a 2-letter country code")
+    .optional()
+    .or(z.literal("")),
   email: z.string().trim().email("Enter a valid email"),
   phone: z.string().trim().min(1, "Phone is required"),
   website: z

@@ -70,6 +70,8 @@ import { SettingsHomePage } from "@/features/settings/pages/settings-home-page";
 import { SettingsPlaceholderPage } from "@/features/settings/pages/settings-placeholder-page";
 import { SettingsTeamPage } from "@/features/settings/pages/settings-team-page";
 import { SettingsTaxPage } from "@/features/settings/pages/settings-tax-page";
+import { ZatcaSettingsRoute } from "@/features/settings/pages/zatca-country-guard";
+import { PosPage } from "@/features/pos/pages/pos-page";
 import { TaxCodesPage } from "@/features/tax/pages/tax-codes-page";
 import { TaxDetailPage } from "@/features/tax/pages/tax-detail-page";
 import { TaxRatesPage } from "@/features/tax/pages/tax-rates-page";
@@ -136,6 +138,7 @@ const router = createBrowserRouter([
                   { path: "invoices/new", element: <InvoiceFormPage mode="create" /> },
                   { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
                   { path: "invoices/:invoiceId/edit", element: <InvoiceFormPage mode="edit" /> },
+                  { path: "pos", element: <PosPage /> },
                   { path: "bills", element: <BillsPage /> },
                   { path: "bills/new", element: <BillFormPage mode="create" /> },
                   { path: "bills/:billId", element: <BillDetailPage /> },
@@ -194,6 +197,7 @@ const router = createBrowserRouter([
                       { path: "company", element: <CompanySettingsPage /> },
                       { path: "accounting", element: <AccountingSettingsPage /> },
                       { path: "tax", element: <SettingsTaxPage /> },
+                      { path: "zatca", element: <ZatcaSettingsRoute /> },
                       { path: "team", element: <SettingsTeamPage /> },
                       {
                         path: "preferences",

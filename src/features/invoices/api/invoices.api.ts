@@ -107,6 +107,13 @@ export async function sendInvoice(companyId: string, invoiceId: string) {
   return data;
 }
 
+export async function submitInvoiceCompliance(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<{ jobId: string }>(
+    `/companies/${companyId}/invoices/${invoiceId}/compliance/submit`,
+  );
+  return data;
+}
+
 export async function getNextInvoiceNumber(companyId: string) {
   const { data } = await apiClient.get<{ nextNumber: number }>(
     `/companies/${companyId}/invoices/next-number`,
