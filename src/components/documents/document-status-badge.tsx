@@ -18,7 +18,7 @@ const statusClassMap: Record<string, string> = {
   OPEN: "bg-blue-50 text-blue-700",
   VOID: "bg-slate-100 text-slate-700",
   RECORDED: "bg-cyan-50 text-cyan-700",
-  // ZATCA / compliance
+  // ZATCA / compliance /////
   NOT_APPLICABLE: "bg-slate-100 text-slate-600",
   PENDING: "bg-amber-50 text-amber-800",
   SUBMITTED: "bg-blue-50 text-blue-700",
