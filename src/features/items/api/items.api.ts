@@ -37,6 +37,14 @@ export async function getItem(companyId: string, itemId: string) {
   return data;
 }
 
+/** Exact match on barcode, sku, or itemCode (POS scan). */
+export async function lookupItemByCode(companyId: string, code: string) {
+  const { data } = await apiClient.get<Item>(
+    `/companies/${companyId}/items/lookup?code=${encodeURIComponent(code.trim())}`,
+  );
+  return data;
+}
+
 export async function createItem(companyId: string, payload: ItemPayload) {
   const { data } = await apiClient.post<Item>(`/companies/${companyId}/items`, payload);
   return data;

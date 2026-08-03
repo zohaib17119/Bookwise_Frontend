@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -112,7 +112,7 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
   });
 
   useFieldArray({ control: form.control, name: "lines" });
-  const watchedLines = form.watch("lines");
+  const watchedLines = useWatch({ control: form.control, name: "lines" });
   const watchedCustomerId = form.watch("customerId");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");

@@ -66,6 +66,9 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
     },
     metrics: {
       totalRevenue: parseNumber(metrics.totalRevenue),
+      totalCogs: parseNumber(metrics.totalCogs),
+      grossProfit: parseNumber(metrics.grossProfit),
+      grossMargin: parseNumber(metrics.grossMargin),
       totalExpenses: parseNumber(metrics.totalExpenses),
       netProfit: parseNumber(metrics.netProfit),
       profitMargin: parseNumber(metrics.profitMargin),
@@ -74,12 +77,18 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
       accountsPayable: parseNumber(metrics.accountsPayable),
       previous: {
         totalRevenue: parseNumber(previous.totalRevenue),
+        totalCogs: parseNumber(previous.totalCogs),
+        grossProfit: parseNumber(previous.grossProfit),
+        grossMargin: parseNumber(previous.grossMargin),
         totalExpenses: parseNumber(previous.totalExpenses),
         netProfit: parseNumber(previous.netProfit),
         profitMargin: parseNumber(previous.profitMargin),
       },
       changePercent: {
         totalRevenue: parseNullableNumber(changePercent.totalRevenue),
+        totalCogs: parseNullableNumber(changePercent.totalCogs),
+        grossProfit: parseNullableNumber(changePercent.grossProfit),
+        grossMargin: parseNullableNumber(changePercent.grossMargin),
         totalExpenses: parseNullableNumber(changePercent.totalExpenses),
         netProfit: parseNullableNumber(changePercent.netProfit),
         profitMargin: parseNullableNumber(changePercent.profitMargin),

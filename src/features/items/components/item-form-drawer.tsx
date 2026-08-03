@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
@@ -22,6 +23,7 @@ import type { Item } from "@/features/items/types/item.types";
 import type { Account } from "@/features/accounts/types/account.types";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import type { TaxRate } from "@/features/tax/types/tax.types";
+import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 
 interface ItemFormDrawerProps {
   open: boolean;
@@ -50,6 +52,7 @@ export function ItemFormDrawer({
   onClose,
   onSubmit,
 }: ItemFormDrawerProps) {
+  const { companyId } = useActiveCompany();
   const form = useForm<ItemFormInput, undefined, ItemFormValues>({
     resolver: zodResolver(itemSchema),
     defaultValues: {
@@ -58,6 +61,7 @@ export function ItemFormDrawer({
       description: "",
       type: "service",
       sku: "",
+      barcode: "",
       unitName: "",
       salesPrice: undefined,
       purchaseCost: undefined,
@@ -88,6 +92,7 @@ export function ItemFormDrawer({
       description: item?.description ?? "",
       type: item?.type ?? "service",
       sku: item?.sku ?? "",
+      barcode: item?.barcode ?? "",
       unitName: item?.unitName ?? "",
       salesPrice: item?.salesPrice ?? undefined,
       purchaseCost: item?.purchaseCost ?? undefined,
@@ -153,6 +158,9 @@ export function ItemFormDrawer({
             </FormField>
             <FormField label="SKU">
               <Input {...form.register("sku")} placeholder="SKU-1001" />
+            </FormField>
+            <FormField label="Barcode (optional)">
+              <Input {...form.register("barcode")} placeholder="Scan or type barcode" />
             </FormField>
             <FormField label="Unit name">
               <Input {...form.register("unitName")} placeholder="Each" />
@@ -284,14 +292,47 @@ export function ItemFormDrawer({
           </div>
 
           {itemType === "inventory" || trackQuantity ? (
-            <FieldGrid>
-              <FormField label="Quantity on hand">
-                <Input type="number" step="0.01" {...form.register("quantityOnHand")} />
-              </FormField>
-              <FormField label="Reorder level">
-                <Input type="number" step="0.01" {...form.register("reorderLevel")} />
-              </FormField>
-            </FieldGrid>
+            <div className="grid gap-3">
+              <FieldGrid>
+                <FormField
+                  label="Quantity on hand"
+                  helperText={
+                    mode === "edit"
+                      ? "Read-only after create. Restock with a bill or inventory adjustment so FIFO cost batches stay accurate."
+                      : "Sets opening stock and creates an OPENING cost batch. Later restock via bill or adjustment."
+                  }
+                >
+                  <Input
+                    type="number"
+                    step="0.01"
+                    disabled={mode === "edit"}
+                    readOnly={mode === "edit"}
+                    {...form.register("quantityOnHand")}
+                  />
+                </FormField>
+                <FormField label="Reorder level">
+                  <Input type="number" step="0.01" {...form.register("reorderLevel")} />
+                </FormField>
+              </FieldGrid>
+              {mode === "edit" && companyId ? (
+                <p className="text-xs text-muted-foreground">
+                  Restock:{" "}
+                  <Link
+                    className="font-medium text-foreground underline underline-offset-2"
+                    to={`/app/company/${companyId}/inventory/adjustments/new`}
+                  >
+                    Inventory adjustment (Increase)
+                  </Link>
+                  {" · "}
+                  <Link
+                    className="font-medium text-foreground underline underline-offset-2"
+                    to={`/app/company/${companyId}/bills/new`}
+                  >
+                    Vendor bill
+                  </Link>
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </FormSection>
       </form>

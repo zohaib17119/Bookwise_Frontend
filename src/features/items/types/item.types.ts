@@ -9,6 +9,7 @@ export interface Item {
   description?: string | null;
   type: ItemType;
   sku?: string | null;
+  barcode?: string | null;
   unitName?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
@@ -38,6 +39,7 @@ export interface ItemPayload {
   description?: string;
   type: ItemType;
   sku?: string;
+  barcode?: string | null;
   unitName?: string;
   salesPrice?: string | null;
   purchaseCost?: string | null;

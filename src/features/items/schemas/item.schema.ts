@@ -9,6 +9,7 @@ export const itemSchema = z.object({
   description: optionalString,
   type: z.enum(["inventory", "non_inventory", "service"]),
   sku: optionalString,
+  barcode: optionalString,
   unitName: optionalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,

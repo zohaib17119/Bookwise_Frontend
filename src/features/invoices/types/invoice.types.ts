@@ -27,7 +27,14 @@ export interface InvoiceLine extends DocumentLineInput {
   id?: string;
   taxCodeId?: string | null;
   taxRateId?: string | null;
+  taxRate?: string | null;
+  taxName?: string | null;
+  lineSubtotal?: string | null;
+  lineTaxAmount?: string | null;
+  lineTotal?: string | null;
 }
+
+export type InvoiceDocumentType = "TAX_INVOICE" | "CREDIT_NOTE" | "DEBIT_NOTE";
 
 export interface Invoice {
   id: string;
@@ -49,9 +56,17 @@ export interface Invoice {
   status?: InvoiceStatus | null;
   rawStatus?: InvoiceStatus | null;
   sourceChannel?: "ACCOUNTING" | "POS" | null;
+  documentType?: InvoiceDocumentType | null;
+  originalInvoiceId?: string | null;
+  originalInvoice?: {
+    id: string;
+    invoiceNumber?: string | null;
+    complianceUuid?: string | null;
+  } | null;
   complianceStatus?: InvoiceComplianceStatus | null;
   complianceUuid?: string | null;
   invoiceHash?: string | null;
+  qrPayload?: string | null;
   complianceLastError?: string | null;
   total?: string | null;
   amountPaid?: string | null;

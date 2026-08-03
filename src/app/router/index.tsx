@@ -42,6 +42,8 @@ import { InventoryAdjustmentsPage } from "@/features/inventory/pages/inventory-a
 import { InventoryValuationPage } from "@/features/inventory/pages/inventory-valuation-page";
 import { StockMovementsPage } from "@/features/inventory/pages/stock-movements-page";
 import { StockOnHandPage } from "@/features/inventory/pages/stock-on-hand-page";
+import { CreditNotesPage } from "@/features/creditNotes/pages/credit-notes-page";
+import { DebitNotesPage } from "@/features/debitNotes/pages/debit-notes-page";
 import { InvoiceDetailPage } from "@/features/invoices/pages/invoice-detail-page";
 import { InvoiceFormPage } from "@/features/invoices/pages/invoice-form-page";
 import { InvoicesPage } from "@/features/invoices/pages/invoices-page";
@@ -138,6 +140,8 @@ const router = createBrowserRouter([
                   { path: "invoices/new", element: <InvoiceFormPage mode="create" /> },
                   { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
                   { path: "invoices/:invoiceId/edit", element: <InvoiceFormPage mode="edit" /> },
+                  { path: "credit-notes", element: <CreditNotesPage /> },
+                  { path: "debit-notes", element: <DebitNotesPage /> },
                   { path: "pos", element: <PosPage /> },
                   { path: "bills", element: <BillsPage /> },
                   { path: "bills/new", element: <BillFormPage mode="create" /> },

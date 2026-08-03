@@ -7,6 +7,9 @@ export interface DashboardPeriod {
 
 export interface DashboardMetricsSnapshot {
   totalRevenue: number;
+  totalCogs: number;
+  grossProfit: number;
+  grossMargin: number;
   totalExpenses: number;
   netProfit: number;
   profitMargin: number;
@@ -19,6 +22,9 @@ export interface DashboardMetrics extends DashboardMetricsSnapshot {
   previous: DashboardMetricsSnapshot;
   changePercent: {
     totalRevenue: number | null;
+    totalCogs: number | null;
+    grossProfit: number | null;
+    grossMargin: number | null;
     totalExpenses: number | null;
     netProfit: number | null;
     profitMargin: number | null;

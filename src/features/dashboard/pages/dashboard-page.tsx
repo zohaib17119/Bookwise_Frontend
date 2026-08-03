@@ -98,6 +98,12 @@ export function DashboardPage() {
             <Button asChild size="sm" variant="secondary">
               <Link to={`/app/company/${companyId}/inventory/stock-on-hand`}>View stock on hand</Link>
             </Button>
+            <Button asChild size="sm" variant="secondary">
+              <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Restock (adjustment)</Link>
+            </Button>
+            <Button asChild size="sm" variant="secondary">
+              <Link to={`/app/company/${companyId}/bills/new`}>Buy stock (bill)</Link>
+            </Button>
             <Button asChild size="sm" variant="ghost">
               <Link to={`/app/company/${companyId}/items`}>View items</Link>
             </Button>
@@ -115,9 +121,9 @@ export function DashboardPage() {
         </div>
       ) : null}
 
-      <div className="grid items-stretch gap-4 xl:grid-cols-4">
+      <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
         <DashboardKpiCard
-          badgeLabel="Revenue in focus"
+          badgeLabel="Sales"
           changePercent={metrics?.changePercent.totalRevenue ?? null}
           icon={DollarSign}
           isLoading={isLoading}
@@ -126,31 +132,49 @@ export function DashboardPage() {
           value={formatCurrency(metrics?.totalRevenue ?? 0, displayCurrency)}
         />
         <DashboardKpiCard
-          badgeLabel="Expense visibility"
-          changePercent={metrics?.changePercent.totalExpenses ?? null}
+          badgeLabel="Product cost"
+          changePercent={metrics?.changePercent.totalCogs ?? null}
           icon={Receipt}
+          isLoading={isLoading}
+          title="Cost of Goods Sold"
+          tone="red"
+          value={formatCurrency(metrics?.totalCogs ?? 0, displayCurrency)}
+        />
+        <DashboardKpiCard
+          badgeLabel={`Gross margin ${formatPercent(metrics?.grossMargin ?? 0)}%`}
+          changePercent={metrics?.changePercent.grossProfit ?? null}
+          icon={ArrowUpDown}
+          isLoading={isLoading}
+          title="Gross Profit"
+          tone="blue"
+          value={formatCurrency(metrics?.grossProfit ?? 0, displayCurrency)}
+        />
+        <DashboardKpiCard
+          badgeLabel="Operating"
+          changePercent={metrics?.changePercent.totalExpenses ?? null}
+          icon={CreditCard}
           isLoading={isLoading}
           title="Total Expenses"
           tone="red"
           value={formatCurrency(metrics?.totalExpenses ?? 0, displayCurrency)}
         />
         <DashboardKpiCard
-          badgeLabel={(metrics?.netProfit ?? 0) >= 0 ? "Positive margin" : "Negative margin"}
+          badgeLabel={(metrics?.netProfit ?? 0) >= 0 ? "After costs" : "Loss"}
           changePercent={metrics?.changePercent.netProfit ?? null}
-          icon={ArrowUpDown}
+          icon={Wallet}
           isLoading={isLoading}
           title="Net Profit"
           tone="blue"
           value={formatCurrency(metrics?.netProfit ?? 0, displayCurrency)}
         />
         <DashboardKpiCard
-          badgeLabel="Profit margin"
+          badgeLabel="Net margin"
           changePercent={metrics?.changePercent.profitMargin ?? null}
           footer={`vs ${formatPercent(metrics?.previous.profitMargin ?? 0)}% last period`}
           icon={Percent}
           isLoading={isLoading}
           miniChartData={profitMarginMiniChart}
-          title="Profit Margin"
+          title="Net Margin"
           tone="blue"
           value={`${formatPercent(metrics?.profitMargin ?? 0)}%`}
         />

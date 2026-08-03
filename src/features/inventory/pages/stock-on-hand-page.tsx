@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
 import { FilterBar } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
+import { Button } from "@/components/ui/button";
 import { InventoryStatusBadge } from "@/components/accounting/inventory-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { useStockOnHand } from "@/features/inventory/hooks/use-inventory";
@@ -61,19 +63,29 @@ export function StockOnHandPage() {
           <DataTable
             columns={columns}
             data={filteredRows}
-            emptyDescription="Create stock movements or inventory adjustments to populate quantity on hand."
+            emptyDescription="Issue a vendor bill or post an inventory adjustment (Increase) to add stock."
             emptyTitle="No stock on hand data"
             getRowKey={(row) => row.itemId}
             isLoading={stockOnHandQuery.isLoading}
           />
         )
       }
-      description="Review current item quantities, average cost, and low-stock signals."
+      description="Review current item quantities, average cost, and low-stock signals. Restock via a vendor bill (Issue) or inventory adjustment (Increase → Post)."
       eyebrow="Inventory"
       title="Stock on Hand"
       toolbar={
         <FilterBar>
           <SearchInput onChange={setSearch} placeholder="Search item or SKU" value={search} />
+          {companyId ? (
+            <>
+              <Button asChild size="sm" variant="secondary">
+                <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Restock (adjustment)</Link>
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link to={`/app/company/${companyId}/bills/new`}>Buy stock (bill)</Link>
+              </Button>
+            </>
+          ) : null}
         </FilterBar>
       }
     />

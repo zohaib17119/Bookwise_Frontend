@@ -5,6 +5,7 @@ import {
   getItem,
   getItems,
   getItemsPaginated,
+  lookupItemByCode,
   updateItem,
 } from "@/features/items/api/items.api";
 import type { ItemListParams, ItemPayload } from "@/features/items/types/item.types";
@@ -39,6 +40,12 @@ export function useItemOptions(companyId: string | undefined) {
     queryKey: ["companies", companyId, "items", "options"],
     queryFn: () => getItems(companyId!, { includeInactive: false, limit: 100 }),
     enabled: Boolean(companyId),
+  });
+}
+
+export function useLookupItemByCode(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (code: string) => lookupItemByCode(companyId!, code),
   });
 }
 

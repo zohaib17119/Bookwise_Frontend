@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -128,7 +128,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     });
   }, [billQuery.data, company, form, mode]);
 
-  const watchedLines = form.watch("lines");
+  const watchedLines = useWatch({ control: form.control, name: "lines" });
   const watchedVendorId = form.watch("vendorId");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");

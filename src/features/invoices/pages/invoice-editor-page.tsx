@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
-import { Controller } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -38,11 +38,12 @@ export default function InvoiceEditorPage({
   const watchedCustomerId = form.watch("customerId");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
-  const watchedLines = form.watch("lines") || [];
+  const watchedLines = useWatch({ control: form.control, name: "lines" }) || [];
   const watchedTerms = form.watch("terms");
   const watchedIssueDate = form.watch("issueDate");
   const watchedDiscountType = form.watch("discountType");
   const watchedDiscountValue = form.watch("discountValue");
+  const setLineValueOptions = { shouldDirty: true, shouldValidate: true } as const;
 
   // Get item details by ID
   const getItemById = useCallback((itemId: string) => {
@@ -67,11 +68,11 @@ export default function InvoiceEditorPage({
   const handleItemChange = (index: number, itemId: string) => {
     if (itemId === "__service__") {
       // Manual service entry - clear itemId but allow manual rate entry
-      form.setValue(`lines.${index}.itemId`, "");
-      form.setValue(`lines.${index}.description`, "");
-      form.setValue(`lines.${index}.unitPrice`, "");
-      form.setValue(`lines.${index}.taxRateId`, "");
-      form.setValue(`lines.${index}.itemName`, "");
+      form.setValue(`lines.${index}.itemId`, "", setLineValueOptions);
+      form.setValue(`lines.${index}.description`, "", setLineValueOptions);
+      form.setValue(`lines.${index}.unitPrice`, "", setLineValueOptions);
+      form.setValue(`lines.${index}.taxRateId`, "", setLineValueOptions);
+      form.setValue(`lines.${index}.itemName`, "", setLineValueOptions);
       return;
     }
     
@@ -79,20 +80,24 @@ export default function InvoiceEditorPage({
     
     if (item) {
       // Auto-populate from item
-      form.setValue(`lines.${index}.itemId`, itemId);
-      form.setValue(`lines.${index}.description`, item.description || item.name);
-      form.setValue(`lines.${index}.unitPrice`, String(documentItemPrice(item.salesPrice)));
-      form.setValue(`lines.${index}.itemName`, item.name || "");
+      form.setValue(`lines.${index}.itemId`, itemId, setLineValueOptions);
+      form.setValue(`lines.${index}.description`, item.description || item.name, setLineValueOptions);
+      form.setValue(
+        `lines.${index}.unitPrice`,
+        String(documentItemPrice(item.salesPrice)),
+        setLineValueOptions,
+      );
+      form.setValue(`lines.${index}.itemName`, item.name || "", setLineValueOptions);
       
       // If item has tax rate, auto-populate tax
       if (item.taxRateId) {
-        form.setValue(`lines.${index}.taxRateId`, item.taxRateId);
+        form.setValue(`lines.${index}.taxRateId`, item.taxRateId, setLineValueOptions);
       } else {
-        form.setValue(`lines.${index}.taxRateId`, "");
+        form.setValue(`lines.${index}.taxRateId`, "", setLineValueOptions);
       }
     } else {
       // Clear fields if no item selected
-      form.setValue(`lines.${index}.itemId`, itemId);
+      form.setValue(`lines.${index}.itemId`, itemId, setLineValueOptions);
     }
   };
 

@@ -96,7 +96,9 @@ export function ItemsPage() {
             {item.name}
           </p>
           <p className="text-xs text-muted-foreground">
-            {item.sku || item.description || "No SKU or description"}
+            {[item.barcode && `Barcode: ${item.barcode}`, item.sku && `SKU: ${item.sku}`, !item.barcode && !item.sku ? item.description || "No SKU or barcode" : null]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
       ),
@@ -292,6 +294,7 @@ export function ItemsPage() {
             itemCode: values.itemCode || undefined,
             description: values.description || undefined,
             sku: values.sku || undefined,
+            barcode: values.barcode?.trim() || null,
             unitName: values.unitName || undefined,
             salesPrice: values.salesPrice || undefined,
             purchaseCost: values.purchaseCost || undefined,
@@ -300,8 +303,10 @@ export function ItemsPage() {
             assetAccountId: values.assetAccountId || undefined,
             preferredVendorId: values.preferredVendorId || undefined,
             taxRateId: values.taxRateId || undefined,
-            quantityOnHand: values.quantityOnHand || undefined,
             reorderLevel: values.reorderLevel || undefined,
+            ...(drawerMode === "create"
+              ? { quantityOnHand: values.quantityOnHand || undefined }
+              : {}),
           };
 
           if (drawerMode === "create") {
