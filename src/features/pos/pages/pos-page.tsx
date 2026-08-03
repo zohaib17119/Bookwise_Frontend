@@ -42,14 +42,22 @@ type LiveTaxBucket = {
   isZeroRated: boolean;
 };
 
+type PaymentMethod = "CASH" | "CARD";
+
 type PosCheckoutResult = {
   invoice: {
     id: string;
     invoiceNumber?: string | null;
     qrPayload?: string | null;
     complianceStatus?: string | null;
+    status?: string | null;
   };
   receipt: { html: string; format: string };
+  tender?: {
+    paymentMethod: string;
+    amountTendered: string;
+    changeDue: string;
+  };
 };
 
 function money(n: number) {
@@ -58,6 +66,16 @@ function money(n: number) {
 
 function lineAmount(line: CartLine) {
   return line.quantity * line.unitPrice;
+}
+
+function printReceiptHtml(html: string): boolean {
+  const popup = window.open("", "_blank", "width=420,height=640");
+  if (!popup) return false;
+  popup.document.write(html);
+  popup.document.close();
+  popup.focus();
+  popup.print();
+  return true;
 }
 
 export function PosPage() {
@@ -76,7 +94,10 @@ export function PosPage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [receiptHtml, setReceiptHtml] = useState<string | null>(null);
   const [lastInvoice, setLastInvoice] = useState<PosCheckoutResult["invoice"] | null>(null);
+  const [lastChangeDue, setLastChangeDue] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("CASH");
+  const [amountTendered, setAmountTendered] = useState("");
 
   const customersQuery = useCustomerOptions(companyId || undefined);
   const itemsQuery = useItemOptions(companyId || undefined);
@@ -163,6 +184,30 @@ export function PosPage() {
       hasRates: true,
     };
   }, [cart, subtotal, t, taxRates]);
+
+  const payableTotal = liveTax.hasRates ? liveTax.grandTotal : subtotal;
+
+  const tenderedNumber = useMemo(() => {
+    if (paymentMethod === "CARD") return payableTotal;
+    const n = Number(amountTendered);
+    return Number.isFinite(n) ? n : 0;
+  }, [amountTendered, payableTotal, paymentMethod]);
+
+  const changeDueNumber = useMemo(
+    () => Math.max(0, tenderedNumber - payableTotal),
+    [payableTotal, tenderedNumber],
+  );
+
+  const canTenderPay =
+    cart.length > 0 &&
+    Boolean(customerId) &&
+    (paymentMethod === "CARD" || tenderedNumber + 1e-9 >= payableTotal);
+
+  useEffect(() => {
+    if (paymentMethod === "CARD") {
+      setAmountTendered(money(payableTotal));
+    }
+  }, [paymentMethod, payableTotal]);
 
   // Find or create Walk-in Customer once options load
   useEffect(() => {
@@ -297,6 +342,9 @@ export function PosPage() {
     setBarcode("");
     setReceiptHtml(null);
     setLastInvoice(null);
+    setLastChangeDue(null);
+    setPaymentMethod("CASH");
+    setAmountTendered("");
     setError(null);
     setScanError(null);
     barcodeRef.current?.focus();
@@ -306,6 +354,7 @@ export function PosPage() {
     setError(null);
     setReceiptHtml(null);
     setLastInvoice(null);
+    setLastChangeDue(null);
     if (!customerId) {
       setError(t("selectCustomerAndItem"));
       return;
@@ -314,6 +363,12 @@ export function PosPage() {
       setError(t("emptyCart"));
       return;
     }
+    if (!canTenderPay) {
+      setError(t("tenderRequired"));
+      return;
+    }
+    const tendered = paymentMethod === "CARD" ? payableTotal : tenderedNumber;
+    const change = Math.max(0, tendered - payableTotal);
     setPending(true);
     try {
       const { data: result } = await apiClient.post<PosCheckoutResult>(
@@ -323,6 +378,9 @@ export function PosPage() {
           sendImmediately: true,
           printFormat: "t80",
           locale,
+          paymentOptions: [paymentMethod],
+          amountTendered: money(tendered),
+          changeDue: money(change),
           lines: cart.map((line) => ({
             itemId: line.itemId,
             itemName: line.itemName,
@@ -337,7 +395,14 @@ export function PosPage() {
       );
       setReceiptHtml(result.receipt.html);
       setLastInvoice(result.invoice);
+      const changeStr = result.tender?.changeDue ?? money(change);
+      setLastChangeDue(changeStr);
       setCart([]);
+      setAmountTendered("");
+      setPaymentMethod("CASH");
+      if (!printReceiptHtml(result.receipt.html)) {
+        setError(t("popupBlocked"));
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, t("checkoutFailed")));
     } finally {
@@ -347,15 +412,9 @@ export function PosPage() {
 
   const onPrint = () => {
     if (!receiptHtml) return;
-    const popup = window.open("", "_blank", "width=420,height=640");
-    if (!popup) {
+    if (!printReceiptHtml(receiptHtml)) {
       setError(t("popupBlocked"));
-      return;
     }
-    popup.document.write(receiptHtml);
-    popup.document.close();
-    popup.focus();
-    popup.print();
   };
 
   return (
@@ -376,11 +435,18 @@ export function PosPage() {
       {lastInvoice ? (
         <Alert
           variant="success"
-          title={t("issuedTitle", {
+          title={t("paidTitle", {
             number: lastInvoice.invoiceNumber || t("invoiceFallback"),
           })}
-          description={hasZatcaQr ? t("issuedWithQr") : t("issuedWithoutQr")}
+          description={
+            Number(lastChangeDue ?? 0) > 0
+              ? t("paidWithChange", { change: lastChangeDue ?? "0.00" })
+              : t("paidNoChange")
+          }
         />
+      ) : null}
+      {lastInvoice && hasZatcaQr ? (
+        <Alert variant="success" title={t("issuedWithQr")} />
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -495,26 +561,79 @@ export function PosPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap gap-2 border-t border-border/60 pt-4">
-            <Button
-              type="button"
-              isLoading={pending}
-              disabled={listsLoading || cart.length === 0 || !customerId}
-              onClick={() => void onProceedToPay()}
-            >
-              {t("proceedToPay")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!receiptHtml}
-              onClick={onPrint}
-            >
-              {t("printReceipt")}
-            </Button>
-            <Button type="button" variant="ghost" onClick={resetSale}>
-              {t("newSale")}
-            </Button>
+          <div className="space-y-3 border-t border-border/60 pt-4">
+            <FormField label={t("paymentMethod")}>
+              <select
+                className="flex h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                disabled={listsLoading || cart.length === 0}
+              >
+                <option value="CASH">{t("cash")}</option>
+                <option value="CARD">{t("card")}</option>
+              </select>
+            </FormField>
+
+            {paymentMethod === "CASH" ? (
+              <>
+                <FormField label={t("amountTendered")}>
+                  <Input
+                    value={amountTendered}
+                    onChange={(e) => setAmountTendered(e.target.value)}
+                    inputMode="decimal"
+                    className="min-w-0 tabular-nums"
+                    placeholder={money(payableTotal)}
+                    disabled={listsLoading || cart.length === 0}
+                  />
+                </FormField>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={cart.length === 0}
+                    onClick={() => setAmountTendered(money(payableTotal))}
+                  >
+                    {t("exactAmount")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={cart.length === 0}
+                    onClick={() => setAmountTendered(money(Math.ceil(payableTotal)))}
+                  >
+                    {t("roundUp")}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm">
+                  <span className="font-medium">{t("changeDue")}</span>
+                  <span className="text-base font-bold tabular-nums">{money(changeDueNumber)}</span>
+                </div>
+              </>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                isLoading={pending}
+                disabled={listsLoading || !canTenderPay}
+                onClick={() => void onProceedToPay()}
+              >
+                {t("proceedToPay")}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!receiptHtml}
+                onClick={onPrint}
+              >
+                {t("printReceipt")}
+              </Button>
+              <Button type="button" variant="ghost" onClick={resetSale}>
+                {t("newSale")}
+              </Button>
+            </div>
           </div>
         </div>
 

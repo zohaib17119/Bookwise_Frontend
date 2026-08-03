@@ -24,7 +24,6 @@ const statusClassMap: Record<string, string> = {
   SUBMITTED: "bg-blue-50 text-blue-700",
   CLEARED: "bg-emerald-50 text-emerald-700",
   REPORTED: "bg-emerald-50 text-emerald-700",
-  REJECTED: "bg-rose-50 text-rose-700",
   ERROR: "bg-rose-50 text-rose-700",
 };
 

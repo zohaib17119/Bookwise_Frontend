@@ -71,6 +71,23 @@ export function InvoicesPage() {
     { key: "issueDate", header: "Issue Date", render: (invoice) => formatDate(invoice.issueDate) },
     { key: "dueDate", header: "Due Date", render: (invoice) => formatDate(invoice.dueDate) },
     { key: "status", header: "Status", render: (invoice) => <DocumentStatusBadge status={invoice.status} /> },
+    {
+      key: "payment",
+      header: "Payment",
+      render: (invoice) => {
+        const status = invoice.status ?? "";
+        if (status === "PAID") return <DocumentStatusBadge status="PAID" />;
+        if (status === "PARTIALLY_PAID") return <DocumentStatusBadge status="PARTIALLY_PAID" />;
+        if (status === "ISSUED" || status === "OVERDUE") {
+          return (
+            <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.08em] text-amber-800">
+              Unpaid
+            </span>
+          );
+        }
+        return <span className="text-muted-foreground">—</span>;
+      },
+    },
     ...(showZatca
       ? [
           {
@@ -91,6 +108,13 @@ export function InvoicesPage() {
           Number(invoice.total ?? invoice.totals?.total ?? 0),
           invoice.currencyCode ?? baseCurrency,
         ),
+    },
+    {
+      key: "amountPaid",
+      header: "Amount paid",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(Number(invoice.amountPaid ?? 0), invoice.currencyCode ?? baseCurrency),
     },
     {
       key: "amountDue",
