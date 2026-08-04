@@ -52,6 +52,20 @@ export function StockOnHandPage() {
       header: "Status",
       render: (row) => <InventoryStatusBadge lowStock={row.lowStock} />,
     },
+    {
+      key: "actions",
+      header: "Actions",
+      render: (row) =>
+        companyId && row.lowStock ? (
+          <Button asChild size="sm" variant="outline">
+            <Link
+              to={`/app/company/${companyId}/bills/new?itemId=${row.itemId}&qty=${Math.max(1, Number(row.reorderLevel ?? 0) - Number(row.quantityOnHand ?? 0))}&from=low-stock`}
+            >
+              Buy Stock
+            </Link>
+          </Button>
+        ) : null,
+    },
   ];
 
   return (
@@ -63,14 +77,14 @@ export function StockOnHandPage() {
           <DataTable
             columns={columns}
             data={filteredRows}
-            emptyDescription="Issue a vendor bill or post an inventory adjustment (Increase) to add stock."
+            emptyDescription="Buy stock with a vendor bill (Issue → Receive goods) or post an inventory adjustment for non-purchase corrections."
             emptyTitle="No stock on hand data"
             getRowKey={(row) => row.itemId}
             isLoading={stockOnHandQuery.isLoading}
           />
         )
       }
-      description="Review current item quantities, average cost, and low-stock signals. Restock via a vendor bill (Issue) or inventory adjustment (Increase → Post)."
+      description="Review quantities and low-stock signals. Purchased stock: Vendor Bill → Issue → Receive goods. Adjustments are for corrections only."
       eyebrow="Inventory"
       title="Stock on Hand"
       toolbar={
@@ -78,11 +92,11 @@ export function StockOnHandPage() {
           <SearchInput onChange={setSearch} placeholder="Search item or SKU" value={search} />
           {companyId ? (
             <>
-              <Button asChild size="sm" variant="secondary">
-                <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Restock (adjustment)</Link>
+              <Button asChild size="sm" variant="primary">
+                <Link to={`/app/company/${companyId}/bills/new?from=buy-stock`}>Buy Stock</Link>
               </Button>
-              <Button asChild size="sm" variant="secondary">
-                <Link to={`/app/company/${companyId}/bills/new`}>Buy stock (bill)</Link>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Adjustment only</Link>
               </Button>
             </>
           ) : null}

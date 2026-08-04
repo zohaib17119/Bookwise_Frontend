@@ -14,8 +14,29 @@ export type BillStatus =
   | "VOID"
   | "CANCELLED";
 
+export type BillGoodsStatus =
+  | "NOT_APPLICABLE"
+  | "NOT_RECEIVED"
+  | "PARTIALLY_RECEIVED"
+  | "RECEIVED";
+
+export type BillPaymentStatus =
+  | "UNPAID"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "DRAFT"
+  | "VOID"
+  | "CANCELLED";
+
 export interface BillLine extends DocumentLineInput {
   id?: string;
+  quantityReceived?: string | null;
+  item?: {
+    id: string;
+    name: string;
+    type?: string | null;
+    trackQuantity?: boolean | null;
+  } | null;
 }
 
 export interface Bill {
@@ -33,6 +54,8 @@ export interface Bill {
   discountValue?: string | null;
   status?: BillStatus | null;
   rawStatus?: BillStatus | null;
+  goodsStatus?: BillGoodsStatus | null;
+  paymentStatus?: BillPaymentStatus | null;
   total?: string | null;
   amountPaid?: number | null;
   amountDue?: number | null;

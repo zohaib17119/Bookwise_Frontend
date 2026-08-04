@@ -2,12 +2,13 @@ import * as React from "react";
 import { LoaderCircle } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "default" | "sm" | "icon";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-primary text-primary-foreground hover:bg-primary/90",
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+  outline: "border border-border bg-white text-foreground hover:bg-secondary/60",
   ghost: "bg-transparent text-foreground hover:bg-secondary",
   destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
 };

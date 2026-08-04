@@ -95,14 +95,14 @@ export function DashboardPage() {
             variant="destructive"
           />
           <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button asChild size="sm" variant="primary">
+              <Link to={`/app/company/${companyId}/bills/new?from=low-stock`}>Buy Stock</Link>
+            </Button>
             <Button asChild size="sm" variant="secondary">
               <Link to={`/app/company/${companyId}/inventory/stock-on-hand`}>View stock on hand</Link>
             </Button>
-            <Button asChild size="sm" variant="secondary">
-              <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Restock (adjustment)</Link>
-            </Button>
-            <Button asChild size="sm" variant="secondary">
-              <Link to={`/app/company/${companyId}/bills/new`}>Buy stock (bill)</Link>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/app/company/${companyId}/inventory/adjustments/new`}>Adjustment only</Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
               <Link to={`/app/company/${companyId}/items`}>View items</Link>

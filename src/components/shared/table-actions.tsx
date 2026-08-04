@@ -19,17 +19,18 @@ export function TableActions({
         onClick={onEdit}
         size="sm"
         type="button"
-        variant="ghost"
+        variant="outline"
       >
         <Pencil className="mr-1 h-3.5 w-3.5" />
         Edit
       </Button>
       <Button
+        className="border-destructive/30 text-destructive hover:bg-destructive/10"
         disabled={!canManage || !onDelete}
         onClick={onDelete}
         size="sm"
         type="button"
-        variant="ghost"
+        variant="outline"
       >
         <Trash2 className="mr-1 h-3.5 w-3.5" />
         Delete

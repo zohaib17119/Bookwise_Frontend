@@ -70,7 +70,7 @@ export function DataTable<T>({
               {columns.map((column) => (
                 <th
                   className={cn(
-                    "px-4 py-3 font-medium text-muted-foreground",
+                    "px-4 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground",
                     column.className,
                   )}
                   key={column.key}
@@ -83,15 +83,14 @@ export function DataTable<T>({
           <tbody>
             {data.map((row) => (
               <tr
-                className="border-t border-border/70 align-top"
+                className="border-t border-border/70 transition-colors hover:bg-secondary/50"
                 key={getRowKey(row)}
               >
                 {columns.map((column) => (
-                  <td className={cn("px-4 py-4", column.className)} key={column.key}>
+                  <td className={cn("px-4 py-3", column.className)} key={column.key}>
                     {column.render(row)}
                   </td>
                 ))}
-                
               </tr>
             ))}
           </tbody>

@@ -13,10 +13,10 @@ export function SearchInput({
   placeholder = "Search",
 }: SearchInputProps) {
   return (
-    <div className="relative min-w-[220px]">
+    <div className="relative min-w-[200px] shrink-0">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
-        className="pl-10"
+        className="h-9 pl-10"
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         value={value}

@@ -13,7 +13,7 @@ interface FilterFieldProps extends PropsWithChildren {
 /** Constrains filter controls to inline width on tablet/desktop while stacking on mobile. */
 export function FilterField({ children, className }: FilterFieldProps) {
   return (
-    <div className={cn("w-full sm:w-auto sm:min-w-[160px]", className)}>
+    <div className={cn("w-full shrink-0 sm:w-auto sm:min-w-[140px]", className)}>
       {children}
     </div>
   );
@@ -23,14 +23,17 @@ export function FilterBar({ actions, className, children }: FilterBarProps) {
   return (
     <div
       className={cn(
-        "surface flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between",
+        "surface flex flex-col gap-2 p-3 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-between",
+        "[&_input]:h-9 [&_select]:h-9",
         className,
       )}
     >
-      <div className="flex flex-1 flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-nowrap sm:items-center sm:overflow-x-auto">
         {children}
       </div>
-      {actions ? <div className="flex items-center gap-3">{actions}</div> : null}
+      {actions ? (
+        <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -37,6 +37,7 @@ export function BillPaymentFormPage() {
   const { companyId } = useParams();
   const [searchParams] = useSearchParams();
   const presetVendorId = searchParams.get("vendorId") ?? "";
+  const presetBillId = searchParams.get("billId") ?? "";
   const { company, permissions } = useActiveCompany();
   const vendorsQuery = useVendorOptions(companyId);
   const createMutation = useCreateBillPayment(companyId);
@@ -57,6 +58,24 @@ export function BillPaymentFormPage() {
   const openBillsQuery = useOpenBillsByVendor(companyId, selectedVendorId || undefined);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   const [allocationError, setAllocationError] = useState<string | null>(null);
+  const previousVendorIdRef = useRef(selectedVendorId);
+  const preAllocatedBillIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (presetVendorId) {
+      form.setValue("vendorId", presetVendorId);
+    }
+  }, [form, presetVendorId]);
+
+  useEffect(() => {
+    if (previousVendorIdRef.current === selectedVendorId) {
+      return;
+    }
+    previousVendorIdRef.current = selectedVendorId;
+    setAllocations({});
+    setAllocationError(null);
+    preAllocatedBillIdRef.current = null;
+  }, [selectedVendorId]);
 
   const allocationDocuments = useMemo(
     () =>
@@ -69,6 +88,19 @@ export function BillPaymentFormPage() {
       })),
     [openBillsQuery.data],
   );
+
+  useEffect(() => {
+    if (!presetBillId || preAllocatedBillIdRef.current === presetBillId) {
+      return;
+    }
+    const target = allocationDocuments.find((document) => document.id === presetBillId);
+    if (!target || target.amountDue <= 0) {
+      return;
+    }
+    preAllocatedBillIdRef.current = presetBillId;
+    setAllocations((current) => ({ ...current, [presetBillId]: target.amountDue }));
+  }, [allocationDocuments, presetBillId]);
+
   const allocatedTotal = getAllocatedTotal(
     Object.entries(allocations).map(([documentId, allocatedAmount]) => ({
       documentId,
@@ -141,7 +173,7 @@ export function BillPaymentFormPage() {
               <CounterpartySelect
                 error={form.formState.errors.vendorId?.message}
                 label="Vendor"
-                onChange={(value) => form.setValue("vendorId", value)}
+                onChange={(value) => form.setValue("vendorId", value, { shouldValidate: true })}
                 options={(vendorsQuery.data ?? []).map((vendor) => ({
                   id: vendor.id,
                   label: vendor.displayName,

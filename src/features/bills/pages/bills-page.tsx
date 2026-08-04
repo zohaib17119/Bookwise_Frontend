@@ -57,7 +57,8 @@ export function BillsPage() {
     { key: "vendor", header: "Vendor", render: (bill) => bill.vendorName || "-" },
     { key: "issueDate", header: "Issue Date", render: (bill) => formatDate(bill.issueDate) },
     { key: "dueDate", header: "Due Date", render: (bill) => formatDate(bill.dueDate) },
-    { key: "status", header: "Status", render: (bill) => <DocumentStatusBadge status={bill.status} /> },
+    { key: "payment", header: "Payment", render: (bill) => <DocumentStatusBadge status={bill.paymentStatus === "UNPAID" ? "UNPAID" : bill.status} /> },
+    { key: "goods", header: "Goods", render: (bill) => <DocumentStatusBadge status={bill.goodsStatus ?? "NOT_APPLICABLE"} /> },
     {
       key: "total",
       header: "Total",

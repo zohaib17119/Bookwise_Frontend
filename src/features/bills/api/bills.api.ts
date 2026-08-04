@@ -93,3 +93,20 @@ export async function issueBill(companyId: string, billId: string) {
   const { data } = await apiClient.post<Bill>(`/companies/${companyId}/bills/${billId}/issue`);
   return data;
 }
+
+export async function receiveBillGoods(
+  companyId: string,
+  billId: string,
+  payload?: { lines?: Array<{ billLineId: string; quantity: string }> },
+) {
+  const { data } = await apiClient.post<Bill>(
+    `/companies/${companyId}/bills/${billId}/receive-goods`,
+    payload ?? {},
+  );
+  return data;
+}
+
+export async function voidBill(companyId: string, billId: string) {
+  const { data } = await apiClient.post<Bill>(`/companies/${companyId}/bills/${billId}/void`);
+  return data;
+}

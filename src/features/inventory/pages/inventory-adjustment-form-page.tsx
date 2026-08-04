@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
@@ -39,6 +40,9 @@ export function InventoryAdjustmentFormPage({ mode }: InventoryAdjustmentFormPag
   const adjustmentQuery = useInventoryAdjustment(companyId, mode === "edit" ? inventoryAdjustmentId ?? null : null);
   const createMutation = useCreateInventoryAdjustment(companyId);
   const updateMutation = useUpdateInventoryAdjustment(companyId, inventoryAdjustmentId ?? null);
+  const [purchaseGate, setPurchaseGate] = useState<"choose" | "adjustment">(
+    mode === "create" ? "choose" : "adjustment",
+  );
   const form = useForm<InventoryAdjustmentFormInput, undefined, InventoryAdjustmentFormValues>({
     resolver: zodResolver(inventoryAdjustmentSchema),
     values:
@@ -74,6 +78,11 @@ export function InventoryAdjustmentFormPage({ mode }: InventoryAdjustmentFormPag
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
   const isLocked = adjustmentQuery.data?.status === "POSTED";
+  const watchedLines = form.watch("lines");
+  const hasIncrease = useMemo(
+    () => (watchedLines ?? []).some((line) => line.direction === "IN" && Number(line.quantity) > 0),
+    [watchedLines],
+  );
 
   if (!canManage) {
     return <Alert title="Inventory editing is unavailable" description="Your current company membership does not include inventory management." variant="destructive" />;
@@ -81,6 +90,46 @@ export function InventoryAdjustmentFormPage({ mode }: InventoryAdjustmentFormPag
 
   if (mode === "edit" && adjustmentQuery.error) {
     return <ErrorState title="Unable to load adjustment" description={adjustmentQuery.error.message} />;
+  }
+
+  if (mode === "create" && purchaseGate === "choose") {
+    return (
+      <PageContainer
+        header={
+          <PageHeader
+            actions={
+              <Button asChild variant="ghost">
+                <Link to={`/app/company/${companyId}/inventory/adjustments`}>Back to adjustments</Link>
+              </Button>
+            }
+            description="Purchased stock should use a Vendor Bill (Issue → Receive). Use an adjustment only for counts, found stock, or shrinkage."
+            eyebrow="Inventory"
+            title="Add stock"
+          />
+        }
+      >
+        <div className="surface grid gap-4 p-6 md:grid-cols-2">
+          <div className="space-y-3 rounded-xl border border-border/70 p-5">
+            <h3 className="text-lg font-semibold">Create Vendor Bill for this Stock Purchase</h3>
+            <p className="text-sm text-muted-foreground">
+              Recommended for buying inventory from a vendor. Issue the bill, then Receive goods to increase quantity.
+            </p>
+            <Button asChild variant="primary">
+              <Link to={`/app/company/${companyId}/bills/new?from=adjustment`}>Create Vendor Bill</Link>
+            </Button>
+          </div>
+          <div className="space-y-3 rounded-xl border border-border/70 p-5">
+            <h3 className="text-lg font-semibold">Adjustment only (no vendor bill)</h3>
+            <p className="text-sm text-muted-foreground">
+              Use for inventory corrections that are not purchases (count variance, found stock, damage).
+            </p>
+            <Button onClick={() => setPurchaseGate("adjustment")} type="button" variant="outline">
+              Continue with adjustment
+            </Button>
+          </div>
+        </div>
+      </PageContainer>
+    );
   }
 
   return (
@@ -121,6 +170,13 @@ export function InventoryAdjustmentFormPage({ mode }: InventoryAdjustmentFormPag
         })}
       >
         {activeMutation.error ? <Alert title={activeMutation.error.message} variant="destructive" /> : null}
+        {mode === "create" && hasIncrease ? (
+          <Alert
+            description="Increase lines add quantity without Accounts Payable. Prefer Vendor Bill → Issue → Receive for purchases."
+            title="Purchased stock?"
+            variant="default"
+          />
+        ) : null}
         <div className="surface space-y-6 p-6">
           <FormSection title="Adjustment header">
             <div className="grid gap-4 md:grid-cols-2">

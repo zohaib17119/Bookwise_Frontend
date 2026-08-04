@@ -11,10 +11,17 @@ import { DocumentDetailsSection } from "@/components/documents/document-details-
 import { DocumentHeaderCard } from "@/components/documents/document-header-card";
 import { DocumentLinesTable } from "@/components/documents/document-lines-table";
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
+import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { useBill, useDeleteBill, useIssueBill } from "@/features/bills/hooks/use-bills";
+import {
+  useBill,
+  useDeleteBill,
+  useIssueBill,
+  useReceiveBillGoods,
+  useVoidBill,
+} from "@/features/bills/hooks/use-bills";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
 
@@ -24,9 +31,13 @@ export function BillDetailPage() {
   const { permissions, company } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [issueOpen, setIssueOpen] = useState(false);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [voidOpen, setVoidOpen] = useState(false);
   const billQuery = useBill(companyId, billId ?? null);
   const deleteMutation = useDeleteBill(companyId);
   const issueMutation = useIssueBill(companyId);
+  const receiveMutation = useReceiveBillGoods(companyId);
+  const voidMutation = useVoidBill(companyId);
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
 
@@ -44,6 +55,14 @@ export function BillDetailPage() {
 
   const bill = billQuery.data;
   const documentCurrency = bill.currencyCode ?? getCompanyBaseCurrency(company);
+  const canReceive =
+    bill.rawStatus !== "DRAFT" &&
+    bill.rawStatus !== "VOID" &&
+    bill.rawStatus !== "CANCELLED" &&
+    bill.goodsStatus !== "NOT_APPLICABLE" &&
+    bill.goodsStatus !== "RECEIVED";
+  const canVoid =
+    bill.rawStatus !== "DRAFT" && bill.rawStatus !== "VOID" && bill.rawStatus !== "CANCELLED";
 
   return (
     <PageContainer className="space-y-6">
@@ -54,19 +73,42 @@ export function BillDetailPage() {
               {bill.status === "DRAFT" ? (
                 <Button onClick={() => setIssueOpen(true)} variant="primary">Issue bill</Button>
               ) : null}
+              {canReceive ? (
+                <Button onClick={() => setReceiveOpen(true)} variant="primary">Receive goods</Button>
+              ) : null}
+              {bill.status === "DRAFT" ? (
+                <Button asChild variant="secondary">
+                  <Link to={`/app/company/${companyId}/bills/${bill.id}/edit`}>Edit bill</Link>
+                </Button>
+              ) : null}
               <Button asChild variant="secondary">
-                <Link to={`/app/company/${companyId}/bills/${bill.id}/edit`}>Edit bill</Link>
+                <Link to={`/app/company/${companyId}/bill-payments/new?vendorId=${bill.vendorId}&billId=${bill.id}`}>Record payment</Link>
               </Button>
-              <Button asChild variant="secondary">
-                <Link to={`/app/company/${companyId}/bill-payments/new?vendorId=${bill.vendorId}`}>Record payment</Link>
+              {canVoid ? (
+                <Button onClick={() => setVoidOpen(true)} variant="outline">Void</Button>
+              ) : null}
+              <Button onClick={() => setDeleteOpen(true)} variant="ghost">
+                {bill.status === "DRAFT" ? "Delete" : "Cancel / void"}
               </Button>
-              <Button onClick={() => setDeleteOpen(true)} variant="ghost">Delete</Button>
             </div>
           ) : null
         }
-        description="Review bill details, payable balances, and the underlying line items."
+        badges={
+          <>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Payment</span>
+              <DocumentStatusBadge status={bill.paymentStatus === "UNPAID" ? "UNPAID" : bill.status} />
+            </div>
+            {bill.goodsStatus && bill.goodsStatus !== "NOT_APPLICABLE" ? (
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Goods</span>
+                <DocumentStatusBadge status={bill.goodsStatus} />
+              </div>
+            ) : null}
+          </>
+        }
+        description="Review bill details, goods receipt, payable balances, and line items."
         number={bill.billNumber}
-        status={bill.status}
         title="Bill details"
       />
 
@@ -90,6 +132,8 @@ export function BillDetailPage() {
               <DocumentMetaSection
                 items={[
                   { label: "Currency", value: documentCurrency },
+                  { label: "Goods status", value: (bill.goodsStatus ?? "-").replace(/_/g, " ") },
+                  { label: "Payment status", value: (bill.paymentStatus ?? bill.status ?? "-").replace(/_/g, " ") },
                   { label: "Notes", value: bill.notes || "-" },
                 ]}
                 title="Commercials"
@@ -117,7 +161,7 @@ export function BillDetailPage() {
 
       <ConfirmDialog
         confirmLabel="Issue bill"
-        description="This finalizes the bill: it posts the expense and accounts payable to your ledger and marks it as Open so payments can be recorded. This cannot be undone."
+        description="Posts accounts payable (and purchases clearing for inventory lines). Stock quantity increases only when you Receive goods."
         isPending={issueMutation.isPending}
         onClose={() => {
           setIssueOpen(false);
@@ -131,8 +175,44 @@ export function BillDetailPage() {
         title="Issue this bill?"
       />
 
+      <ConfirmDialog
+        confirmLabel="Receive goods"
+        description="Creates inventory batches and stock quantity for outstanding inventory lines, and reclasses Purchases Clearing to Inventory Asset."
+        isPending={receiveMutation.isPending}
+        onClose={() => {
+          setReceiveOpen(false);
+          receiveMutation.reset();
+        }}
+        onConfirm={async () => {
+          await receiveMutation.mutateAsync({ billId: bill.id });
+          setReceiveOpen(false);
+        }}
+        open={receiveOpen}
+        title="Receive all outstanding goods?"
+      />
+
+      <ConfirmDialog
+        confirmLabel="Void bill"
+        description="Reverses goods receipt (if any) and the bill journal. Payments must be unallocated first. Cannot void if received stock was already sold."
+        isPending={voidMutation.isPending}
+        onClose={() => {
+          setVoidOpen(false);
+          voidMutation.reset();
+        }}
+        onConfirm={async () => {
+          await voidMutation.mutateAsync(bill.id);
+          setVoidOpen(false);
+        }}
+        open={voidOpen}
+        title="Void this bill?"
+      />
+
       <ConfirmDeleteDialog
-        description="This will remove the bill from active workflows while preserving backend audit visibility."
+        description={
+          bill.status === "DRAFT"
+            ? "This will cancel the draft bill."
+            : "Issued bills are voided (journals and stock reversed when possible)."
+        }
         isPending={deleteMutation.isPending}
         onClose={() => {
           setDeleteOpen(false);
@@ -143,7 +223,7 @@ export function BillDetailPage() {
           navigate(`/app/company/${companyId}/bills`);
         }}
         open={deleteOpen}
-        title="Delete bill?"
+        title={bill.status === "DRAFT" ? "Delete draft bill?" : "Void / cancel bill?"}
       />
     </PageContainer>
   );

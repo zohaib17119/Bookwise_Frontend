@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -70,6 +71,7 @@ function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["compa
 export function BillFormPage({ mode }: BillFormPageProps) {
   const navigate = useNavigate();
   const { billId, companyId } = useParams();
+  const [searchParams] = useSearchParams();
   const { company, permissions } = useActiveCompany();
   const vendorsQuery = useVendorOptions(companyId);
   const itemsQuery = useItemOptions(companyId);
@@ -87,6 +89,32 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     resolver: zodResolver(billSchema),
     defaultValues: createDefaults,
   });
+
+  // Prefill from Buy Stock / low-stock deep link: ?itemId=&qty=
+  useEffect(() => {
+    if (mode !== "create") return;
+    const itemId = searchParams.get("itemId");
+    const qty = searchParams.get("qty");
+    if (!itemId || !itemsQuery.data?.length) return;
+
+    const item = itemsQuery.data.find((row) => row.id === itemId);
+    if (!item) return;
+
+    form.setValue("lines", [
+      {
+        itemId: item.id,
+        description: item.name,
+        quantity: qty && Number(qty) > 0 ? String(qty) : "1",
+        unitCost: item.purchaseCost != null ? String(item.purchaseCost) : "",
+        itemName: item.name,
+        discountType: undefined,
+        discountValue: "",
+        taxCodeId: "",
+        taxRate: "",
+        expenseAccountId: item.expenseAccountId ?? item.assetAccountId ?? "",
+      },
+    ]);
+  }, [mode, searchParams, itemsQuery.data, form]);
 
   useEffect(() => {
     if (mode !== "edit" || !billQuery.data) {

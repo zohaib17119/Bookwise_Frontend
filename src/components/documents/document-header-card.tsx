@@ -6,6 +6,7 @@ interface DocumentHeaderCardProps {
   title: string;
   number?: string | null;
   status?: string | null;
+  badges?: ReactNode;
   description?: string;
   actions?: ReactNode;
 }
@@ -14,6 +15,7 @@ export function DocumentHeaderCard({
   title,
   number,
   status,
+  badges,
   description,
   actions,
 }: DocumentHeaderCardProps) {
@@ -32,8 +34,8 @@ export function DocumentHeaderCard({
             {number || "Pending assignment"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <DocumentStatusBadge status={status} />
+        <div className="flex flex-wrap items-center gap-3">
+          {badges ?? <DocumentStatusBadge status={status} />}
         </div>
       </div>
     </SectionCard>

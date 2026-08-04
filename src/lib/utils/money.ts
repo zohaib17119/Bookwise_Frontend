@@ -16,7 +16,7 @@ export function clampAllocationAmount(amount: number, maxAmount: number): number
 }
 
 const ALLOCATABLE_INVOICE_STATUSES = new Set(["ISSUED", "PARTIALLY_PAID", "OVERDUE"]);
-const ALLOCATABLE_BILL_STATUSES = new Set(["ISSUED", "PARTIALLY_PAID", "OVERDUE"]);
+const ALLOCATABLE_BILL_STATUSES = new Set(["OPEN", "PARTIALLY_PAID", "OVERDUE"]);
 
 export function isAllocatableInvoiceStatus(status?: string | null, rawStatus?: string | null) {
   const effectiveStatus = rawStatus ?? status;

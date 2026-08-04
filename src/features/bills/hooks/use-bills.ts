@@ -7,6 +7,8 @@ import {
   getBillsPaginated,
   updateBill,
   issueBill,
+  receiveBillGoods,
+  voidBill,
 } from "@/features/bills/api/bills.api";
 import type { BillListParams, BillPayload } from "@/features/bills/types/bill.types";
 import { isAllocatableBillStatus, parseMoney } from "@/lib/utils/money";
@@ -17,6 +19,7 @@ function invalidateBillQueries(companyId: string) {
     queryClient.invalidateQueries({ queryKey: ["companies", companyId, "bills"] }),
     queryClient.invalidateQueries({ queryKey: ["companies", companyId, "bill-payments"] }),
     queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "inventory"] }),
   ]);
 }
 
@@ -91,6 +94,30 @@ export function useDeleteBill(companyId: string | undefined) {
 export function useIssueBill(companyId: string | undefined) {
   return useMutation({
     mutationFn: (billId: string) => issueBill(companyId!, billId),
+    onSuccess: async () => {
+      if (companyId) await invalidateBillQueries(companyId);
+    },
+  });
+}
+
+export function useReceiveBillGoods(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: ({
+      billId,
+      payload,
+    }: {
+      billId: string;
+      payload?: { lines?: Array<{ billLineId: string; quantity: string }> };
+    }) => receiveBillGoods(companyId!, billId, payload),
+    onSuccess: async () => {
+      if (companyId) await invalidateBillQueries(companyId);
+    },
+  });
+}
+
+export function useVoidBill(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (billId: string) => voidBill(companyId!, billId),
     onSuccess: async () => {
       if (companyId) await invalidateBillQueries(companyId);
     },
