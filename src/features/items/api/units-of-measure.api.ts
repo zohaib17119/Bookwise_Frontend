@@ -5,9 +5,9 @@ import type {
   UnitOfMeasurePayload,
 } from "@/features/items/types/unit-of-measure.types";
 
-export async function getUnitsOfMeasure() {
+export async function getUnitsOfMeasure(): Promise<UnitOfMeasure[]> {
   const { data } = await apiClient.get<UnitOfMeasure[]>("/units-of-measure");
-  return Array.isArray(data) ? data : extractListData(data);
+  return Array.isArray(data) ? data : extractListData<UnitOfMeasure>(data);
 }
 
 export async function createUnitOfMeasure(payload: UnitOfMeasurePayload) {

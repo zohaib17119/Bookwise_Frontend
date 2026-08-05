@@ -17,6 +17,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardKpiCard } from "@/components/dashboard/dashboard-kpi-card";
 import { EntityCountStrip } from "@/components/dashboard/entity-count-strip";
 import { FinancialOverviewChart } from "@/components/dashboard/financial-overview-chart";
+import { QuickActions } from "@/components/dashboard/quick-actions";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageContainer } from "@/components/shared/page-container";
 import { Button } from "@/components/ui/button";
@@ -120,6 +121,8 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null}
+
+      <QuickActions companyId={companyId} />
 
       <div className="grid items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
         <DashboardKpiCard

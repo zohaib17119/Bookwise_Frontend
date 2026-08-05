@@ -300,7 +300,7 @@ export function ItemsPage() {
             description: values.description || undefined,
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
-            unitName: values.unitName || undefined,
+            unitName: values.unitName || "ea",
             hsCode: values.hsCode,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
@@ -310,7 +310,6 @@ export function ItemsPage() {
             preferredVendorId: values.preferredVendorId || undefined,
             taxRateId: values.taxRateId,
             taxable: values.taxable || Boolean(values.taxRateId),
-            unitName: values.unitName || "ea",
             reorderLevel: values.reorderLevel || undefined,
             ...(drawerMode === "create"
               ? { quantityOnHand: values.quantityOnHand || undefined }
