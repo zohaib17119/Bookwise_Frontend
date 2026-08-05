@@ -5,6 +5,7 @@ import {
   getItem,
   getItems,
   getItemsPaginated,
+  getNextItemSku,
   lookupItemByCode,
   updateItem,
 } from "@/features/items/api/items.api";
@@ -43,6 +44,14 @@ export function useItemOptions(companyId: string | undefined) {
   });
 }
 
+export function useNextItemSku(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "items", "next-sku"],
+    queryFn: () => getNextItemSku(companyId!),
+    enabled: Boolean(companyId && enabled),
+  });
+}
+
 export function useLookupItemByCode(companyId: string | undefined) {
   return useMutation({
     mutationFn: (code: string) => lookupItemByCode(companyId!, code),
@@ -60,7 +69,12 @@ export function useCreateItem(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: ItemPayload) => createItem(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateItemQueries(companyId);
+      if (companyId) {
+        await invalidateItemQueries(companyId);
+        await queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "items", "next-sku"],
+        });
+      }
     },
   });
 }

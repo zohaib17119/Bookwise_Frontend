@@ -22,29 +22,61 @@ import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { useBill, useCreateBill, useUpdateBill } from "@/features/bills/hooks/use-bills";
+import { useBill, useCreateBill, useNextBillNumber, useUpdateBill } from "@/features/bills/hooks/use-bills";
 import { billSchema, type BillFormInput, type BillFormValues } from "@/features/bills/schemas/bill.schema";
-import { useItemOptions } from "@/features/items/hooks/use-items";
+import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
+import { useCreateItem, useItemOptions } from "@/features/items/hooks/use-items";
+import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
-import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
+import {
+  convertBasePriceToDocumentPrice,
+  getCompanyBaseCurrency,
+  resolveDocumentExchangeRate,
+} from "@/features/companies/utils/company-currency";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
-import { useTaxCodes } from "@/features/tax/hooks/use-tax";
-import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
+import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
+import { VendorFormDrawer } from "@/features/vendors/components/vendor-form-drawer";
+import { useCreateVendor, useVendorOptions } from "@/features/vendors/hooks/use-vendors";
+import type { VendorFormValues } from "@/features/vendors/schemas/vendor.schema";
+import { queryClient } from "@/lib/query/query-client";
 
 interface BillFormPageProps {
   mode: "create" | "edit";
 }
 
+const DEFAULT_PAYMENT_TERMS_DAYS = 15;
+
+function toIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayIsoDate(): string {
+  return toIsoDate(new Date());
+}
+
+function addDaysIso(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day) return isoDate;
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return toIsoDate(date);
+}
+
 function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["company"]): BillFormInput {
+  const issueDate = todayIsoDate();
   return {
     vendorId: "",
     billNumber: "",
     referenceNumber: "",
-    issueDate: "",
-    dueDate: "",
+    issueDate,
+    dueDate: addDaysIso(issueDate, DEFAULT_PAYMENT_TERMS_DAYS),
     currencyCode: getCompanyBaseCurrency(company),
     exchangeRate: "",
     notes: "",
@@ -58,6 +90,7 @@ function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["compa
         quantity: "1",
         unitCost: "",
         itemName: "",
+        unitName: "",
         discountType: undefined,
         discountValue: "",
         taxCodeId: "",
@@ -77,11 +110,19 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const itemsQuery = useItemOptions(companyId);
   const accountsQuery = useAccountOptions(companyId);
   const taxCodesQuery = useTaxCodes(companyId);
+  const taxRatesQuery = useTaxRates(companyId);
+  const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
   const billQuery = useBill(companyId, mode === "edit" ? billId ?? null : null);
+  const nextBillNumberQuery = useNextBillNumber(companyId, mode === "create");
   const createMutation = useCreateBill(companyId);
   const updateMutation = useUpdateBill(companyId, billId ?? null);
+  const createVendorMutation = useCreateVendor(companyId);
+  const createItemMutation = useCreateItem(companyId);
   const canManage = canManageEntity(permissions, "bills");
   const validationSummaryRef = useRef<HTMLDivElement>(null);
+  const [vendorDrawerOpen, setVendorDrawerOpen] = useState(false);
+  const [itemDrawerOpen, setItemDrawerOpen] = useState(false);
+  const [itemCreateLineIndex, setItemCreateLineIndex] = useState<number | null>(null);
 
   const createDefaults = useMemo(() => buildCreateDefaults(company), [company]);
 
@@ -107,6 +148,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
         quantity: qty && Number(qty) > 0 ? String(qty) : "1",
         unitCost: item.purchaseCost != null ? String(item.purchaseCost) : "",
         itemName: item.name,
+        unitName: item.unitName ?? "",
         discountType: undefined,
         discountValue: "",
         taxCodeId: "",
@@ -115,6 +157,12 @@ export function BillFormPage({ mode }: BillFormPageProps) {
       },
     ]);
   }, [mode, searchParams, itemsQuery.data, form]);
+
+  useEffect(() => {
+    if (mode !== "create" || !nextBillNumberQuery.data) return;
+    if (form.getValues("billNumber")) return;
+    form.setValue("billNumber", nextBillNumberQuery.data, { shouldDirty: false });
+  }, [mode, nextBillNumberQuery.data, form]);
 
   useEffect(() => {
     if (mode !== "edit" || !billQuery.data) {
@@ -144,6 +192,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           quantity: toDecimalString(line.quantity || "1"),
           unitCost: line.unitCost != null ? toOptionalDecimalString(line.unitCost) : "",
           itemName: line.itemName ?? "",
+          unitName: "",
           discountType: line.discountType ?? undefined,
           discountValue:
             line.discountValue != null && line.discountValue !== ""
@@ -156,10 +205,36 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     });
   }, [billQuery.data, company, form, mode]);
 
+  useEffect(() => {
+    if (!itemsQuery.data?.length) return;
+    const lines = form.getValues("lines") ?? [];
+    lines.forEach((line, index) => {
+      if (!line.itemId || line.unitName) return;
+      const item = itemsQuery.data.find((row) => row.id === line.itemId);
+      if (item?.unitName) {
+        form.setValue(`lines.${index}.unitName`, item.unitName, { shouldDirty: false });
+      }
+    });
+  }, [itemsQuery.data, form, billQuery.data]);
+
   const watchedLines = useWatch({ control: form.control, name: "lines" });
   const watchedVendorId = form.watch("vendorId");
+  const watchedIssueDate = form.watch("issueDate");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
+
+  const getVendorPaymentTermsDays = (vendorId: string) => {
+    const vendor = (vendorsQuery.data ?? []).find((row) => row.id === vendorId);
+    const days = vendor?.paymentTermsDays;
+    if (days == null || Number.isNaN(Number(days))) return DEFAULT_PAYMENT_TERMS_DAYS;
+    return Math.max(0, Number(days));
+  };
+
+  const applyDueDateFromTerms = (issueDate: string, vendorId: string) => {
+    if (!issueDate) return;
+    const days = vendorId ? getVendorPaymentTermsDays(vendorId) : DEFAULT_PAYMENT_TERMS_DAYS;
+    form.setValue("dueDate", addDaysIso(issueDate, days), { shouldDirty: true, shouldValidate: true });
+  };
 
   useCounterpartyCurrencyDefault({
     form,
@@ -168,6 +243,42 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     company,
     mode,
   });
+
+  // When vendor changes, refresh due date from current issue + vendor terms (create & edit).
+  const previousVendorIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!watchedVendorId) {
+      previousVendorIdRef.current = watchedVendorId;
+      return;
+    }
+    if (previousVendorIdRef.current === watchedVendorId) return;
+    const isInitialEditHydration =
+      mode === "edit" && previousVendorIdRef.current === undefined && Boolean(billQuery.data);
+    previousVendorIdRef.current = watchedVendorId;
+    if (isInitialEditHydration) return;
+    const issueDate = form.getValues("issueDate") || todayIsoDate();
+    if (!form.getValues("issueDate")) {
+      form.setValue("issueDate", issueDate, { shouldDirty: true });
+    }
+    applyDueDateFromTerms(issueDate, watchedVendorId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on vendorId
+  }, [watchedVendorId, mode, billQuery.data]);
+
+  const previousIssueDateRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!watchedIssueDate) {
+      previousIssueDateRef.current = watchedIssueDate;
+      return;
+    }
+    if (previousIssueDateRef.current === watchedIssueDate) return;
+    const isInitialEditHydration =
+      mode === "edit" && previousIssueDateRef.current === undefined && Boolean(billQuery.data);
+    previousIssueDateRef.current = watchedIssueDate;
+    if (isInitialEditHydration) return;
+    if (!watchedVendorId) return;
+    applyDueDateFromTerms(watchedIssueDate, watchedVendorId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on issueDate
+  }, [watchedIssueDate, watchedVendorId, mode, billQuery.data]);
 
   const purchaseTaxCodeOptions = useMemo(
     () =>
@@ -213,6 +324,39 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     validationSummaryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const applyItemToLine = (lineIndex: number, item: {
+    id: string;
+    name: string;
+    description?: string | null;
+    purchaseCost?: string | null;
+    expenseAccountId?: string | null;
+    assetAccountId?: string | null;
+    unitName?: string | null;
+  }) => {
+    const basePrice = Number(item.purchaseCost ?? "0");
+    const price = convertBasePriceToDocumentPrice(
+      basePrice,
+      exchangeRateString || undefined,
+      form.getValues("currencyCode") || getCompanyBaseCurrency(company),
+      getCompanyBaseCurrency(company),
+    );
+    form.setValue(`lines.${lineIndex}.itemId`, item.id, { shouldDirty: true, shouldValidate: true });
+    form.setValue(`lines.${lineIndex}.itemName`, item.name, { shouldDirty: true });
+    form.setValue(`lines.${lineIndex}.unitName`, item.unitName ?? "", { shouldDirty: true });
+    form.setValue(`lines.${lineIndex}.description`, item.description || item.name, { shouldDirty: true });
+    form.setValue(`lines.${lineIndex}.unitCost`, toDecimalString(price), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    if (item.expenseAccountId || item.assetAccountId) {
+      form.setValue(
+        `lines.${lineIndex}.expenseAccountId`,
+        item.expenseAccountId ?? item.assetAccountId ?? "",
+        { shouldDirty: true },
+      );
+    }
+  };
+
   if (!canManage) {
     return (
       <Alert
@@ -232,9 +376,13 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               <Link to={`/app/company/${companyId}/bills`}>Back to bills</Link>
             </Button>
           }
-          description="Create or edit a vendor bill with payable-focused line items."
+          description={
+            mode === "create"
+              ? "Create a vendor bill (purchase invoice) with payable line items."
+              : "Edit this vendor bill (purchase invoice)."
+          }
           eyebrow="Payables"
-          title={mode === "create" ? "New bill" : "Edit bill"}
+          title={mode === "create" ? "New bill (purchase invoice)" : "Edit bill"}
         />
       }
     >
@@ -296,9 +444,14 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           <FormSection title="Bill header">
             <FieldGrid>
               <CounterpartySelect
+                createLabel="Create new vendor…"
                 error={form.formState.errors.vendorId?.message}
                 label="Vendor"
                 onChange={(value) => form.setValue("vendorId", value, { shouldValidate: true })}
+                onCreateNew={() => {
+                  createVendorMutation.reset();
+                  setVendorDrawerOpen(true);
+                }}
                 options={(vendorsQuery.data ?? []).map((vendor) => ({
                   id: vendor.id,
                   label: vendor.displayName,
@@ -307,8 +460,12 @@ export function BillFormPage({ mode }: BillFormPageProps) {
                 placeholder="Select vendor"
                 value={form.watch("vendorId")}
               />
-              <FormField error={form.formState.errors.billNumber?.message} label="Bill number">
-                <Input {...form.register("billNumber")} placeholder="BILL-00152" />
+              <FormField
+                error={form.formState.errors.billNumber?.message}
+                helperText="Optional — auto BILL-01 if left blank"
+                label="Bill no / Purchase invoice no"
+              >
+                <Input {...form.register("billNumber")} placeholder="BILL-01" />
               </FormField>
               <FormField
                 error={form.formState.errors.referenceNumber?.message}
@@ -367,12 +524,26 @@ export function BillFormPage({ mode }: BillFormPageProps) {
               accountOptions={accountsQuery.data ?? []}
               baseCurrencyCode={getCompanyBaseCurrency(company)}
               control={form.control}
+              createItemLabel="Create new item…"
               currencyCode={form.watch("currencyCode")}
               errors={form.formState.errors}
               exchangeRate={exchangeRateString}
-              itemOptions={itemsQuery.data ?? []}
+              itemOptions={(itemsQuery.data ?? []).map((item) => ({
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                salesPrice: item.salesPrice,
+                purchaseCost: item.purchaseCost,
+                preferredVendorId: item.preferredVendorId,
+                unitName: item.unitName,
+              }))}
               mode="purchase"
               name={"lines"}
+              onCreateItemForLine={(lineIndex) => {
+                createItemMutation.reset();
+                setItemCreateLineIndex(lineIndex);
+                setItemDrawerOpen(true);
+              }}
               preferredVendorId={watchedVendorId || undefined}
               setValue={form.setValue}
               showAccountColumn={accountColumnVisible}
@@ -415,6 +586,96 @@ export function BillFormPage({ mode }: BillFormPageProps) {
           </FormSection>
         </div>
       </form>
+
+      <VendorFormDrawer
+        companyCurrency={getCompanyBaseCurrency(company)}
+        companyId={companyId}
+        error={createVendorMutation.error}
+        isPending={createVendorMutation.isPending}
+        mode="create"
+        onClose={() => {
+          setVendorDrawerOpen(false);
+          createVendorMutation.reset();
+        }}
+        onSubmit={async (values: VendorFormValues) => {
+          const legalName = values.legalName.trim();
+          const displayName = values.displayName?.trim() || legalName;
+          const vendor = await createVendorMutation.mutateAsync({
+            ...values,
+            vendorCode: values.vendorCode || undefined,
+            legalName,
+            displayName,
+            contactPersonName: values.contactPersonName || undefined,
+            email: values.email || undefined,
+            phone: values.phone || undefined,
+            mobile: values.mobile || undefined,
+            website: values.website || undefined,
+            taxRegistrationNumber: values.taxRegistrationNumber || undefined,
+            currencyCode: values.currencyCode || undefined,
+            paymentTermsDays:
+              values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)
+                ? 15
+                : Number(values.paymentTermsDays),
+            openingBalance: values.openingBalance || "0",
+            openingBalanceDate: values.openingBalanceDate || undefined,
+            billingAddressLine1: values.billingAddressLine1 || undefined,
+            billingAddressLine2: values.billingAddressLine2 || undefined,
+            billingCity: values.billingCity || undefined,
+            billingState: values.billingState || undefined,
+            billingPostalCode: values.billingPostalCode || undefined,
+            billingCountry: values.billingCountry || undefined,
+            notes: values.notes || undefined,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "vendors"] });
+          form.setValue("vendorId", vendor.id, { shouldValidate: true, shouldDirty: true });
+          setVendorDrawerOpen(false);
+        }}
+        open={vendorDrawerOpen}
+      />
+
+      <ItemFormDrawer
+        accounts={accountsQuery.data ?? []}
+        baseCurrencyCode={getCompanyBaseCurrency(company)}
+        error={createItemMutation.error}
+        hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
+        isPending={createItemMutation.isPending}
+        mode="create"
+        onClose={() => {
+          setItemDrawerOpen(false);
+          setItemCreateLineIndex(null);
+          createItemMutation.reset();
+        }}
+        onSubmit={async (values: ItemFormValues) => {
+          const item = await createItemMutation.mutateAsync({
+            ...values,
+            itemCode: values.itemCode || undefined,
+            description: values.description || undefined,
+            sku: values.sku || undefined,
+            barcode: values.barcode?.trim() || null,
+            unitName: values.unitName || "ea",
+            hsCode: values.hsCode,
+            salesPrice: values.salesPrice || "0",
+            purchaseCost: values.purchaseCost || "0",
+            incomeAccountId: values.incomeAccountId || undefined,
+            expenseAccountId: values.expenseAccountId || undefined,
+            assetAccountId: values.assetAccountId || undefined,
+            preferredVendorId: values.preferredVendorId || watchedVendorId || undefined,
+            taxRateId: values.taxRateId,
+            taxable: values.taxable || Boolean(values.taxRateId),
+            reorderLevel: values.reorderLevel || undefined,
+            quantityOnHand: values.quantityOnHand || undefined,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "items"] });
+          if (itemCreateLineIndex != null) {
+            applyItemToLine(itemCreateLineIndex, item);
+          }
+          setItemDrawerOpen(false);
+          setItemCreateLineIndex(null);
+        }}
+        open={itemDrawerOpen}
+        taxRates={taxRatesQuery.data ?? []}
+        vendors={vendorsQuery.data ?? []}
+      />
     </PageContainer>
   );
 }

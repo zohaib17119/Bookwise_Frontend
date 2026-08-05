@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus, Trash2, GripVertical, Package } from "lucide-react";
 import {
   Controller,
@@ -15,13 +15,19 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils/format";
 import {
+  exclToIncl,
   getDocumentPreviewTotals,
+  getLineDiscountedAmount,
   getLinePreviewTotal,
+  inclToExcl,
+  unitAmountFromInclusiveLineTotal,
 } from "@/features/shared/utils/document-calculations";
 import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import type { DiscountType } from "@/features/shared/types/documents";
-import { toDecimalString } from "@/features/shared/utils/decimal-string";
+import { toDecimalString, toNumber } from "@/features/shared/utils/decimal-string";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
+
+const CREATE_ITEM_SENTINEL = "__create_item__";
 
 interface ItemOption {
   id: string;
@@ -30,6 +36,7 @@ interface ItemOption {
   salesPrice?: string | null;
   purchaseCost?: string | null;
   preferredVendorId?: string | null;
+  unitName?: string | null;
 }
 
 interface AccountOption {
@@ -73,6 +80,9 @@ interface LineItemsEditorProps<TFieldValues extends FieldValues> {
    */
   preferredVendorId?: string;
   errors?: FieldErrors;
+  /** Opens create-item flow for the given line index. */
+  onCreateItemForLine?: (lineIndex: number) => void;
+  createItemLabel?: string;
 }
 
 const discountOptions: DiscountType[] = ["FIXED", "PERCENTAGE"];
@@ -93,12 +103,18 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
   showAccountColumn = false,
   preferredVendorId,
   errors,
+  onCreateItemForLine,
+  createItemLabel = "Create new item…",
 }: LineItemsEditorProps<TFieldValues>) {
   const accountColumnVisible = mode === "purchase" && showAccountColumn;
   const { fields, append, remove } = useFieldArray({
     control,
     name,
   });
+  const [inclDraftByLine, setInclDraftByLine] = useState<Record<string, string>>({});
+  const [editingInclLineId, setEditingInclLineId] = useState<string | null>(null);
+  const [unitInclDraftByLine, setUnitInclDraftByLine] = useState<Record<string, string>>({});
+  const [editingUnitInclLineId, setEditingUnitInclLineId] = useState<string | null>(null);
 
   // Sort: preferred items float to top when a vendor is selected
   const sortedItemOptions = useMemo(() => {
@@ -122,6 +138,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
     taxCodeId?: string;
     taxRate?: string;
     expenseAccountId?: string;
+    unitName?: string;
   }>) ?? [];
 
   const taxCodeMap = useMemo(() => {
@@ -165,6 +182,11 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
         setValue(`${name}.${index}.itemName` as never, selectedItem.name as never, {
           shouldDirty: true,
         });
+        setValue(
+          `${name}.${index}.unitName` as never,
+          (selectedItem.unitName ?? "") as never,
+          { shouldDirty: true },
+        );
         if (selectedItem.description) {
           setValue(
             `${name}.${index}.description` as never,
@@ -183,21 +205,73 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       setValue(`${name}.${index}.taxCodeId` as never, taxCodeId as never);
 
       const taxCode = taxCodeMap.get(taxCodeId);
-      if (taxCode && taxCode.effectiveRatePercent != null) {
+      if (taxCode && !taxCode.isExempt && taxCode.effectiveRatePercent != null) {
         setValue(
           `${name}.${index}.taxRate` as never,
           toDecimalString(taxCode.effectiveRatePercent) as never,
         );
       } else {
-        setValue(`${name}.${index}.taxRate` as never, "" as never);
+        setValue(`${name}.${index}.taxRate` as never, "0" as never);
       }
     },
     [name, setValue, taxCodeMap],
   );
 
-  const priceLabel = mode === "sales" ? "Rate" : "Unit Cost";
+  const handleInclusiveAmountChange = useCallback(
+    (index: number, fieldId: string, rawValue: string) => {
+      setInclDraftByLine((current) => ({ ...current, [fieldId]: rawValue }));
+      if (!setValue) return;
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed) || rawValue.trim() === "") return;
+
+      const line = watchedLines[index] ?? { description: "" };
+      const previewLine = toDocumentLinePreview(line);
+      const unit = unitAmountFromInclusiveLineTotal(previewLine, parsed);
+      const priceField = mode === "sales" ? "unitPrice" : "unitCost";
+      setValue(
+        `${name}.${index}.${priceField}` as never,
+        toDecimalString(unit) as never,
+        { shouldDirty: true, shouldValidate: true },
+      );
+    },
+    [mode, name, setValue, watchedLines],
+  );
+
+  const resolveLineTaxRate = useCallback(
+    (line: { taxCodeId?: string; taxRate?: string }) => {
+      const fromField = toNumber(line.taxRate);
+      if (fromField > 0) return fromField;
+      const taxCode = line.taxCodeId ? taxCodeMap.get(line.taxCodeId) : undefined;
+      if (taxCode?.isExempt) return 0;
+      return taxCode?.effectiveRatePercent ?? 0;
+    },
+    [taxCodeMap],
+  );
+
+  const handleUnitInclusiveChange = useCallback(
+    (index: number, fieldId: string, rawValue: string) => {
+      setUnitInclDraftByLine((current) => ({ ...current, [fieldId]: rawValue }));
+      if (!setValue) return;
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed) || rawValue.trim() === "") return;
+
+      const line = watchedLines[index] ?? {};
+      const rate = resolveLineTaxRate(line);
+      const unitEx = inclToExcl(parsed, rate);
+      setValue(
+        `${name}.${index}.unitCost` as never,
+        toDecimalString(unitEx) as never,
+        { shouldDirty: true, shouldValidate: true },
+      );
+    },
+    [name, resolveLineTaxRate, setValue, watchedLines],
+  );
+
+  const priceLabel = mode === "sales" ? "Rate" : "Rate (ex-tax)";
   const currency = currencyCode ?? "USD";
-  const colCount = accountColumnVisible ? 10 : 9;
+  // Columns before the primary amount column (sales: Amount incl; purchase: Line incl).
+  const colCount =
+    (accountColumnVisible ? 10 : 9) + (mode === "purchase" ? 2 : 0);
 
   return (
     <div className="w-full min-w-0 space-y-3">
@@ -221,6 +295,11 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               <th className="w-[120px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {priceLabel}
               </th>
+              {mode === "purchase" ? (
+                <th className="w-[120px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Rate (incl. tax)
+                </th>
+              ) : null}
               <th className="w-[140px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Discount
               </th>
@@ -232,8 +311,13 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               <th className="w-[150px] px-3 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Tax
               </th>
-              <th className="w-[110px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Amount
+              {mode === "purchase" ? (
+                <th className="w-[120px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Line (ex-tax)
+                </th>
+              ) : null}
+              <th className="w-[120px] px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {mode === "purchase" ? "Line (incl. tax)" : "Amount (incl. tax)"}
               </th>
               <th className="w-10 px-2 py-3" />
             </tr>
@@ -243,9 +327,19 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               const lineErrors = Array.isArray(errors?.lines)
                 ? (errors.lines[index] as FieldErrors | undefined)
                 : undefined;
-              const lineTotal = getLinePreviewTotal(
-                toDocumentLinePreview(watchedLines[index] ?? { description: "" }),
+              const previewLine = toDocumentLinePreview(
+                watchedLines[index] ?? { description: "" },
               );
+              const lineTotal = getLinePreviewTotal(previewLine);
+              const lineExTotal = getLineDiscountedAmount(previewLine);
+              const line = watchedLines[index] ?? {};
+              const unitSuffix =
+                line.unitName ||
+                itemOptions.find((item) => item.id === line.itemId)?.unitName ||
+                null;
+              const taxRatePercent = resolveLineTaxRate(line);
+              const unitEx = toNumber(mode === "sales" ? line.unitPrice : line.unitCost);
+              const unitIncl = exclToIncl(unitEx, taxRatePercent);
 
               return (
                 <tr
@@ -269,8 +363,13 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         <Select
                           className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
                           onChange={(event) => {
-                            inputField.onChange(event.target.value);
-                            handleItemChange(index, event.target.value);
+                            const next = event.target.value;
+                            if (next === CREATE_ITEM_SENTINEL) {
+                              onCreateItemForLine?.(index);
+                              return;
+                            }
+                            inputField.onChange(next);
+                            handleItemChange(index, next);
                           }}
                           value={
                             (inputField.value as string | undefined) ?? ""
@@ -285,6 +384,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                                 : ""}
                             </option>
                           ))}
+                          {onCreateItemForLine ? (
+                            <option value={CREATE_ITEM_SENTINEL}>{createItemLabel}</option>
+                          ) : null}
                         </Select>
                       )}
                     />
@@ -347,7 +449,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                     />
                   </td>
 
-                  {/* Unit Price / Unit Cost */}
+                  {/* Unit Price / Unit Cost (ex-tax) */}
                   <td className="px-3 py-2.5">
                     <Controller
                       control={control}
@@ -355,26 +457,73 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         `${name}.${index}.${mode === "sales" ? "unitPrice" : "unitCost"}` as never
                       }
                       render={({ field: inputField }) => (
-                        <Input
-                          className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
-                          min="0"
-                          onBlur={inputField.onBlur}
-                          onChange={(e) => {
-                            inputField.onChange(e.target.value);
-                          }}
-                          ref={inputField.ref}
-                          step="any"
-                          type="number"
-                          value={
-                            inputField.value === undefined ||
-                            inputField.value === null
-                              ? ""
-                              : String(inputField.value)
-                          }
-                        />
+                        <div className="space-y-0.5">
+                          <Input
+                            className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            min="0"
+                            onBlur={inputField.onBlur}
+                            onChange={(e) => {
+                              inputField.onChange(e.target.value);
+                            }}
+                            ref={inputField.ref}
+                            step="any"
+                            type="number"
+                            value={
+                              inputField.value === undefined ||
+                              inputField.value === null
+                                ? ""
+                                : String(inputField.value)
+                            }
+                          />
+                          {mode === "purchase" && unitSuffix ? (
+                            <p className="text-[10px] text-muted-foreground">/ {unitSuffix}</p>
+                          ) : null}
+                        </div>
                       )}
                     />
                   </td>
+
+                  {mode === "purchase" ? (
+                    <td className="px-3 py-2.5">
+                      <div className="space-y-0.5">
+                        <Input
+                          className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                          min="0"
+                          onBlur={() => {
+                            setEditingUnitInclLineId(null);
+                            setUnitInclDraftByLine((current) => {
+                              const next = { ...current };
+                              delete next[field.id];
+                              return next;
+                            });
+                          }}
+                          onChange={(event) =>
+                            handleUnitInclusiveChange(index, field.id, event.target.value)
+                          }
+                          onFocus={() => {
+                            setEditingUnitInclLineId(field.id);
+                            setUnitInclDraftByLine((current) => ({
+                              ...current,
+                              [field.id]: String(Number(unitIncl.toFixed(4))),
+                            }));
+                          }}
+                          step="any"
+                          type="number"
+                          value={
+                            editingUnitInclLineId === field.id &&
+                            unitInclDraftByLine[field.id] !== undefined
+                              ? unitInclDraftByLine[field.id]
+                              : unitIncl
+                                ? String(Number(unitIncl.toFixed(4)))
+                                : ""
+                          }
+                        />
+                        {unitSuffix ? (
+                          <p className="text-[10px] text-muted-foreground">/ {unitSuffix}</p>
+                        ) : null}
+                      </div>
+                    </td>
+                  ) : null}
 
                   {/* Discount (collapsed) */}
                   <td className="px-3 py-2.5">
@@ -494,11 +643,53 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                     />
                   </td>
 
-                  {/* Line amount */}
+                  {/* Line totals */}
+                  {mode === "purchase" ? (
+                    <td className="px-3 py-2.5 text-right text-sm font-medium text-foreground">
+                      {lineExTotal
+                        ? formatCurrency(lineExTotal, currency)
+                        : "—"}
+                    </td>
+                  ) : null}
                   <td className="px-3 py-2.5 text-right">
-                    <span className="text-sm font-semibold text-foreground">
-                      {formatCurrency(lineTotal, currency)}
-                    </span>
+                    {mode === "purchase" ? (
+                      <span className="text-sm font-semibold text-foreground">
+                        {lineTotal ? formatCurrency(lineTotal, currency) : "—"}
+                      </span>
+                    ) : (
+                      <Input
+                        className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm font-semibold transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                        min="0"
+                        onBlur={() => {
+                          setEditingInclLineId(null);
+                          setInclDraftByLine((current) => {
+                            const next = { ...current };
+                            delete next[field.id];
+                            return next;
+                          });
+                        }}
+                        onChange={(event) =>
+                          handleInclusiveAmountChange(index, field.id, event.target.value)
+                        }
+                        onFocus={() => {
+                          setEditingInclLineId(field.id);
+                          setInclDraftByLine((current) => ({
+                            ...current,
+                            [field.id]: String(Number(lineTotal.toFixed(4))),
+                          }));
+                        }}
+                        step="any"
+                        type="number"
+                        value={
+                          editingInclLineId === field.id &&
+                          inclDraftByLine[field.id] !== undefined
+                            ? inclDraftByLine[field.id]
+                            : lineTotal
+                              ? String(Number(lineTotal.toFixed(4)))
+                              : ""
+                        }
+                      />
+                    )}
                   </td>
 
                   {/* Delete */}
@@ -591,6 +782,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
               taxCodeId: "",
               taxRate: "",
               itemName: "",
+              unitName: "",
               expenseAccountId: "",
             } as never)
           }

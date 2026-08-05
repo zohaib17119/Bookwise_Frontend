@@ -12,8 +12,8 @@ const optionalDecimalString = z.string().optional().or(z.literal(""));
 
 export const vendorSchema = z.object({
   vendorCode: optionalString,
-  displayName: z.string().min(2, "Display name is required").max(120),
-  legalName: optionalString,
+  displayName: optionalString,
+  legalName: z.string().min(2, "Legal name is required").max(120),
   contactPersonName: optionalString,
   email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
   phone: optionalString,

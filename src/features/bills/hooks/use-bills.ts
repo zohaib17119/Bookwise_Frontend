@@ -5,6 +5,7 @@ import {
   getBill,
   getBills,
   getBillsPaginated,
+  getNextBillNumber,
   updateBill,
   issueBill,
   receiveBillGoods,
@@ -47,6 +48,14 @@ export function useBill(companyId: string | undefined, billId: string | null) {
   });
 }
 
+export function useNextBillNumber(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "bills", "next-number"],
+    queryFn: () => getNextBillNumber(companyId!),
+    enabled: Boolean(companyId && enabled),
+  });
+}
+
 export function useOpenBillsByVendor(
   companyId: string | undefined,
   vendorId: string | undefined,
@@ -68,7 +77,12 @@ export function useCreateBill(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: BillPayload) => createBill(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateBillQueries(companyId);
+      if (companyId) {
+        await invalidateBillQueries(companyId);
+        await queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "bills", "next-number"],
+        });
+      }
     },
   });
 }

@@ -1,6 +1,8 @@
 import { Select } from "@/components/ui/select";
 import { FormField } from "@/components/shared/form-field";
 
+const CREATE_SENTINEL = "__create__";
+
 interface CounterpartyOption {
   id: string;
   label: string;
@@ -14,6 +16,8 @@ interface CounterpartySelectProps {
   options: CounterpartyOption[];
   error?: string;
   placeholder: string;
+  onCreateNew?: () => void;
+  createLabel?: string;
 }
 
 export function CounterpartySelect({
@@ -23,10 +27,22 @@ export function CounterpartySelect({
   options,
   error,
   placeholder,
+  onCreateNew,
+  createLabel = "Create new…",
 }: CounterpartySelectProps) {
   return (
     <FormField error={error} label={label}>
-      <Select onChange={(event) => onChange(event.target.value)} value={value}>
+      <Select
+        onChange={(event) => {
+          const next = event.target.value;
+          if (next === CREATE_SENTINEL) {
+            onCreateNew?.();
+            return;
+          }
+          onChange(next);
+        }}
+        value={value}
+      >
         <option value="">{placeholder}</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
@@ -35,6 +51,7 @@ export function CounterpartySelect({
               : option.label}
           </option>
         ))}
+        {onCreateNew ? <option value={CREATE_SENTINEL}>{createLabel}</option> : null}
       </Select>
     </FormField>
   );

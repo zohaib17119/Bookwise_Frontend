@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { AdvancedSection } from "@/components/shared/advanced-section";
 import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
 import { CurrencySelect } from "@/components/shared/currency-select";
 import { FieldGrid } from "@/components/shared/field-grid";
@@ -20,6 +21,14 @@ import {
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { VendorLinkedItems } from "@/features/vendors/components/vendor-linked-items";
+import { useNextVendorCode } from "@/features/vendors/hooks/use-vendors";
+
+function todayIsoDate() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
 
 interface VendorFormDrawerProps {
   open: boolean;
@@ -45,9 +54,11 @@ export function VendorFormDrawer({
   onSubmit,
 }: VendorFormDrawerProps) {
   const currencyLocked = mode === "edit" && Boolean(vendor?.hasTransactions);
+  const nextCodeQuery = useNextVendorCode(companyId, open && mode === "create");
 
   const form = useForm<VendorFormInput, undefined, VendorFormValues>({
     resolver: zodResolver(vendorSchema),
+    mode: "onSubmit",
     defaultValues: {
       vendorCode: "",
       displayName: "",
@@ -59,9 +70,9 @@ export function VendorFormDrawer({
       website: "",
       taxRegistrationNumber: "",
       currencyCode: companyCurrency ?? "USD",
-      paymentTermsDays: undefined,
-      openingBalance: undefined,
-      openingBalanceDate: "",
+      paymentTermsDays: 15,
+      openingBalance: "0",
+      openingBalanceDate: todayIsoDate(),
       billingAddressLine1: "",
       billingAddressLine2: "",
       billingCity: "",
@@ -86,12 +97,14 @@ export function VendorFormDrawer({
       website: vendor?.website ?? "",
       taxRegistrationNumber: vendor?.taxRegistrationNumber ?? "",
       currencyCode: vendor?.currencyCode ?? companyCurrency ?? "USD",
-      paymentTermsDays: vendor?.paymentTermsDays ?? undefined,
+      paymentTermsDays: vendor?.paymentTermsDays ?? 15,
       openingBalance:
         vendor?.openingBalance != null
-          ? toOptionalDecimalString(vendor.openingBalance)
-          : undefined,
-      openingBalanceDate: vendor?.openingBalanceDate ?? "",
+          ? toOptionalDecimalString(vendor.openingBalance) ?? "0"
+          : "0",
+      openingBalanceDate: vendor?.openingBalanceDate
+        ? String(vendor.openingBalanceDate).slice(0, 10)
+        : todayIsoDate(),
       billingAddressLine1: vendor?.billingAddressLine1 ?? "",
       billingAddressLine2: vendor?.billingAddressLine2 ?? "",
       billingCity: vendor?.billingCity ?? "",
@@ -103,9 +116,16 @@ export function VendorFormDrawer({
     });
   }, [companyCurrency, form, open, vendor]);
 
+  useEffect(() => {
+    if (!open || mode !== "create" || !nextCodeQuery.data) return;
+    if (!form.getValues("vendorCode")) {
+      form.setValue("vendorCode", nextCodeQuery.data);
+    }
+  }, [form, mode, nextCodeQuery.data, open]);
+
   return (
     <CreateEditDrawer
-      description="Capture vendor profile, payment defaults, and purchasing contact details."
+      description="Only legal name is required. Everything else is optional or has defaults."
       footer={
         <div className="flex justify-end gap-3">
           <Button onClick={onClose} type="button" variant="ghost">
@@ -126,114 +146,136 @@ export function VendorFormDrawer({
     >
       <form className="space-y-6">
         <ApiErrorAlert error={error} />
-        <FormSection title="Profile" description="Basic vendor identity and purchasing contacts.">
-          <FieldGrid>
-            <FormField label="Vendor code">
-              <Input {...form.register("vendorCode")} placeholder="VEND-001" />
-            </FormField>
-            <FormField label="Display name" error={form.formState.errors.displayName?.message}>
-              <Input {...form.register("displayName")} placeholder="Orbit Supplies" />
-            </FormField>
-            <FormField label="Legal name">
-              <Input {...form.register("legalName")} />
-            </FormField>
-            <FormField label="Contact person">
-              <Input {...form.register("contactPersonName")} />
-            </FormField>
-            <FormField label="Email" error={form.formState.errors.email?.message}>
-              <Input {...form.register("email")} />
-            </FormField>
-            <FormField label="Phone">
-              <Input {...form.register("phone")} />
-            </FormField>
-            <FormField label="Mobile">
-              <Input {...form.register("mobile")} />
-            </FormField>
-            <FormField label="Website">
-              <Input {...form.register("website")} />
-            </FormField>
-            <FormField label="Tax registration">
-              <Input {...form.register("taxRegistrationNumber")} />
-            </FormField>
-          </FieldGrid>
-        </FormSection>
-
-        <FormSection title="Finance">
+        <FormSection
+          title="Essentials"
+          description="Fast entry fields. Code is auto-filled and editable."
+        >
           <FieldGrid>
             <FormField
-              label="Currency"
-              helperText={
-                currencyLocked
-                  ? "Currency can't be changed after the first transaction."
-                  : undefined
-              }
+              helperText="Auto-generated. You can change it before saving."
+              label="Vendor code"
             >
-              <Controller
-                control={form.control}
-                name="currencyCode"
-                render={({ field }) => (
-                  <CurrencySelect
-                    disabled={currencyLocked}
-                    name={field.name}
-                    onBlur={field.onBlur}
-                    onChange={field.onChange}
-                    value={field.value}
+              <Input {...form.register("vendorCode")} placeholder="VEND-01" />
+            </FormField>
+            <FormField error={form.formState.errors.legalName?.message} label="Legal name">
+              <Input {...form.register("legalName")} placeholder="Orbit Supplies LLC" />
+            </FormField>
+            <FormField
+              helperText="Optional. Defaults to legal name if left blank."
+              label="Display name"
+            >
+              <Input {...form.register("displayName")} placeholder="Orbit Supplies" />
+            </FormField>
+            <FormField label="Tax registration (optional)">
+              <Input {...form.register("taxRegistrationNumber")} placeholder="VAT / TRN" />
+            </FormField>
+          </FieldGrid>
+        </FormSection>
+
+        <AdvancedSection
+          title="More details (optional)"
+          description="Contact, finance, address, and notes — add only if you need them."
+          defaultOpen={mode === "edit"}
+        >
+          <div className="space-y-6">
+            <FormSection title="Contact">
+              <FieldGrid>
+                <FormField label="Contact person">
+                  <Input {...form.register("contactPersonName")} />
+                </FormField>
+                <FormField label="Email" error={form.formState.errors.email?.message}>
+                  <Input {...form.register("email")} />
+                </FormField>
+                <FormField label="Phone">
+                  <Input {...form.register("phone")} />
+                </FormField>
+                <FormField label="Mobile">
+                  <Input {...form.register("mobile")} />
+                </FormField>
+                <FormField label="Website">
+                  <Input {...form.register("website")} />
+                </FormField>
+              </FieldGrid>
+            </FormSection>
+
+            <FormSection title="Finance">
+              <FieldGrid>
+                <FormField
+                  label="Currency"
+                  helperText={
+                    currencyLocked
+                      ? "Currency can't be changed after the first transaction."
+                      : undefined
+                  }
+                >
+                  <Controller
+                    control={form.control}
+                    name="currencyCode"
+                    render={({ field }) => (
+                      <CurrencySelect
+                        disabled={currencyLocked}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                        value={field.value}
+                      />
+                    )}
                   />
-                )}
-              />
-            </FormField>
-            <FormField label="Payment terms (days)">
-              <Input type="number" {...form.register("paymentTermsDays")} />
-            </FormField>
-            <FormField label="Opening balance">
-              <Input type="number" step="0.01" {...form.register("openingBalance")} />
-            </FormField>
-            <FormField label="Opening balance date">
-              <Input type="date" {...form.register("openingBalanceDate")} />
-            </FormField>
-          </FieldGrid>
-        </FormSection>
+                </FormField>
+                <FormField helperText="Defaults to 15 days." label="Payment terms (days)">
+                  <Input type="number" {...form.register("paymentTermsDays")} />
+                </FormField>
+                <FormField helperText="Defaults to 0." label="Opening balance">
+                  <Input type="number" step="0.01" {...form.register("openingBalance")} />
+                </FormField>
+                <FormField helperText="Defaults to today." label="Opening balance date">
+                  <Input type="date" {...form.register("openingBalanceDate")} />
+                </FormField>
+              </FieldGrid>
+            </FormSection>
 
-        <FormSection title="Address">
-          <FieldGrid>
-            <FormField label="Address line 1">
-              <Input {...form.register("billingAddressLine1")} />
-            </FormField>
-            <FormField label="Address line 2">
-              <Input {...form.register("billingAddressLine2")} />
-            </FormField>
-            <FormField label="City">
-              <Input {...form.register("billingCity")} />
-            </FormField>
-            <FormField label="State">
-              <Input {...form.register("billingState")} />
-            </FormField>
-            <FormField label="Postal code">
-              <Input {...form.register("billingPostalCode")} />
-            </FormField>
-            <FormField label="Country">
-              <Input {...form.register("billingCountry")} />
-            </FormField>
-          </FieldGrid>
-        </FormSection>
+            <FormSection title="Address">
+              <FieldGrid>
+                <FormField label="Address line 1">
+                  <Input {...form.register("billingAddressLine1")} />
+                </FormField>
+                <FormField label="Address line 2">
+                  <Input {...form.register("billingAddressLine2")} />
+                </FormField>
+                <FormField label="City">
+                  <Input {...form.register("billingCity")} />
+                </FormField>
+                <FormField label="State">
+                  <Input {...form.register("billingState")} />
+                </FormField>
+                <FormField label="Postal code">
+                  <Input {...form.register("billingPostalCode")} />
+                </FormField>
+                <FormField label="Country">
+                  <Input {...form.register("billingCountry")} />
+                </FormField>
+              </FieldGrid>
+            </FormSection>
 
-        <FormSection title="Notes and status">
-          <FormField label="Notes">
-            <Textarea {...form.register("notes")} />
-          </FormField>
-          <div className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3">
-            <Checkbox
-              checked={form.watch("isActive")}
-              onChange={(event) => form.setValue("isActive", event.target.checked)}
-            />
-            <div>
-              <p className="text-sm font-medium">Active vendor</p>
-              <p className="text-xs text-muted-foreground">
-                Inactive vendors stay available for history and reports.
-              </p>
-            </div>
+            <FormSection title="Notes and status">
+              <FormField label="Notes">
+                <Textarea {...form.register("notes")} />
+              </FormField>
+              <div className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3">
+                <Checkbox
+                  checked={form.watch("isActive")}
+                  onChange={(event) => form.setValue("isActive", event.target.checked)}
+                />
+                <div>
+                  <p className="text-sm font-medium">Active vendor</p>
+                  <p className="text-xs text-muted-foreground">
+                    Inactive vendors stay available for history and reports.
+                  </p>
+                </div>
+              </div>
+            </FormSection>
           </div>
-        </FormSection>
+        </AdvancedSection>
       </form>
 
       {mode === "edit" && vendor?.id ? (

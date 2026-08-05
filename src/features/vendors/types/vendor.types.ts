@@ -31,8 +31,8 @@ export interface VendorListParams extends BaseEntityListParams {}
 
 export interface VendorPayload {
   vendorCode?: string;
-  displayName: string;
-  legalName?: string;
+  displayName?: string;
+  legalName: string;
   contactPersonName?: string;
   email?: string;
   phone?: string;

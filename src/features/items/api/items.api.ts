@@ -45,6 +45,11 @@ export async function lookupItemByCode(companyId: string, code: string) {
   return data;
 }
 
+export async function getNextItemSku(companyId: string) {
+  const { data } = await apiClient.get<{ sku: string }>(`/companies/${companyId}/items/next-sku`);
+  return data.sku;
+}
+
 export async function createItem(companyId: string, payload: ItemPayload) {
   const { data } = await apiClient.post<Item>(`/companies/${companyId}/items`, payload);
   return data;

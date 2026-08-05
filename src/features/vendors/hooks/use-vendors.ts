@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   createVendor,
   deleteVendor,
+  getNextVendorCode,
   getVendor,
   getVendors,
   getVendorsPaginated,
@@ -45,6 +46,14 @@ export function useVendorOptions(companyId: string | undefined) {
   });
 }
 
+export function useNextVendorCode(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "vendors", "next-code"],
+    queryFn: () => getNextVendorCode(companyId!),
+    enabled: Boolean(companyId && enabled),
+  });
+}
+
 function invalidateVendorQueries(companyId: string) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["companies", companyId, "vendors"] }),
@@ -56,7 +65,12 @@ export function useCreateVendor(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: VendorPayload) => createVendor(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateVendorQueries(companyId);
+      if (companyId) {
+        await invalidateVendorQueries(companyId);
+        await queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "vendors", "next-code"],
+        });
+      }
     },
   });
 }

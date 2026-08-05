@@ -23,6 +23,7 @@ import {
   useItemsPaginated,
   useUpdateItem,
 } from "@/features/items/hooks/use-items";
+import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
@@ -55,6 +56,7 @@ export function ItemsPage() {
   const accountsQuery = useAccountOptions(companyId);
   const vendorsQuery = useVendorOptions(companyId);
   const taxRatesQuery = useTaxRates(companyId);
+  const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
   const createMutation = useCreateItem(companyId);
   const updateMutation = useUpdateItem(companyId, selectedItem?.id ?? null);
   const deleteMutation = useDeleteItem(companyId);
@@ -91,12 +93,14 @@ export function ItemsPage() {
       header: "Item / Service",
       render: (item) => (
         <div>
-          <p className="font-medium">
-            {item.itemCode ? `${item.itemCode} - ` : ""}
-            {item.name}
-          </p>
+          <p className="font-medium">{item.name}</p>
           <p className="text-xs text-muted-foreground">
-            {[item.barcode && `Barcode: ${item.barcode}`, item.sku && `SKU: ${item.sku}`, !item.barcode && !item.sku ? item.description || "No SKU or barcode" : null]
+            {[
+              item.hsCode && `HS: ${item.hsCode}`,
+              item.sku && `SKU: ${item.sku}`,
+              item.barcode && `Barcode: ${item.barcode}`,
+              !item.hsCode && !item.sku && !item.barcode ? item.description || "No HS / SKU" : null,
+            ]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -281,6 +285,7 @@ export function ItemsPage() {
         accounts={accountsQuery.data ?? []}
         baseCurrencyCode={getCompanyBaseCurrency(company)}
         error={activeMutation.error}
+        hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
         isPending={activeMutation.isPending}
         item={selectedItem}
         mode={drawerMode}
@@ -296,13 +301,16 @@ export function ItemsPage() {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || undefined,
-            salesPrice: values.salesPrice || undefined,
-            purchaseCost: values.purchaseCost || undefined,
+            hsCode: values.hsCode,
+            salesPrice: values.salesPrice || "0",
+            purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,
             expenseAccountId: values.expenseAccountId || undefined,
             assetAccountId: values.assetAccountId || undefined,
             preferredVendorId: values.preferredVendorId || undefined,
-            taxRateId: values.taxRateId || undefined,
+            taxRateId: values.taxRateId,
+            taxable: values.taxable || Boolean(values.taxRateId),
+            unitName: values.unitName || "ea",
             reorderLevel: values.reorderLevel || undefined,
             ...(drawerMode === "create"
               ? { quantityOnHand: values.quantityOnHand || undefined }

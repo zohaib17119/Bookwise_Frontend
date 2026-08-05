@@ -30,18 +30,61 @@ export function getLineBaseAmount(line: DocumentLineInput) {
   return toNumber(line.quantity) * getLineUnitAmount(line);
 }
 
-export function getLinePreviewTotal(line: DocumentLineInput) {
+/** Exclusive → inclusive using tax percent. 0 / missing rate returns excl unchanged. */
+export function exclToIncl(excl: number, ratePercent: number) {
+  if (!Number.isFinite(excl) || excl < 0) return 0;
+  if (!Number.isFinite(ratePercent) || ratePercent <= 0) return excl;
+  return excl * (1 + ratePercent / 100);
+}
+
+/** Inclusive → exclusive using tax percent. 0 / missing rate returns incl unchanged. */
+export function inclToExcl(incl: number, ratePercent: number) {
+  if (!Number.isFinite(incl) || incl < 0) return 0;
+  if (!Number.isFinite(ratePercent) || ratePercent <= 0) return incl;
+  return incl / (1 + ratePercent / 100);
+}
+
+export function getLineDiscountedAmount(line: DocumentLineInput) {
   const baseAmount = getLineBaseAmount(line);
   const discount = getDiscountAmount(
     baseAmount,
     line.discountType,
     line.discountValue,
   );
-  const discountedAmount = Math.max(baseAmount - discount, 0);
+  return Math.max(baseAmount - discount, 0);
+}
 
+/**
+ * Given an inclusive line amount (after discount + tax), solve for unit cost/price
+ * so that getLinePreviewTotal matches (exclusive tax-on-top model).
+ */
+export function unitAmountFromInclusiveLineTotal(
+  line: DocumentLineInput,
+  inclusiveAmount: number,
+): number {
+  const qty = toNumber(line.quantity);
+  if (qty <= 0) return 0;
+
+  const rate = toNumber(line.taxRate);
+  let discounted = inclToExcl(Math.max(inclusiveAmount, 0), rate);
+
+  const discountType = line.discountType;
+  const discountValue = toNumber(line.discountValue);
+  let base = discounted;
+
+  if (discountType === "PERCENTAGE" && discountValue > 0 && discountValue < 100) {
+    base = discounted / (1 - discountValue / 100);
+  } else if (discountType === "FIXED" && discountValue > 0) {
+    base = discounted + discountValue;
+  }
+
+  return Math.max(base / qty, 0);
+}
+
+export function getLinePreviewTotal(line: DocumentLineInput) {
+  const discountedAmount = getLineDiscountedAmount(line);
   const taxRate = toNumber(line.taxRate);
   const tax = taxRate > 0 ? (discountedAmount * taxRate) / 100 : 0;
-
   return Math.max(discountedAmount + tax, 0);
 }
 

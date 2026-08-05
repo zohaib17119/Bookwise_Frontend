@@ -11,6 +11,7 @@ export interface Item {
   sku?: string | null;
   barcode?: string | null;
   unitName?: string | null;
+  hsCode?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;
@@ -41,6 +42,7 @@ export interface ItemPayload {
   sku?: string;
   barcode?: string | null;
   unitName?: string;
+  hsCode: string;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;
@@ -48,7 +50,7 @@ export interface ItemPayload {
   assetAccountId?: string | null;
   preferredVendorId?: string | null;
   taxable: boolean;
-  taxRateId?: string;
+  taxRateId: string;
   trackQuantity: boolean;
   quantityOnHand?: string | null;
   reorderLevel?: string | null;

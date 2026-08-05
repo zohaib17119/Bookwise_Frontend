@@ -38,6 +38,7 @@ export const lineItemSchema = z.object({
   taxRateId: optionalString,
   taxRate: moneyStringSchema,
   itemName: z.string().max(500).optional().or(z.literal("")),
+  unitName: z.string().max(50).optional().or(z.literal("")),
   expenseAccountId: optionalString,
 });
 

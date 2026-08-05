@@ -69,6 +69,13 @@ export async function getBill(companyId: string, billId: string) {
   return data;
 }
 
+export async function getNextBillNumber(companyId: string) {
+  const { data } = await apiClient.get<{ billNumber: string }>(
+    `/companies/${companyId}/bills/next-number`,
+  );
+  return data.billNumber;
+}
+
 export async function createBill(companyId: string, payload: BillPayload) {
   const { data } = await apiClient.post<Bill>(
     `/companies/${companyId}/bills`,

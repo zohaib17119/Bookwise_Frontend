@@ -209,10 +209,13 @@ export function VendorsPage() {
           activeMutation.reset();
         }}
         onSubmit={async (values: VendorFormValues) => {
+          const legalName = values.legalName.trim();
+          const displayName = values.displayName?.trim() || legalName;
           const payload = {
             ...values,
             vendorCode: values.vendorCode || undefined,
-            legalName: values.legalName || undefined,
+            legalName,
+            displayName,
             contactPersonName: values.contactPersonName || undefined,
             email: values.email || undefined,
             phone: values.phone || undefined,
@@ -222,9 +225,9 @@ export function VendorsPage() {
             currencyCode: values.currencyCode || undefined,
             paymentTermsDays:
               values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)
-                ? null
+                ? 15
                 : Number(values.paymentTermsDays),
-            openingBalance: values.openingBalance || undefined,
+            openingBalance: values.openingBalance || "0",
             openingBalanceDate: values.openingBalanceDate || undefined,
             billingAddressLine1: values.billingAddressLine1 || undefined,
             billingAddressLine2: values.billingAddressLine2 || undefined,

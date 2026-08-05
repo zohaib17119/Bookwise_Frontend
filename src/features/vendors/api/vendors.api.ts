@@ -37,6 +37,13 @@ export async function getVendor(companyId: string, vendorId: string) {
   return data;
 }
 
+export async function getNextVendorCode(companyId: string) {
+  const { data } = await apiClient.get<{ vendorCode: string }>(
+    `/companies/${companyId}/vendors/next-code`,
+  );
+  return data.vendorCode;
+}
+
 export async function createVendor(companyId: string, payload: VendorPayload) {
   const { data } = await apiClient.post<Vendor>(
     `/companies/${companyId}/vendors`,
