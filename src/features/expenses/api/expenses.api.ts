@@ -6,7 +6,7 @@ import type {
   ExpensePayload,
   ExpenseUpdatePayload,
 } from "@/features/expenses/types/expense.types";
-import { toDecimalString } from "@/features/shared/utils/decimal-string";
+import { omitEmptyFields, serializeMoneyField } from "@/features/shared/utils/api-payload";
 
 function buildQuery(params: ExpenseListParams) {
   const query = new URLSearchParams();
@@ -20,8 +20,21 @@ function buildQuery(params: ExpenseListParams) {
   return serialized ? `?${serialized}` : "";
 }
 
-function formatAmount(value: number) {
-  return toDecimalString(value);
+function serializeExpensePayload(payload: ExpensePayload): ExpensePayload {
+  return {
+    paymentAccountId: payload.paymentAccountId,
+    expenseAccountId: payload.expenseAccountId,
+    amount: serializeMoneyField(payload.amount),
+    description: payload.description,
+    ...omitEmptyFields({
+      paymentDate: payload.paymentDate || undefined,
+      vendorId: payload.vendorId || undefined,
+      currencyCode: payload.currencyCode || undefined,
+      exchangeRate: payload.exchangeRate || undefined,
+      referenceNumber: payload.referenceNumber || undefined,
+      taxRateId: payload.taxRateId || undefined,
+    }),
+  };
 }
 
 export async function getExpenses(companyId: string, params: ExpenseListParams = {}) {
@@ -35,10 +48,10 @@ export async function getExpense(companyId: string, expenseId: string) {
 }
 
 export async function createExpense(companyId: string, payload: ExpensePayload) {
-  const { data } = await apiClient.post<Expense>(`/companies/${companyId}/expenses`, {
-    ...payload,
-    amount: formatAmount(payload.amount),
-  });
+  const { data } = await apiClient.post<Expense>(
+    `/companies/${companyId}/expenses`,
+    serializeExpensePayload(payload),
+  );
   return data;
 }
 

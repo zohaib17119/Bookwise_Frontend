@@ -1,10 +1,16 @@
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
-import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
+import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
+import {
+  useCreateCustomer,
+  useCustomerOptions,
+} from "@/features/customers/hooks/use-customers";
+import type { CustomerFormValues } from "@/features/customers/schemas/customer.schema";
 import {
   useCreateInvoice,
   useInvoice,
@@ -23,6 +29,7 @@ import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schem
 import type { DiscountType } from "@/features/shared/types/documents";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
+import { queryClient } from "@/lib/query/query-client";
 import InvoiceEditorPage from "./invoice-editor-page";
 
 const invoicePaymentOptions = ["BANK_TRANSFER", "CARD", "CASH", "CHEQUE"] as const;
@@ -54,6 +61,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   const createMutation = useCreateInvoice(companyId);
   const updateMutation = useUpdateInvoice(companyId, invoiceId ?? null);
   const nextNumberQuery = useNextInvoiceNumber(companyId, mode === "create");
+  const createCustomerMutation = useCreateCustomer(companyId);
+  const [customerDrawerOpen, setCustomerDrawerOpen] = useState(false);
   const canManage = canManageEntity(permissions, "invoices");
 
   const form = useForm<InvoiceFormInput, undefined, InvoiceFormValues>({
@@ -144,59 +153,118 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   }
 
   return (
-    <InvoiceEditorPage
-      company={company}
-      form={form}
-      customersQuery={customersQuery}
-      itemsQuery={itemsQuery}
-      taxCodesQuery={taxCodesQuery}
-      taxRatesQuery={taxRatesQuery}
-      onSubmit={async (values) => {
-        const payload = {
-          ...values,
-          estimateId: values.estimateId || undefined,
-          invoiceNumber: values.invoiceNumber || undefined,
-          referenceNumber: values.referenceNumber || undefined,
-          issueDate: values.issueDate || undefined,
-          dueDate: values.dueDate || undefined,
-          currencyCode: values.currencyCode || undefined,
-          exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
-          notes: values.notes || undefined,
-          terms: values.terms || undefined,
-          memoOnStatement: values.memoOnStatement || undefined,
-          paymentOptions: values.paymentOptions?.length ? values.paymentOptions : undefined,
-          discountType: values.discountType
-            ? (values.discountType as DiscountType)
-            : undefined,
-          discountValue:
-            values.discountValue === undefined
-              ? undefined
-              : String(values.discountValue),
-          lines: values.lines.map((line: any) => ({
-            description: line.description,
-            quantity: String(line.quantity),
-            unitPrice: String(line.unitPrice || ""),
-            ...(line.itemId ? { itemId: line.itemId } : {}),
-            ...(line.itemName ? { itemName: line.itemName } : {}),
-            ...(line.discountType
-              ? { discountType: line.discountType as DiscountType }
-              : {}),
-            ...(line.discountValue !== undefined
-              ? { discountValue: String(line.discountValue) }
-              : {}),
-            ...(line.taxRateId ? { taxRateId: line.taxRateId } : {}),
-          })),
-        };
-        const result =
-          mode === "create"
-            ? await createMutation.mutateAsync(payload)
-            : await updateMutation.mutateAsync(payload);
+    <>
+      <InvoiceEditorPage
+        company={company}
+        form={form}
+        customersQuery={customersQuery}
+        itemsQuery={itemsQuery}
+        taxCodesQuery={taxCodesQuery}
+        taxRatesQuery={taxRatesQuery}
+        onCreateCustomer={() => {
+          createCustomerMutation.reset();
+          setCustomerDrawerOpen(true);
+        }}
+        onSubmit={async (values) => {
+          const payload = {
+            ...values,
+            estimateId: values.estimateId || undefined,
+            invoiceNumber: values.invoiceNumber || undefined,
+            referenceNumber: values.referenceNumber || undefined,
+            issueDate: values.issueDate || undefined,
+            dueDate: values.dueDate || undefined,
+            currencyCode: values.currencyCode || undefined,
+            exchangeRate: resolveDocumentExchangeRate(company, values.currencyCode, values.exchangeRate),
+            notes: values.notes || undefined,
+            terms: values.terms || undefined,
+            memoOnStatement: values.memoOnStatement || undefined,
+            paymentOptions: values.paymentOptions?.length ? values.paymentOptions : undefined,
+            discountType: values.discountType
+              ? (values.discountType as DiscountType)
+              : undefined,
+            discountValue:
+              values.discountValue === undefined
+                ? undefined
+                : String(values.discountValue),
+            lines: values.lines.map((line: any) => ({
+              description: line.description,
+              quantity: String(line.quantity),
+              unitPrice: String(line.unitPrice || ""),
+              ...(line.itemId ? { itemId: line.itemId } : {}),
+              ...(line.itemName ? { itemName: line.itemName } : {}),
+              ...(line.discountType
+                ? { discountType: line.discountType as DiscountType }
+                : {}),
+              ...(line.discountValue !== undefined
+                ? { discountValue: String(line.discountValue) }
+                : {}),
+              ...(line.taxRateId ? { taxRateId: line.taxRateId } : {}),
+            })),
+          };
+          const result =
+            mode === "create"
+              ? await createMutation.mutateAsync(payload)
+              : await updateMutation.mutateAsync(payload);
 
-        navigate(`/app/company/${companyId}/invoices/${result.id}`);
-      }}
-      isLoading={activeMutation.isPending}
-      mode={mode}
-      companyId={companyId ?? ""}
-    />
+          navigate(`/app/company/${companyId}/invoices/${result.id}`);
+        }}
+        isLoading={activeMutation.isPending}
+        mode={mode}
+        companyId={companyId ?? ""}
+      />
+
+      <CustomerFormDrawer
+        companyCurrency={getCompanyBaseCurrency(company)}
+        companyId={companyId}
+        error={createCustomerMutation.error}
+        isPending={createCustomerMutation.isPending}
+        mode="create"
+        onClose={() => {
+          setCustomerDrawerOpen(false);
+          createCustomerMutation.reset();
+        }}
+        onSubmit={async (values: CustomerFormValues) => {
+          const legalName = values.legalName.trim();
+          const displayName = values.displayName?.trim() || legalName;
+          const customer = await createCustomerMutation.mutateAsync({
+            ...values,
+            customerCode: values.customerCode || undefined,
+            legalName,
+            displayName,
+            firstName: values.firstName || undefined,
+            lastName: values.lastName || undefined,
+            email: values.email || undefined,
+            phone: values.phone || undefined,
+            mobile: values.mobile || undefined,
+            website: values.website || undefined,
+            taxRegistrationNumber: values.taxRegistrationNumber || undefined,
+            currencyCode: values.currencyCode || undefined,
+            paymentTermsDays:
+              values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)
+                ? 30
+                : Number(values.paymentTermsDays),
+            openingBalance: values.openingBalance || "0",
+            openingBalanceDate: values.openingBalanceDate || undefined,
+            billingAddressLine1: values.billingAddressLine1 || undefined,
+            billingAddressLine2: values.billingAddressLine2 || undefined,
+            billingCity: values.billingCity || undefined,
+            billingState: values.billingState || undefined,
+            billingPostalCode: values.billingPostalCode || undefined,
+            billingCountry: values.billingCountry || undefined,
+            shippingAddressLine1: values.shippingAddressLine1 || undefined,
+            shippingAddressLine2: values.shippingAddressLine2 || undefined,
+            shippingCity: values.shippingCity || undefined,
+            shippingState: values.shippingState || undefined,
+            shippingPostalCode: values.shippingPostalCode || undefined,
+            shippingCountry: values.shippingCountry || undefined,
+            notes: values.notes || undefined,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "customers"] });
+          form.setValue("customerId", customer.id, { shouldValidate: true, shouldDirty: true });
+          setCustomerDrawerOpen(false);
+        }}
+        open={customerDrawerOpen}
+      />
+    </>
   );
 }

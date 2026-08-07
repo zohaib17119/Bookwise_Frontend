@@ -9,6 +9,7 @@ export interface Company {
   country?: string | null;
   countryCode?: string | null;
   complianceModule?: "ZATCA" | "FBR" | null;
+  zatcaConfig?: { isEnabled?: boolean } | null;
   state?: string | null;
   city?: string | null;
   postalCode?: string | null;

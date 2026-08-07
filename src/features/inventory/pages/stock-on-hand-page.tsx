@@ -46,7 +46,7 @@ export function StockOnHandPage() {
     },
     { key: "quantity", header: "Quantity on hand", render: (row) => row.quantityOnHand ?? 0 },
     { key: "cost", header: "Average unit cost", render: (row) => formatCurrency(row.averageUnitCost ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
-    { key: "value", header: "Inventory value", render: (row) => formatCurrency(row.inventoryValue ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
+    { key: "value", header: "Inventory value", render: (row) => formatCurrency(row.inventoryValue ?? "0.00", company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
     {
       key: "status",
       header: "Status",

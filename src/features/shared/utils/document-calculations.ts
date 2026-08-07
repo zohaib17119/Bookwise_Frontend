@@ -3,6 +3,12 @@ import type {
   DocumentLineInput,
 } from "@/features/shared/types/documents";
 import { toNumber } from "@/features/shared/utils/decimal-string";
+import { parseMoney, toMoneyString } from "@/lib/utils/money";
+
+/** Round preview money to 2dp (server remains source of truth). */
+function money2(value: number): number {
+  return parseMoney(toMoneyString(value));
+}
 
 export function getDiscountAmount(
   baseAmount: number,
@@ -16,10 +22,10 @@ export function getDiscountAmount(
   }
 
   if (discountType === "PERCENTAGE") {
-    return (baseAmount * numericDiscountValue) / 100;
+    return money2((baseAmount * numericDiscountValue) / 100);
   }
 
-  return numericDiscountValue;
+  return money2(numericDiscountValue);
 }
 
 export function getLineUnitAmount(line: DocumentLineInput) {
@@ -27,7 +33,7 @@ export function getLineUnitAmount(line: DocumentLineInput) {
 }
 
 export function getLineBaseAmount(line: DocumentLineInput) {
-  return toNumber(line.quantity) * getLineUnitAmount(line);
+  return money2(toNumber(line.quantity) * getLineUnitAmount(line));
 }
 
 /** Exclusive → inclusive using tax percent. 0 / missing rate returns excl unchanged. */
@@ -84,8 +90,8 @@ export function unitAmountFromInclusiveLineTotal(
 export function getLinePreviewTotal(line: DocumentLineInput) {
   const discountedAmount = getLineDiscountedAmount(line);
   const taxRate = toNumber(line.taxRate);
-  const tax = taxRate > 0 ? (discountedAmount * taxRate) / 100 : 0;
-  return Math.max(discountedAmount + tax, 0);
+  const tax = taxRate > 0 ? money2((discountedAmount * taxRate) / 100) : 0;
+  return money2(Math.max(discountedAmount + tax, 0));
 }
 
 export interface GetDocumentPreviewTotalsOptions {
@@ -140,10 +146,10 @@ export function getDocumentPreviewTotals(
   }, 0);
 
   return {
-    subtotal,
-    discountTotal: lineDiscountsTotal + docDiscount,
-    taxTotal,
-    total: Math.max(subtotal + taxTotal, 0),
+    subtotal: money2(subtotal),
+    discountTotal: money2(lineDiscountsTotal + docDiscount),
+    taxTotal: money2(taxTotal),
+    total: money2(Math.max(subtotal + taxTotal, 0)),
   };
 }
 

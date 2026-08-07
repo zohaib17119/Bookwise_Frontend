@@ -15,10 +15,12 @@ import { DocumentStatusBadge } from "@/components/documents/document-status-badg
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { canShowFbr } from "@/features/compliance/utils/compliance-access";
 import {
   useBill,
   useDeleteBill,
   useIssueBill,
+  useMarkBillTaxReported,
   useReceiveBillGoods,
   useVoidBill,
 } from "@/features/bills/hooks/use-bills";
@@ -38,8 +40,10 @@ export function BillDetailPage() {
   const issueMutation = useIssueBill(companyId);
   const receiveMutation = useReceiveBillGoods(companyId);
   const voidMutation = useVoidBill(companyId);
+  const markTaxReportedMutation = useMarkBillTaxReported(companyId);
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
+  const showFbr = canShowFbr(company);
 
   if (!canView) {
     return <ErrorState title="Bill access restricted" description="Your current company membership does not include bill access." />;
@@ -63,6 +67,9 @@ export function BillDetailPage() {
     bill.goodsStatus !== "RECEIVED";
   const canVoid =
     bill.rawStatus !== "DRAFT" && bill.rawStatus !== "VOID" && bill.rawStatus !== "CANCELLED";
+  const complianceStatus = bill.complianceStatus ?? "NOT_APPLICABLE";
+  const canMarkTaxReported =
+    showFbr && canManage && bill.rawStatus !== "DRAFT" && complianceStatus === "PENDING";
 
   return (
     <PageContainer className="space-y-6">
@@ -75,6 +82,15 @@ export function BillDetailPage() {
               ) : null}
               {canReceive ? (
                 <Button onClick={() => setReceiveOpen(true)} variant="primary">Receive goods</Button>
+              ) : null}
+              {canMarkTaxReported ? (
+                <Button
+                  isLoading={markTaxReportedMutation.isPending}
+                  onClick={() => void markTaxReportedMutation.mutateAsync(bill.id)}
+                  variant="secondary"
+                >
+                  Mark tax reported
+                </Button>
               ) : null}
               {bill.status === "DRAFT" ? (
                 <Button asChild variant="secondary">
@@ -134,6 +150,14 @@ export function BillDetailPage() {
                   { label: "Currency", value: documentCurrency },
                   { label: "Goods status", value: (bill.goodsStatus ?? "-").replace(/_/g, " ") },
                   { label: "Payment status", value: (bill.paymentStatus ?? bill.status ?? "-").replace(/_/g, " ") },
+                  ...(showFbr
+                    ? [
+                        {
+                          label: "FBR / Tax reported",
+                          value: complianceStatus.replace(/_/g, " "),
+                        },
+                      ]
+                    : []),
                   { label: "Notes", value: bill.notes || "-" },
                 ]}
                 title="Commercials"

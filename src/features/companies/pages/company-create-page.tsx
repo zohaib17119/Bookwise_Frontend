@@ -355,7 +355,11 @@ export function CompanyCreatePage() {
                     {(countryPacksQuery.data ?? []).map((pack) => (
                       <option key={pack.countryCode} value={pack.countryCode}>
                         {pack.displayName} ({pack.defaultCurrency}
-                        {pack.complianceModule ? ` · ${pack.complianceModule}` : ""})
+                        {pack.complianceModule === "ZATCA"
+                          ? " · ZATCA available — enable in Settings"
+                          : pack.complianceModule === "FBR"
+                            ? " · FBR tax reporting"
+                            : ""})
                       </option>
                     ))}
                   </select>

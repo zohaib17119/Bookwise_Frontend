@@ -280,29 +280,35 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on issueDate
   }, [watchedIssueDate, watchedVendorId, mode, billQuery.data]);
 
-  const purchaseTaxCodeOptions = useMemo(
-    () =>
-      (taxCodesQuery.data ?? [])
-        .filter(
-          (taxCode) =>
-            !taxCode.scope ||
-            taxCode.scope === "PURCHASE" ||
-            taxCode.scope === "BOTH",
-        )
-        .map((taxCode) => ({
-          id: taxCode.id,
-          name: taxCode.name,
-          code: taxCode.code,
-          calculationMode: taxCode.calculationMode,
-          isExempt: taxCode.isExempt,
-          effectiveRatePercent:
-            taxCode.rates?.reduce(
-              (sum, rateLink) => sum + Number(rateLink.taxRate?.ratePercent ?? 0),
-              0,
-            ) ?? 0,
-        })),
-    [taxCodesQuery.data],
-  );
+  const purchaseTaxCodeOptions = useMemo(() => {
+    const options = (taxCodesQuery.data ?? [])
+      .filter(
+        (taxCode) =>
+          !taxCode.scope ||
+          taxCode.scope === "PURCHASE" ||
+          taxCode.scope === "BOTH",
+      )
+      .map((taxCode) => ({
+        id: taxCode.id,
+        name: taxCode.name,
+        code: taxCode.code,
+        calculationMode: taxCode.calculationMode,
+        isExempt: taxCode.isExempt || taxCode.calculationMode === "EXEMPT",
+        effectiveRatePercent:
+          taxCode.rates?.reduce(
+            (sum, rateLink) => sum + Number(rateLink.taxRate?.ratePercent ?? 0),
+            0,
+          ) ?? 0,
+      }));
+
+    return options.sort((a, b) => {
+      if (a.isExempt !== b.isExempt) return a.isExempt ? -1 : 1;
+      const rateA = a.effectiveRatePercent ?? 0;
+      const rateB = b.effectiveRatePercent ?? 0;
+      if (rateA !== rateB) return rateA - rateB;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [taxCodesQuery.data]);
 
   const exchangeRateString =
     typeof watchedExchangeRate === "string" ? watchedExchangeRate : String(watchedExchangeRate ?? "");

@@ -17,6 +17,7 @@ import {
 import type { JournalEntryLine } from "@/features/journals/types/journal.types";
 import { canManageEntity, canUsePermission, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { parseMoney } from "@/lib/utils/money";
 
 export function JournalDetailPage() {
   const { companyId, journalEntryId } = useParams();
@@ -157,7 +158,7 @@ export function JournalDetailPage() {
                 <dt className="text-muted-foreground">Debit total</dt>
                 <dd>
                   {formatCurrency(
-                    (journal.lines ?? []).reduce((sum, line) => sum + Number(line.debitAmount || 0), 0),
+                    (journal.lines ?? []).reduce((sum, line) => sum + parseMoney(line.debitAmount), 0),
                     company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
                   )}
                 </dd>
@@ -166,7 +167,7 @@ export function JournalDetailPage() {
                 <dt className="text-muted-foreground">Credit total</dt>
                 <dd>
                   {formatCurrency(
-                    (journal.lines ?? []).reduce((sum, line) => sum + Number(line.creditAmount || 0), 0),
+                    (journal.lines ?? []).reduce((sum, line) => sum + parseMoney(line.creditAmount), 0),
                     company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
                   )}
                 </dd>

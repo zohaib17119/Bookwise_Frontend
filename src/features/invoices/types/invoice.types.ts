@@ -43,6 +43,7 @@ export interface Invoice {
   customerId: string;
   customerName?: string | null;
   estimateId?: string | null;
+  estimateNumber?: string | null;
   issueDate?: string | null;
   dueDate?: string | null;
   currencyCode?: string | null;

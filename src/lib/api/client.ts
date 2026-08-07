@@ -52,8 +52,24 @@ function sanitizePayload(obj: any): any {
           continue;
         }
 
-        // 3. Convert enums to UPPERCASE
+        // 3. Convert enums to UPPERCASE (skip invoice-template block types — camelCase)
+        const invoiceTemplateBlockTypes = new Set([
+          "letterhead",
+          "logo",
+          "companyDetails",
+          "customerDetails",
+          "shippingDetails",
+          "invoiceMeta",
+          "lineTable",
+          "totals",
+          "notes",
+          "footer",
+        ]);
         if (key === "type" && typeof val === "string") {
+          if (invoiceTemplateBlockTypes.has(val)) {
+            cleaned[key] = val;
+            continue;
+          }
           cleaned[key] = val.toUpperCase().replace("-", "_");
           continue;
         }
@@ -114,6 +130,27 @@ export const apiClient = axios.create({
   },
 });
 
+/** Bare client for refresh — no auth interceptors / no expired Bearer header. */
+const refreshClient = axios.create({
+  baseURL: env.VITE_API_BASE_URL,
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+refreshClient.interceptors.response.use((response) => {
+  if (
+    response.data &&
+    typeof response.data === "object" &&
+    "success" in response.data &&
+    "data" in response.data
+  ) {
+    response.data = response.data.data;
+  }
+  return response;
+});
+
 const AUTH_PATHS_WITHOUT_REFRESH = [
   "/auth/login",
   "/auth/register",
@@ -151,14 +188,52 @@ function forceLogout() {
   useAuthStore.getState().clearAuth();
 
   if (window.location.pathname !== "/login") {
-    window.location.href = "/login";
+    window.location.assign("/login");
   }
 }
 
-async function refreshAccessToken() {
-  const response = await apiClient.post("/auth/refresh");
-  const payload = response.data?.data ?? response.data;
-  return payload.accessToken as string;
+function isDefinitiveAuthRefreshFailure(error: unknown): boolean {
+  if (axios.isAxiosError(error)) {
+    const status = error.response?.status;
+    return status === 401 || status === 403;
+  }
+
+  if (isApiError(error)) {
+    return error.status === 401 || error.status === 403;
+  }
+
+  const status = (error as { status?: number } | null)?.status;
+  return status === 401 || status === 403;
+}
+
+async function postRefreshAccessToken(): Promise<string> {
+  const response = await refreshClient.post("/auth/refresh");
+  // refreshClient unwraps `{ success, data }` → `data` in its response interceptor.
+  const payload = response.data as { accessToken: string };
+  return payload.accessToken;
+}
+
+/** Single-flight refresh shared by the 401 interceptor and proactive refresh. */
+export async function refreshAccessToken(): Promise<string> {
+  if (isRefreshing) {
+    return new Promise<string>((resolve, reject) => {
+      refreshQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const newToken = await postRefreshAccessToken();
+    useAuthStore.getState().setToken(newToken);
+    flushRefreshQueue(null, newToken);
+    return newToken;
+  } catch (refreshError) {
+    flushRefreshQueue(refreshError);
+    throw refreshError;
+  } finally {
+    isRefreshing = false;
+  }
 }
 
 apiClient.interceptors.request.use((config) => {
@@ -208,45 +283,33 @@ apiClient.interceptors.response.use(
 
     const requestUrl = retryableRequest.url as string | undefined;
 
+    // Refresh itself failed via main client (shouldn't happen with bare client).
     if (requestUrl?.includes("/auth/refresh")) {
-      forceLogout();
+      if (isDefinitiveAuthRefreshFailure(error) || isDefinitiveAuthRefreshFailure(normalized)) {
+        forceLogout();
+      }
       return Promise.reject(normalized);
     }
 
     if (!shouldAttemptRefresh(requestUrl) || retryableRequest._retry) {
-      if (shouldAttemptRefresh(requestUrl)) {
+      if (shouldAttemptRefresh(requestUrl) && retryableRequest._retry) {
+        // Already retried once after refresh — definitive session loss.
         forceLogout();
       }
-
       return Promise.reject(normalized);
     }
 
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        refreshQueue.push({ resolve, reject });
-      })
-        .then((token) => {
-          retryableRequest.headers.Authorization = `Bearer ${token}`;
-          return apiClient(retryableRequest);
-        })
-        .catch((queueError) => Promise.reject(queueError));
-    }
-
     retryableRequest._retry = true;
-    isRefreshing = true;
 
     try {
       const newToken = await refreshAccessToken();
-      useAuthStore.getState().setToken(newToken);
-      flushRefreshQueue(null, newToken);
       retryableRequest.headers.Authorization = `Bearer ${newToken}`;
       return apiClient(retryableRequest);
     } catch (refreshError) {
-      flushRefreshQueue(refreshError);
-      forceLogout();
+      if (isDefinitiveAuthRefreshFailure(refreshError)) {
+        forceLogout();
+      }
       return Promise.reject(normalizeApiError(refreshError));
-    } finally {
-      isRefreshing = false;
     }
   },
 );

@@ -21,7 +21,7 @@ export function InventoryValuationPage() {
     { key: "item", header: "Item", render: (row) => row.itemName || "-" },
     { key: "qty", header: "Quantity", render: (row) => row.quantityOnHand ?? 0 },
     { key: "cost", header: "Average cost", render: (row) => formatCurrency(row.averageUnitCost ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
-    { key: "value", header: "Value", render: (row) => formatCurrency(row.inventoryValue ?? 0, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
+    { key: "value", header: "Value", render: (row) => formatCurrency(row.inventoryValue ?? "0.00", company?.baseCurrencyCode ?? company?.currencyCode ?? "USD") },
   ];
 
   return (

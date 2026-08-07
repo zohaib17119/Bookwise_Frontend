@@ -202,6 +202,7 @@ export function CustomersPage() {
 
       <CustomerFormDrawer
         companyCurrency={currency}
+        companyId={companyId}
         customer={selectedCustomer}
         error={activeMutation.error}
         isPending={activeMutation.isPending}
@@ -211,10 +212,13 @@ export function CustomersPage() {
           activeMutation.reset();
         }}
         onSubmit={async (values: CustomerFormValues) => {
+          const legalName = values.legalName.trim();
+          const displayName = values.displayName?.trim() || legalName;
           const payload = {
             ...values,
             customerCode: values.customerCode || undefined,
-            legalName: values.legalName || undefined,
+            legalName,
+            displayName,
             firstName: values.firstName || undefined,
             lastName: values.lastName || undefined,
             email: values.email || undefined,
@@ -225,9 +229,9 @@ export function CustomersPage() {
             currencyCode: values.currencyCode || undefined,
             paymentTermsDays:
               values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)
-                ? null
+                ? 30
                 : Number(values.paymentTermsDays),
-            openingBalance: values.openingBalance || undefined,
+            openingBalance: values.openingBalance || "0",
             openingBalanceDate: values.openingBalanceDate || undefined,
             billingAddressLine1: values.billingAddressLine1 || undefined,
             billingAddressLine2: values.billingAddressLine2 || undefined,

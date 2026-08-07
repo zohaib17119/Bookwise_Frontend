@@ -28,6 +28,7 @@ import {
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { formatCurrency } from "@/lib/utils/format";
+import { MONEY_EPSILON, parseMoney } from "@/lib/utils/money";
 
 interface JournalFormPageProps {
   mode: "create" | "edit";
@@ -85,11 +86,11 @@ export function JournalFormPage({ mode }: JournalFormPageProps) {
   const activeMutation = mode === "create" ? createMutation : updateMutation;
   const lines = form.watch("lines");
   const debitTotal = useMemo(
-    () => (lines ?? []).reduce((sum, line) => sum + Number(line.debitAmount || 0), 0),
+    () => (lines ?? []).reduce((sum, line) => sum + parseMoney(line.debitAmount), 0),
     [lines],
   );
   const creditTotal = useMemo(
-    () => (lines ?? []).reduce((sum, line) => sum + Number(line.creditAmount || 0), 0),
+    () => (lines ?? []).reduce((sum, line) => sum + parseMoney(line.creditAmount), 0),
     [lines],
   );
   const isPosted = journalQuery.data?.status === "POSTED";
@@ -199,7 +200,11 @@ export function JournalFormPage({ mode }: JournalFormPageProps) {
               </div>
               <div className="flex items-center justify-between border-t pt-3 font-semibold">
                 <dt>Status</dt>
-                <dd>{Math.abs(debitTotal - creditTotal) < 0.0001 ? "Balanced" : "Out of balance"}</dd>
+                <dd>
+                  {Math.abs(debitTotal - creditTotal) <= MONEY_EPSILON
+                    ? "Balanced"
+                    : "Out of balance"}
+                </dd>
               </div>
             </dl>
           </div>

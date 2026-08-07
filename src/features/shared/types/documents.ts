@@ -3,7 +3,12 @@ export type DiscountType = "FIXED" | "PERCENTAGE";
 export interface DocumentLineInput {
   itemId?: string | null;
   itemName?: string | null;
-  item?: { id?: string; name?: string } | null;
+  item?: {
+    id?: string;
+    name?: string;
+    hsCode?: string | null;
+    itemCode?: string | null;
+  } | null;
   description: string;
   quantity: string;
   unitPrice?: string | null;
@@ -11,8 +16,13 @@ export interface DocumentLineInput {
   discountType?: DiscountType | null;
   discountValue?: string | null;
   taxCodeId?: string | null;
+  taxCode?: string | null;
+  taxName?: string | null;
+  taxCodeRef?: { id?: string; code?: string; name?: string } | null;
   taxRate?: string | null;
   expenseAccountId?: string | null;
+  hsCode?: string | null;
+  itemCode?: string | null;
 }
 
 export interface DocumentTotals {

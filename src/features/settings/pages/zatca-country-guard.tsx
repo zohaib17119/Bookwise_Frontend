@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { canShowZatca } from "@/features/compliance/utils/compliance-access";
+import { canShowZatcaSettings } from "@/features/compliance/utils/compliance-access";
 import { ZatcaSettingsPage } from "./zatca-settings-page";
 import { ErrorState } from "@/components/shared/error-state";
 
@@ -13,7 +13,7 @@ export function ZatcaSettingsRoute() {
     return <div className="surface p-6 text-sm text-muted-foreground">Loading…</div>;
   }
 
-  if (!canShowZatca(company)) {
+  if (!canShowZatcaSettings(company)) {
     return (
       <ErrorState
         title="ZATCA not available"

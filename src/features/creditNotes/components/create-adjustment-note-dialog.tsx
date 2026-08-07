@@ -12,8 +12,11 @@ import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calcu
 import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { cn } from "@/lib/utils/cn";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { MONEY_EPSILON, parseMoney, toMoneyString } from "@/lib/utils/money";
+import { toDecimalString, toMoneyDecimalString } from "@/features/shared/utils/decimal-string";
 
 const BLOCKED_STATUSES = new Set(["DRAFT", "CANCELLED", "VOID"]);
+const QTY_EPSILON = 0.0001;
 
 export type AdjustmentNoteType = "CREDIT_NOTE" | "DEBIT_NOTE";
 
@@ -23,9 +26,9 @@ type EditableLine = {
   itemId?: string;
   itemName?: string;
   description: string;
-  originalQuantity: number;
-  originalUnitPrice: number;
-  originalLineTotal: number;
+  originalQuantity: string;
+  originalUnitPrice: string;
+  originalLineTotal: string;
   quantity: string;
   unitPrice: string;
   discountType?: "PERCENTAGE" | "FIXED" | null;
@@ -60,19 +63,22 @@ function isEligibleInvoice(invoice: Invoice) {
 
 function toEditableLines(lines: InvoiceLine[]): EditableLine[] {
   return lines.map((line, index) => {
-    const qty = Number(line.quantity) || 0;
-    const unitPrice = Number(line.unitPrice) || 0;
+    const quantity = toDecimalString(line.quantity ?? "0", 4) || "0.0000";
+    const unitPrice = toDecimalString(line.unitPrice ?? "0", 4) || "0.0000";
+    const originalLineTotal =
+      toMoneyDecimalString(line.lineTotal) ||
+      toMoneyString(parseMoney(quantity) * parseMoney(unitPrice));
     return {
       key: line.id ?? `line-${index}`,
       included: true,
       itemId: line.itemId ?? undefined,
       itemName: line.itemName ?? line.item?.name ?? undefined,
       description: line.description,
-      originalQuantity: qty,
+      originalQuantity: quantity,
       originalUnitPrice: unitPrice,
-      originalLineTotal: Number(line.lineTotal) || qty * unitPrice,
-      quantity: String(qty),
-      unitPrice: String(unitPrice),
+      originalLineTotal,
+      quantity,
+      unitPrice,
       discountType: line.discountType ?? null,
       discountValue: line.discountValue ?? null,
       taxRateId: line.taxRateId ?? null,
@@ -167,9 +173,10 @@ export function CreateAdjustmentNoteDialog({
       return;
     }
     for (const line of includedLines) {
-      const qty = Number(line.quantity);
-      const price = Number(line.unitPrice);
-      if (!(qty > 0) || qty > line.originalQuantity + 1e-9) {
+      const qty = parseMoney(line.quantity);
+      const price = parseMoney(line.unitPrice);
+      const maxQty = parseMoney(line.originalQuantity);
+      if (!(qty > 0) || qty > maxQty + QTY_EPSILON) {
         setLocalError(`Invalid quantity for “${line.description}” (max ${line.originalQuantity})`);
         return;
       }
@@ -187,9 +194,9 @@ export function CreateAdjustmentNoteDialog({
           taxRate: line.taxRate,
         },
       ]);
-      if (linePreview.total > line.originalLineTotal + 0.02) {
+      if (linePreview.total > parseMoney(line.originalLineTotal) + MONEY_EPSILON) {
         setLocalError(
-          `Amount for “${line.description}” exceeds original line total (${line.originalLineTotal.toFixed(2)})`,
+          `Amount for “${line.description}” exceeds original line total (${toMoneyString(line.originalLineTotal)})`,
         );
         return;
       }
@@ -199,8 +206,8 @@ export function CreateAdjustmentNoteDialog({
       itemId: l.itemId,
       itemName: l.itemName,
       description: l.description,
-      quantity: l.quantity,
-      unitPrice: l.unitPrice,
+      quantity: toDecimalString(l.quantity, 4) || "0",
+      unitPrice: toDecimalString(l.unitPrice, 4) || "0",
       ...(l.discountType ? { discountType: l.discountType } : {}),
       ...(l.discountValue ? { discountValue: String(l.discountValue) } : {}),
       ...(l.taxRateId ? { taxRateId: l.taxRateId } : {}),
@@ -280,7 +287,7 @@ export function CreateAdjustmentNoteDialog({
                     {invoice.invoiceNumber || "Invoice"} — {invoice.customerName || "Customer"} —{" "}
                     {formatDate(invoice.issueDate)} —{" "}
                     {formatCurrency(
-                      Number(invoice.total ?? invoice.totals?.total ?? 0),
+                      invoice.total ?? invoice.totals?.total ?? "0",
                       invoice.currencyCode ?? baseCurrency,
                     )}
                   </option>
@@ -340,7 +347,8 @@ export function CreateAdjustmentNoteDialog({
                               <p className="text-xs text-muted-foreground">{line.description}</p>
                             ) : null}
                             <p className="text-xs text-muted-foreground">
-                              Original: {line.originalQuantity} × {line.originalUnitPrice.toFixed(2)}
+                              Original: {line.originalQuantity} ×{" "}
+                              {toMoneyString(line.originalUnitPrice)}
                             </p>
                           </td>
                           <td className="px-3 py-2">

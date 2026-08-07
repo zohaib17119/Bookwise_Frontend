@@ -1,5 +1,10 @@
 import { apiClient } from "@/lib/api/client";
 import type {
+  GeneralLedgerReportResult,
+  LedgerReportAccountSection,
+  LedgerReportEntry,
+} from "@/features/reports/types/ledger-report.types";
+import type {
   GenericReportResult,
   ReportFilterParams,
   ReportRow,
@@ -12,9 +17,24 @@ function buildQuery(params: ReportFilterParams) {
   if (params.toDate) query.set("toDate", params.toDate);
   if (params.asOfDate) query.set("asOfDate", params.asOfDate);
   if (params.accountId) query.set("accountId", params.accountId);
-  if (params.postedOnly) query.set("postedOnly", "true");
+  if (params.postedOnly !== undefined) query.set("postedOnly", String(params.postedOnly));
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
+}
+
+function asMoneyString(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return String(value);
+}
+
+function mapTotals(rawTotals: Record<string, string | number | boolean> | undefined) {
+  const totals: Record<string, number | string | null> = {};
+  if (!rawTotals) return totals;
+  for (const [k, v] of Object.entries(rawTotals)) {
+    if (typeof v === "boolean") totals[k] = v ? "✓ Balanced" : "✗ Unbalanced";
+    else totals[k] = asMoneyString(v);
+  }
+  return totals;
 }
 
 /** Convert an array of {accountCode, accountName, amount} rows to ReportRow[] */
@@ -23,7 +43,7 @@ function accountRowsToReportRows(
 ): ReportRow[] {
   return rows.map((row) => ({
     label: row.accountCode ? `${row.accountCode} — ${row.accountName ?? ""}` : (row.accountName ?? ""),
-    value: row.amount != null ? Number(row.amount) : null,
+    value: asMoneyString(row.amount),
   }));
 }
 
@@ -38,18 +58,10 @@ function transformProfitAndLoss(payload: Record<string, unknown>): GenericReport
   if (cogs.length) sections.push({ title: "Cost of Goods Sold", rows: cogs });
   if (expenses.length) sections.push({ title: "Expenses", rows: expenses });
 
-  const rawTotals = payload.totals as Record<string, string | number> | undefined;
-  const totals: Record<string, number | string | null> = {};
-  if (rawTotals) {
-    for (const [k, v] of Object.entries(rawTotals)) {
-      totals[k] = typeof v === "string" ? Number(v) : v;
-    }
-  }
-
   return {
     sections,
-    totals,
-    currencyCode: payload.currencyCode as string | null ?? null,
+    totals: mapTotals(payload.totals as Record<string, string | number | boolean> | undefined),
+    currencyCode: (payload.currencyCode as string | null) ?? null,
   };
 }
 
@@ -64,16 +76,11 @@ function transformBalanceSheet(payload: Record<string, unknown>): GenericReportR
   if (liabilities.length) sections.push({ title: "Liabilities", rows: liabilities });
   if (equity.length) sections.push({ title: "Equity", rows: equity });
 
-  const rawTotals = payload.totals as Record<string, string | number | boolean> | undefined;
-  const totals: Record<string, number | string | null> = {};
-  if (rawTotals) {
-    for (const [k, v] of Object.entries(rawTotals)) {
-      if (typeof v === "boolean") totals[k] = v ? "✓ Balanced" : "✗ Unbalanced";
-      else totals[k] = typeof v === "string" ? Number(v) : v;
-    }
-  }
-
-  return { sections, totals, currencyCode: payload.currencyCode as string | null ?? null };
+  return {
+    sections,
+    totals: mapTotals(payload.totals as Record<string, string | number | boolean> | undefined),
+    currencyCode: (payload.currencyCode as string | null) ?? null,
+  };
 }
 
 /** Transform Trial Balance backend payload → GenericReportResult */
@@ -81,45 +88,79 @@ function transformTrialBalance(payload: Record<string, unknown>): GenericReportR
   const rawRows = Array.isArray(payload.rows) ? (payload.rows as Array<Record<string, unknown>>) : [];
   const rows: ReportRow[] = rawRows.map((row) => ({
     label: row.accountCode ? `${row.accountCode} — ${row.accountName ?? ""}` : String(row.accountName ?? ""),
-    debit: row.totalDebit != null ? Number(row.totalDebit) : null,
-    credit: row.totalCredit != null ? Number(row.totalCredit) : null,
-    balance: row.netBalance != null ? Number(row.netBalance) : null,
+    debit: asMoneyString(row.totalDebit),
+    credit: asMoneyString(row.totalCredit),
+    balance: asMoneyString(row.netBalance),
   }));
 
-  const rawTotals = payload.totals as Record<string, string | number | boolean> | undefined;
-  const totals: Record<string, number | string | null> = {};
-  if (rawTotals) {
-    for (const [k, v] of Object.entries(rawTotals)) {
-      if (typeof v === "boolean") totals[k] = v ? "✓ Balanced" : "✗ Unbalanced";
-      else totals[k] = typeof v === "string" ? Number(v) : v;
-    }
-  }
-
-  return { rows, totals, currencyCode: payload.currencyCode as string | null ?? null };
+  return {
+    rows,
+    totals: mapTotals(payload.totals as Record<string, string | number | boolean> | undefined),
+    currencyCode: (payload.currencyCode as string | null) ?? null,
+  };
 }
 
-/** Transform General Ledger backend payload → GenericReportResult */
-function transformGeneralLedger(payload: Record<string, unknown>): GenericReportResult {
-  const account = payload.account as Record<string, unknown> | undefined;
-  const summary = payload.summary as Record<string, string | number> | undefined;
-  const entries = Array.isArray(payload.entries) ? (payload.entries as Array<Record<string, unknown>>) : [];
+function mapLedgerEntry(entry: Record<string, unknown>): LedgerReportEntry {
+  return {
+    journalEntryId: entry.journalEntryId != null ? String(entry.journalEntryId) : undefined,
+    entryDate: String(entry.entryDate ?? ""),
+    entryNumber: entry.entryNumber != null ? String(entry.entryNumber) : null,
+    voucherType: String(entry.voucherType ?? entry.sourceModule ?? "Journal"),
+    voucherNumber: String(entry.voucherNumber ?? entry.sourceNumber ?? entry.entryNumber ?? "—"),
+    description: entry.description != null ? String(entry.description) : null,
+    debitAmount: asMoneyString(entry.debitAmount) ?? "0.00",
+    creditAmount: asMoneyString(entry.creditAmount) ?? "0.00",
+    runningBalance: asMoneyString(entry.runningBalance) ?? "0.00",
+  };
+}
 
-  const rows: ReportRow[] = entries.map((entry) => ({
-    label: String(entry.description ?? entry.entryNumber ?? ""),
-    debit: entry.debitAmount != null ? Number(entry.debitAmount) : null,
-    credit: entry.creditAmount != null ? Number(entry.creditAmount) : null,
-    balance: entry.runningBalance != null ? Number(entry.runningBalance) : null,
-  }));
+function mapLedgerAccountSection(raw: Record<string, unknown>): LedgerReportAccountSection | null {
+  const account = raw.account as Record<string, unknown> | undefined;
+  if (!account?.id) return null;
+  const summary = raw.summary as Record<string, string | number> | undefined;
+  const entries = Array.isArray(raw.entries)
+    ? (raw.entries as Array<Record<string, unknown>>).map(mapLedgerEntry)
+    : [];
 
-  const totals: Record<string, number | string | null> = {};
-  if (account) totals["Account"] = `${account.code ?? ""} — ${account.name ?? ""}`;
-  if (summary) {
-    for (const [k, v] of Object.entries(summary)) {
-      totals[k] = typeof v === "string" ? Number(v) : v;
-    }
+  return {
+    account: {
+      id: String(account.id),
+      code: String(account.code ?? ""),
+      name: String(account.name ?? ""),
+      type: account.type != null ? String(account.type) : undefined,
+      normalSide: account.normalSide != null ? String(account.normalSide) : undefined,
+    },
+    summary: summary
+      ? {
+          openingBalance: asMoneyString(summary.openingBalance) ?? undefined,
+          closingBalance: asMoneyString(summary.closingBalance) ?? undefined,
+          movementDebit: asMoneyString(summary.movementDebit) ?? undefined,
+          movementCredit: asMoneyString(summary.movementCredit) ?? undefined,
+        }
+      : undefined,
+    entries,
+  };
+}
+
+/** Transform General Ledger backend payload → multi-account ledger result */
+function transformGeneralLedger(payload: Record<string, unknown>): GeneralLedgerReportResult {
+  const currencyCode = (payload.currencyCode as string | null) ?? null;
+
+  if (Array.isArray(payload.accounts)) {
+    return {
+      currencyCode,
+      accounts: (payload.accounts as Array<Record<string, unknown>>)
+        .map(mapLedgerAccountSection)
+        .filter((section): section is LedgerReportAccountSection => Boolean(section)),
+    };
   }
 
-  return { rows, totals, currencyCode: payload.currencyCode as string | null ?? null };
+  // Legacy single-account shape
+  const single = mapLedgerAccountSection(payload);
+  return {
+    currencyCode,
+    accounts: single ? [single] : [],
+  };
 }
 
 /** Transform AR/AP Aging backend payload → GenericReportResult */
@@ -134,23 +175,19 @@ function transformAging(
 
   const rows: ReportRow[] = summaries.map((row) => ({
     label: String(row[nameKey] ?? ""),
-    value: row.totalDue != null ? Number(row.totalDue) : null,
-    ["Current"]: row.current != null ? Number(row.current) : null,
-    ["1-30"]: row.bucket1To30 != null ? Number(row.bucket1To30) : null,
-    ["31-60"]: row.bucket31To60 != null ? Number(row.bucket31To60) : null,
-    ["61-90"]: row.bucket61To90 != null ? Number(row.bucket61To90) : null,
-    ["91+"]: row.bucket90Plus != null ? Number(row.bucket90Plus) : null,
+    value: asMoneyString(row.totalDue),
+    ["Current"]: asMoneyString(row.current),
+    ["1-30"]: asMoneyString(row.bucket1To30),
+    ["31-60"]: asMoneyString(row.bucket31To60),
+    ["61-90"]: asMoneyString(row.bucket61To90),
+    ["91+"]: asMoneyString(row.bucket90Plus),
   }));
 
-  const rawTotals = payload.totals as Record<string, string | number> | undefined;
-  const totals: Record<string, number | string | null> = {};
-  if (rawTotals) {
-    for (const [k, v] of Object.entries(rawTotals)) {
-      totals[k] = typeof v === "string" ? Number(v) : v;
-    }
-  }
-
-  return { rows, totals, currencyCode: payload.currencyCode as string | null ?? null };
+  return {
+    rows,
+    totals: mapTotals(payload.totals as Record<string, string | number | boolean> | undefined),
+    currencyCode: (payload.currencyCode as string | null) ?? null,
+  };
 }
 
 type ReportTransformer = (payload: Record<string, unknown>) => GenericReportResult;
@@ -178,8 +215,17 @@ async function getReport(
 export const getTrialBalanceReport = (companyId: string, params: ReportFilterParams) =>
   getReport(companyId, "trial-balance", params, transformTrialBalance);
 
-export const getGeneralLedgerReport = (companyId: string, params: ReportFilterParams) =>
-  getReport(companyId, "general-ledger", params, transformGeneralLedger);
+export async function getGeneralLedgerReport(
+  companyId: string,
+  params: ReportFilterParams = {},
+): Promise<GeneralLedgerReportResult> {
+  const response = await apiClient.get<unknown>(
+    `/companies/${companyId}/reports/general-ledger${buildQuery(params)}`,
+  );
+  const body = response.data as Record<string, unknown>;
+  const payload = (body?.data ?? body) as Record<string, unknown>;
+  return transformGeneralLedger(payload);
+}
 
 export const getProfitAndLossReport = (companyId: string, params: ReportFilterParams) =>
   getReport(companyId, "profit-and-loss", params, transformProfitAndLoss);

@@ -3,12 +3,14 @@ import { extractListData } from "@/lib/api/response";
 import type {
   TaxCode,
   TaxCodePayload,
+  TaxDetailReportResult,
   TaxRate,
   TaxRatePayload,
   TaxSettings,
   TaxSettingsPayload,
+  TaxSummaryReportResult,
 } from "@/features/tax/types/tax.types";
-import type { GenericReportResult, ReportFilterParams } from "@/features/reports/types/report.types";
+import type { ReportFilterParams } from "@/features/reports/types/report.types";
 
 function buildQuery(params: ReportFilterParams) {
   const query = new URLSearchParams();
@@ -78,14 +80,14 @@ export async function upsertTaxSettings(companyId: string, payload: TaxSettingsP
 }
 
 export async function getTaxSummaryReport(companyId: string, params: ReportFilterParams) {
-  const { data } = await apiClient.get<GenericReportResult>(
+  const { data } = await apiClient.get<TaxSummaryReportResult>(
     `/companies/${companyId}/reports/tax-summary${buildQuery(params)}`,
   );
   return data;
 }
 
 export async function getTaxDetailReport(companyId: string, params: ReportFilterParams) {
-  const { data } = await apiClient.get<GenericReportResult>(
+  const { data } = await apiClient.get<TaxDetailReportResult>(
     `/companies/${companyId}/reports/tax-detail${buildQuery(params)}`,
   );
   return data;

@@ -1,5 +1,9 @@
 import type { DiscountType, DocumentLineInput } from "@/features/shared/types/documents";
-import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
+import {
+  toDecimalString,
+  toMoneyDecimalString,
+  toOptionalDecimalString,
+} from "@/features/shared/utils/decimal-string";
 
 /** Omit keys whose value is null, undefined, or "" — for Zod .optional() fields */
 export function omitEmptyFields<T extends Record<string, unknown>>(obj: T): Partial<T> {
@@ -9,7 +13,7 @@ export function omitEmptyFields<T extends Record<string, unknown>>(obj: T): Part
 }
 
 export function serializeMoneyField(value: unknown): string {
-  return toDecimalString(value);
+  return toMoneyDecimalString(value) || toDecimalString(value, 2);
 }
 
 export function serializeOptionalMoneyField(value: unknown): string | undefined {

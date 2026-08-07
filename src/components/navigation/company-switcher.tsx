@@ -30,7 +30,6 @@ export function CompanySwitcher({
   const activeCompanyId = useCompanyStore((state) => state.activeCompanyId);
   const setActiveCompanyId = useCompanyStore((state) => state.setActiveCompanyId);
   const resolvedCompanyId = companyId ?? activeCompanyId ?? "";
-console.log("companies",companies)
 
   return (
     <label

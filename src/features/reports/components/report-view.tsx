@@ -40,25 +40,38 @@ interface ReportViewProps {
   };
 }
 
+function isMoneyLike(value: unknown): value is number | string {
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith("✓") || trimmed.startsWith("✗")) return false;
+  return /^-?\d+(\.\d+)?$/.test(trimmed);
+}
+
+function formatMoneyOrText(value: unknown, currencyCode: string) {
+  if (isMoneyLike(value)) return formatCurrency(value, currencyCode);
+  return String(value ?? "-");
+}
+
 function formatReportValue(
   row: ReportRow,
   currencyCode: string,
 ) {
-  if (typeof row.value === "number") {
+  if (isMoneyLike(row.value)) {
     return formatCurrency(row.value, currencyCode);
   }
 
-  if (typeof row.amount === "number") {
+  if (isMoneyLike(row.amount)) {
     return formatCurrency(row.amount, currencyCode);
   }
 
-  if (typeof row.balance === "number") {
+  if (isMoneyLike(row.balance)) {
     return formatCurrency(row.balance, currencyCode);
   }
 
-  if (typeof row.debit === "number" || typeof row.credit === "number") {
-    const debit = row.debit ? formatCurrency(row.debit, currencyCode) : "-";
-    const credit = row.credit ? formatCurrency(row.credit, currencyCode) : "-";
+  if (isMoneyLike(row.debit) || isMoneyLike(row.credit)) {
+    const debit = isMoneyLike(row.debit) ? formatCurrency(row.debit, currencyCode) : "-";
+    const credit = isMoneyLike(row.credit) ? formatCurrency(row.credit, currencyCode) : "-";
     return `${debit} / ${credit}`;
   }
 
@@ -129,9 +142,7 @@ export function ReportView({
                         {key.replace(/([A-Z])/g, " $1")}
                       </p>
                       <p className="mt-1 text-base font-semibold">
-                        {typeof value === "number"
-                          ? formatCurrency(value, currencyCode)
-                          : String(value ?? "-")}
+                        {formatMoneyOrText(value, currencyCode)}
                       </p>
                     </div>
                   ))}

@@ -8,6 +8,7 @@ import {
   updateInvoice,
   getNextInvoiceNumber,
   sendInvoice,
+  markInvoiceTaxReported,
   submitInvoiceCompliance,
 } from "@/features/invoices/api/invoices.api";
 import type {
@@ -99,6 +100,21 @@ export function useSendInvoice(companyId: string | undefined) {
     mutationFn: (invoiceId: string) => sendInvoice(companyId!, invoiceId),
     onSuccess: async () => {
       if (companyId) await invalidateInvoiceQueries(companyId);
+    },
+  });
+}
+
+export function useMarkInvoiceTaxReported(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => markInvoiceTaxReported(companyId!, invoiceId),
+    onSuccess: async (_data, invoiceId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "invoices", invoiceId],
+        }),
+      ]);
     },
   });
 }

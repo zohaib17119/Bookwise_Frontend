@@ -55,7 +55,7 @@ export function ExpensesPage() {
       key: "amount",
       header: "Amount",
       className: "text-right",
-      render: (expense) => formatCurrency(Number(expense.amount), expense.currencyCode ?? displayCurrency),
+      render: (expense) => formatCurrency(expense.amount, expense.currencyCode ?? displayCurrency),
     },
     {
       key: "description",

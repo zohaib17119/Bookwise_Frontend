@@ -15,6 +15,7 @@ import { useJournalEntries } from "@/features/journals/hooks/use-journals";
 import type { JournalEntry } from "@/features/journals/types/journal.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { parseMoney } from "@/lib/utils/money";
 
 export function JournalsPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -85,11 +86,11 @@ export function JournalsPage() {
       header: "Debit / Credit",
       render: (entry) => {
         const debitTotal = (entry.lines ?? []).reduce(
-          (sum, line) => sum + Number(line.debitAmount || 0),
+          (sum, line) => sum + parseMoney(line.debitAmount),
           0,
         );
         const creditTotal = (entry.lines ?? []).reduce(
-          (sum, line) => sum + Number(line.creditAmount || 0),
+          (sum, line) => sum + parseMoney(line.creditAmount),
           0,
         );
 

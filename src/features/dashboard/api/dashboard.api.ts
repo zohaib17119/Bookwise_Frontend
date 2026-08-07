@@ -3,14 +3,11 @@ import type {
   DashboardOverview,
   DashboardQueryParams,
 } from "@/features/dashboard/types/dashboard.types";
+import { parseMoney } from "@/lib/utils/money";
 
+/** Chart/KPI edge only — BE already serializes money as 2dp strings. */
 function parseNumber(value: unknown): number {
-  if (value === null || value === undefined || value === "") {
-    return 0;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return parseMoney(value);
 }
 
 function parseNullableNumber(value: unknown): number | null {
@@ -20,6 +17,11 @@ function parseNullableNumber(value: unknown): number | null {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseCount(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview {
@@ -107,10 +109,10 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
       accountsPayable: parseSparkline(sparklines.accountsPayable),
     },
     counts: {
-      totalCustomers: parseNumber(counts.totalCustomers),
-      totalVendors: parseNumber(counts.totalVendors),
-      totalInvoices: parseNumber(counts.totalInvoices),
-      totalBills: parseNumber(counts.totalBills),
+      totalCustomers: parseCount(counts.totalCustomers),
+      totalVendors: parseCount(counts.totalVendors),
+      totalInvoices: parseCount(counts.totalInvoices),
+      totalBills: parseCount(counts.totalBills),
     },
   };
 }

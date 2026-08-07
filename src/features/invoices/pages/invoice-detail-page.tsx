@@ -14,7 +14,7 @@ import { DocumentMetaSection } from "@/components/documents/document-meta-sectio
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canShowZatca } from "@/features/compliance/utils/compliance-access";
+import { canShowFbr, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
 import {
   CreateAdjustmentNoteDialog,
   type AdjustmentNoteType,
@@ -24,6 +24,7 @@ import { useCreateDebitNote } from "@/features/debitNotes/hooks/use-debit-notes"
 import {
   useDeleteInvoice,
   useInvoice,
+  useMarkInvoiceTaxReported,
   useSendInvoice,
   useSubmitInvoiceCompliance,
 } from "@/features/invoices/hooks/use-invoices";
@@ -43,11 +44,13 @@ export function InvoiceDetailPage() {
   const deleteMutation = useDeleteInvoice(companyId);
   const sendMutation = useSendInvoice(companyId);
   const complianceMutation = useSubmitInvoiceCompliance(companyId);
+  const markTaxReportedMutation = useMarkInvoiceTaxReported(companyId);
   const creditNoteMutation = useCreateCreditNote(companyId);
   const debitNoteMutation = useCreateDebitNote(companyId);
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
-  const showZatca = canShowZatca(company);
+  const showZatca = canUseZatcaReporting(company);
+  const showFbr = canShowFbr(company);
   const baseCurrency = getCompanyBaseCurrency(company);
 
   if (!canView) {
@@ -75,6 +78,12 @@ export function InvoiceDetailPage() {
     ["ERROR", "REJECTED"].includes(complianceStatus);
   const showZatcaPending =
     showZatca &&
+    invoice.status !== "DRAFT" &&
+    invoice.status !== "CANCELLED" &&
+    complianceStatus === "PENDING";
+  const canMarkTaxReported =
+    showFbr &&
+    canManage &&
     invoice.status !== "DRAFT" &&
     invoice.status !== "CANCELLED" &&
     complianceStatus === "PENDING";
@@ -117,7 +126,7 @@ export function InvoiceDetailPage() {
         actions={
           canManage ? (
             <div className="flex flex-wrap items-center gap-3">
-              {invoice ? <InvoiceView invoice={invoice} /> : null}
+              {invoice ? <InvoiceView companyId={companyId} invoice={invoice} /> : null}
               {invoice.status === "DRAFT" ? (
                 <Button onClick={() => setSendOpen(true)} variant="primary">
                   {sendLabel}
@@ -145,6 +154,15 @@ export function InvoiceDetailPage() {
                   variant="secondary"
                 >
                   Retry ZATCA submit
+                </Button>
+              ) : null}
+              {canMarkTaxReported ? (
+                <Button
+                  isLoading={markTaxReportedMutation.isPending}
+                  onClick={() => void markTaxReportedMutation.mutateAsync(invoice.id)}
+                  variant="secondary"
+                >
+                  Mark tax reported
                 </Button>
               ) : null}
               {!isAdjustmentNote ? (
@@ -210,7 +228,7 @@ export function InvoiceDetailPage() {
                     ? [{ label: "Document type", value: "Credit note" }]
                     : isDebitNote
                       ? [{ label: "Document type", value: "Debit note" }]
-                      : [{ label: "Estimate", value: invoice.estimateId || "-" }]),
+                      : [{ label: "Estimate", value: invoice.estimateNumber || "-" }]),
                   { label: "Currency", value: documentCurrency },
                   { label: "Terms", value: invoice.terms || "-" },
                   ...(showZatca
@@ -226,6 +244,14 @@ export function InvoiceDetailPage() {
                         ["ERROR", "REJECTED"].includes(complianceStatus)
                           ? [{ label: "ZATCA last error", value: invoice.complianceLastError }]
                           : []),
+                      ]
+                    : []),
+                  ...(showFbr
+                    ? [
+                        {
+                          label: "FBR / Tax reported",
+                          value: complianceStatus.replace(/_/g, " "),
+                        },
                       ]
                     : []),
                   ...(invoice.paymentOptions?.length
@@ -265,7 +291,12 @@ export function InvoiceDetailPage() {
           </DocumentDetailsSection>
 
           <DocumentDetailsSection title="Line items">
-            <DocumentLinesTable currencyCode={documentCurrency} lines={invoice.lines} mode="sales" />
+            <DocumentLinesTable
+              currencyCode={documentCurrency}
+              lines={invoice.lines}
+              mode="sales"
+              showHsCode
+            />
           </DocumentDetailsSection>
         </div>
 

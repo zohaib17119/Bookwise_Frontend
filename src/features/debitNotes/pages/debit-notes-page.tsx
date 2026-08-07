@@ -8,7 +8,7 @@ import { ErrorState } from "@/components/shared/error-state";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canShowZatca } from "@/features/compliance/utils/compliance-access";
+import { canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
 import { CreateAdjustmentNoteDialog } from "@/features/creditNotes/components/create-adjustment-note-dialog";
 import {
   useCreateDebitNote,
@@ -21,7 +21,7 @@ import { formatCurrency, formatDate } from "@/lib/utils/format";
 export function DebitNotesPage() {
   const navigate = useNavigate();
   const { companyId, company, permissions } = useActiveCompany();
-  const showZatca = canShowZatca(company);
+  const showZatca = canUseZatcaReporting(company);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [createOpen, setCreateOpen] = useState(false);
@@ -90,7 +90,7 @@ export function DebitNotesPage() {
       className: "text-right",
       render: (note) =>
         formatCurrency(
-          Number(note.total ?? note.totals?.total ?? 0),
+          note.total ?? note.totals?.total ?? "0",
           note.currencyCode ?? baseCurrency,
         ),
     },

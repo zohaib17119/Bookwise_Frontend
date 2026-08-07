@@ -63,3 +63,45 @@ export interface TaxSettingsPayload {
   purchaseTaxRecoverableAccountId?: string | null;
   [key: string]: unknown;
 }
+
+export interface TaxSummaryRow {
+  taxCodeId: string;
+  taxCode: string;
+  taxCodeName: string;
+  salesTaxAmount: string;
+  purchaseTaxAmount: string;
+  netTaxAmount: string;
+}
+
+export interface TaxSummaryTotals {
+  salesTaxAmount: string;
+  purchaseTaxAmount: string;
+  netTaxAmount: string;
+}
+
+export interface TaxSummaryReportResult {
+  rows: TaxSummaryRow[];
+  totals: TaxSummaryTotals;
+  currencyCode?: string | null;
+}
+
+export interface TaxDetailRow {
+  sourceModule: "INVOICE" | "BILL";
+  sourceId: string;
+  sourceNumber: string;
+  documentDate: string;
+  counterpartyName: string;
+  taxCodeId: string;
+  taxCode: string;
+  taxCodeName: string;
+  taxRate: string;
+  taxableAmount: string;
+  taxAmount: string;
+  direction: "SALES" | "PURCHASE";
+}
+
+export interface TaxDetailReportResult {
+  rows: TaxDetailRow[];
+  count?: number;
+  currencyCode?: string | null;
+}

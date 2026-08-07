@@ -55,6 +55,15 @@ export interface Bill {
   status?: BillStatus | null;
   rawStatus?: BillStatus | null;
   goodsStatus?: BillGoodsStatus | null;
+  complianceStatus?:
+    | "NOT_APPLICABLE"
+    | "PENDING"
+    | "SUBMITTED"
+    | "CLEARED"
+    | "REPORTED"
+    | "REJECTED"
+    | "ERROR"
+    | null;
   paymentStatus?: BillPaymentStatus | null;
   total?: string | null;
   amountPaid?: number | null;

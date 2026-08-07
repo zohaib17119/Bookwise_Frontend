@@ -10,7 +10,7 @@ import { CounterpartySelect } from "@/components/documents/counterparty-select";
 import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
 
 export default function InvoiceEditorPage({
   company,
@@ -23,6 +23,7 @@ export default function InvoiceEditorPage({
   isLoading,
   mode,
   companyId,
+  onCreateCustomer,
 }: {
   company: any;
   form: any;
@@ -34,6 +35,7 @@ export default function InvoiceEditorPage({
   isLoading: boolean;
   mode: "create" | "edit";
   companyId: string;
+  onCreateCustomer?: () => void;
 }) {
   const watchedCustomerId = form.watch("customerId");
   const watchedCurrencyCode = form.watch("currencyCode");
@@ -101,7 +103,7 @@ export default function InvoiceEditorPage({
     }
   };
 
-  // Calculate totals with proper tax calculation
+  // Calculate totals with proper tax calculation (preview only — server is source of truth)
   const totals = useMemo(() => {
     let subtotal = 0;
     let totalTax = 0;
@@ -112,21 +114,19 @@ export default function InvoiceEditorPage({
       const lineAmount = qty * rate;
       subtotal += lineAmount;
 
-      // Get tax rate from tax rate ID
       let taxRate = 0;
       if (line.taxRateId) {
         taxRate = getTaxRateFromCode(line.taxRateId);
       } else if (line.taxRate) {
         taxRate = Number(line.taxRate);
       }
-      
+
       totalTax += lineAmount * (taxRate / 100);
     });
 
-    // Apply discount on subtotal
     let discountAmount = 0;
     if (watchedDiscountType === "PERCENTAGE") {
-      discountAmount = subtotal * (Number(watchedDiscountValue) || 0) / 100;
+      discountAmount = (subtotal * (Number(watchedDiscountValue) || 0)) / 100;
     } else if (watchedDiscountType === "FIXED") {
       discountAmount = Number(watchedDiscountValue) || 0;
     }
@@ -134,10 +134,10 @@ export default function InvoiceEditorPage({
     const total = subtotal - discountAmount + totalTax;
 
     return {
-      subtotal: subtotal.toFixed(2),
-      discount: discountAmount.toFixed(2),
-      tax: totalTax.toFixed(2),
-      total: total.toFixed(2),
+      subtotal: formatMoneyAmount(subtotal),
+      discount: formatMoneyAmount(discountAmount),
+      tax: formatMoneyAmount(totalTax),
+      total: formatMoneyAmount(total),
     };
   }, [watchedLines, watchedDiscountType, watchedDiscountValue, getTaxRateFromCode]);
 
@@ -239,7 +239,7 @@ export default function InvoiceEditorPage({
             <div className="text-right">
               <div className="mb-2 text-lg">
                 <span className="text-gray-500">Balance Due: </span>
-                <strong>{formatCurrency(Number(totals.total), currency)}</strong>
+                <strong>{formatCurrency(totals.total, currency)}</strong>
               </div>
               <div className="h-20 w-20 rounded bg-gray-200 ml-auto" />
             </div>
@@ -267,9 +267,11 @@ export default function InvoiceEditorPage({
           <div className="grid grid-cols-2 gap-10">
             <div>
               <CounterpartySelect
+                createLabel="Create new customer…"
                 error={form.formState.errors.customerId?.message}
                 label="Customer"
-                onChange={(value) => form.setValue("customerId", value)}
+                onChange={(value) => form.setValue("customerId", value, { shouldValidate: true })}
+                onCreateNew={onCreateCustomer}
                 options={(customersQuery.data ?? []).map((customer: any) => ({
                   id: customer.id,
                   label: customer.displayName,
@@ -439,7 +441,7 @@ export default function InvoiceEditorPage({
                   </td>
 
                   <td className="border p-2 text-right font-medium">
-                    {formatCurrency(lineAmount + lineTaxAmount, currency)}
+                    {formatCurrency(formatMoneyAmount(lineAmount + lineTaxAmount), currency)}
                   </td>
 
                   <td className="border p-2">
@@ -534,7 +536,7 @@ export default function InvoiceEditorPage({
             <div className="space-y-4 rounded border p-6">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{formatCurrency(Number(totals.subtotal), currency)}</span>
+                <span>{formatCurrency(totals.subtotal, currency)}</span>
               </div>
 
               <div className="flex justify-between items-center gap-4">
@@ -557,17 +559,17 @@ export default function InvoiceEditorPage({
                     placeholder="0.00"
                   />
                 </div>
-                <span>-{formatCurrency(Number(totals.discount), currency)}</span>
+                <span>-{formatCurrency(totals.discount, currency)}</span>
               </div>
 
               <div className="flex justify-between">
                 <span>Tax</span>
-                <span>{formatCurrency(Number(totals.tax), currency)}</span>
+                <span>{formatCurrency(totals.tax, currency)}</span>
               </div>
 
               <div className="flex justify-between text-xl font-bold border-t pt-4">
                 <span>Invoice Total</span>
-                <span>{formatCurrency(Number(totals.total), currency)}</span>
+                <span>{formatCurrency(totals.total, currency)}</span>
               </div>
             </div>
           </div>

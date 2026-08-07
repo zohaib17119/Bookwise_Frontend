@@ -11,7 +11,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canShowZatca } from "@/features/compliance/utils/compliance-access";
+import { canShowFbr, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
@@ -21,7 +21,8 @@ import InvoiceEditorPage from "./invoice-editor-page";
 
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
-  const showZatca = canShowZatca(company);
+  const showZatca = canUseZatcaReporting(company);
+  const showFbr = canShowFbr(company);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -99,13 +100,24 @@ export function InvoicesPage() {
           } satisfies DataTableColumn<Invoice>,
         ]
       : []),
+    ...(showFbr
+      ? [
+          {
+            key: "fbrTaxReported",
+            header: "FBR / Tax reported",
+            render: (invoice: Invoice) => (
+              <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
+            ),
+          } satisfies DataTableColumn<Invoice>,
+        ]
+      : []),
     {
       key: "total",
       header: "Total",
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
-          Number(invoice.total ?? invoice.totals?.total ?? 0),
+          invoice.total ?? invoice.totals?.total ?? "0",
           invoice.currencyCode ?? baseCurrency,
         ),
     },
@@ -114,14 +126,14 @@ export function InvoicesPage() {
       header: "Amount paid",
       className: "text-right",
       render: (invoice) =>
-        formatCurrency(Number(invoice.amountPaid ?? 0), invoice.currencyCode ?? baseCurrency),
+        formatCurrency(invoice.amountPaid ?? "0", invoice.currencyCode ?? baseCurrency),
     },
     {
       key: "amountDue",
       header: "Amount Due",
       className: "text-right",
       render: (invoice) =>
-        formatCurrency(Number(invoice.amountDue ?? 0), invoice.currencyCode ?? baseCurrency),
+        formatCurrency(invoice.amountDue ?? "0", invoice.currencyCode ?? baseCurrency),
     },
   ];
 

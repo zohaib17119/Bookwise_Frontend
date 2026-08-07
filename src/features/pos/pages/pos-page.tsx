@@ -21,6 +21,7 @@ import { useItemOptions, useLookupItemByCode } from "@/features/items/hooks/use-
 import type { Item } from "@/features/items/types/item.types";
 import { useLocale, useT } from "@/features/i18n";
 import { useTaxRates } from "@/features/tax/hooks/use-tax";
+import { MONEY_EPSILON, parseMoney, toMoneyString } from "@/lib/utils/money";
 
 const WALK_IN_NAME = "Walk-in Customer";
 
@@ -60,12 +61,12 @@ type PosCheckoutResult = {
   };
 };
 
-function money(n: number) {
-  return n.toFixed(2);
+function money(n: number | string) {
+  return toMoneyString(n);
 }
 
 function lineAmount(line: CartLine) {
-  return line.quantity * line.unitPrice;
+  return parseMoney(toMoneyString(parseMoney(line.quantity) * parseMoney(line.unitPrice)));
 }
 
 function printReceiptHtml(html: string): boolean {
@@ -135,7 +136,7 @@ export function PosPage() {
   const listsError = customersQuery.error || itemsQuery.error;
 
   const subtotal = useMemo(
-    () => cart.reduce((sum, line) => sum + lineAmount(line), 0),
+    () => parseMoney(toMoneyString(cart.reduce((sum, line) => sum + lineAmount(line), 0))),
     [cart],
   );
 
@@ -152,18 +153,19 @@ export function PosPage() {
     for (const line of cart) {
       const taxable = lineAmount(line);
       const rateRow = line.taxRateId ? rateById.get(line.taxRateId) : undefined;
-      const rate = rateRow ? Number(rateRow.ratePercent) || 0 : 0;
+      const rate = rateRow ? parseMoney(rateRow.ratePercent) : 0;
       const name = (rateRow?.name || "").trim();
       const exempt = /\bEXEMPT\b/i.test(name);
       const zeroRated = !exempt && rate === 0 && !!line.taxRateId;
-      const taxAmount = exempt || zeroRated ? 0 : (taxable * rate) / 100;
-      totalTax += taxAmount;
+      const taxAmount =
+        exempt || zeroRated ? 0 : parseMoney(toMoneyString((taxable * rate) / 100));
+      totalTax = parseMoney(toMoneyString(totalTax + taxAmount));
       const key = line.taxRateId || (exempt ? "EXEMPT" : `RATE_${rate}`);
       const label = name || (exempt ? t("exempt") : zeroRated ? t("zeroRated") : `${rate}%`);
       const existing = map.get(key);
       if (existing) {
-        existing.taxableAmount += taxable;
-        existing.taxAmount += taxAmount;
+        existing.taxableAmount = parseMoney(toMoneyString(existing.taxableAmount + taxable));
+        existing.taxAmount = parseMoney(toMoneyString(existing.taxAmount + taxAmount));
       } else {
         map.set(key, {
           key,
@@ -180,7 +182,7 @@ export function PosPage() {
     return {
       buckets: Array.from(map.values()).sort((a, b) => b.rate - a.rate || a.label.localeCompare(b.label)),
       totalTax,
-      grandTotal: subtotal + totalTax,
+      grandTotal: parseMoney(toMoneyString(subtotal + totalTax)),
       hasRates: true,
     };
   }, [cart, subtotal, t, taxRates]);
@@ -189,19 +191,18 @@ export function PosPage() {
 
   const tenderedNumber = useMemo(() => {
     if (paymentMethod === "CARD") return payableTotal;
-    const n = Number(amountTendered);
-    return Number.isFinite(n) ? n : 0;
+    return parseMoney(amountTendered);
   }, [amountTendered, payableTotal, paymentMethod]);
 
   const changeDueNumber = useMemo(
-    () => Math.max(0, tenderedNumber - payableTotal),
+    () => parseMoney(toMoneyString(Math.max(0, tenderedNumber - payableTotal))),
     [payableTotal, tenderedNumber],
   );
 
   const canTenderPay =
     cart.length > 0 &&
     Boolean(customerId) &&
-    (paymentMethod === "CARD" || tenderedNumber + 1e-9 >= payableTotal);
+    (paymentMethod === "CARD" || tenderedNumber + MONEY_EPSILON >= payableTotal);
 
   useEffect(() => {
     if (paymentMethod === "CARD") {
@@ -226,7 +227,7 @@ export function PosPage() {
 
     let cancelled = false;
     createCustomer
-      .mutateAsync({ displayName: WALK_IN_NAME, isActive: true })
+      .mutateAsync({ displayName: WALK_IN_NAME, legalName: WALK_IN_NAME, isActive: true })
       .then((created) => {
         if (cancelled) return;
         setCustomerId(created.id);
@@ -368,7 +369,7 @@ export function PosPage() {
       return;
     }
     const tendered = paymentMethod === "CARD" ? payableTotal : tenderedNumber;
-    const change = Math.max(0, tendered - payableTotal);
+    const change = parseMoney(toMoneyString(Math.max(0, tendered - payableTotal)));
     setPending(true);
     try {
       const { data: result } = await apiClient.post<PosCheckoutResult>(

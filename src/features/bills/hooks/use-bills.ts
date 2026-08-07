@@ -10,6 +10,7 @@ import {
   issueBill,
   receiveBillGoods,
   voidBill,
+  markBillTaxReported,
 } from "@/features/bills/api/bills.api";
 import type { BillListParams, BillPayload } from "@/features/bills/types/bill.types";
 import { isAllocatableBillStatus, parseMoney } from "@/lib/utils/money";
@@ -134,6 +135,21 @@ export function useVoidBill(companyId: string | undefined) {
     mutationFn: (billId: string) => voidBill(companyId!, billId),
     onSuccess: async () => {
       if (companyId) await invalidateBillQueries(companyId);
+    },
+  });
+}
+
+export function useMarkBillTaxReported(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (billId: string) => markBillTaxReported(companyId!, billId),
+    onSuccess: async (_data, billId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateBillQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "bills", billId],
+        }),
+      ]);
     },
   });
 }

@@ -72,6 +72,7 @@ import { SettingsHomePage } from "@/features/settings/pages/settings-home-page";
 import { SettingsPlaceholderPage } from "@/features/settings/pages/settings-placeholder-page";
 import { SettingsTeamPage } from "@/features/settings/pages/settings-team-page";
 import { SettingsTaxPage } from "@/features/settings/pages/settings-tax-page";
+import { InvoiceTemplateSettingsPage } from "@/features/settings/pages/invoice-template-settings-page";
 import { ZatcaSettingsRoute } from "@/features/settings/pages/zatca-country-guard";
 import { PosPage } from "@/features/pos/pages/pos-page";
 import { TaxCodesPage } from "@/features/tax/pages/tax-codes-page";
@@ -201,6 +202,7 @@ const router = createBrowserRouter([
                       { path: "company", element: <CompanySettingsPage /> },
                       { path: "accounting", element: <AccountingSettingsPage /> },
                       { path: "tax", element: <SettingsTaxPage /> },
+                      { path: "invoice-template", element: <InvoiceTemplateSettingsPage /> },
                       { path: "zatca", element: <ZatcaSettingsRoute /> },
                       { path: "team", element: <SettingsTeamPage /> },
                       {

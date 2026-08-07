@@ -5,6 +5,7 @@ import {
   getCustomer,
   getCustomers,
   getCustomersPaginated,
+  getNextCustomerCode,
   updateCustomer,
 } from "@/features/customers/api/customers.api";
 import type {
@@ -51,6 +52,14 @@ export function useCustomerOptions(companyId: string | undefined) {
   });
 }
 
+export function useNextCustomerCode(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "customers", "next-code"],
+    queryFn: () => getNextCustomerCode(companyId!),
+    enabled: Boolean(companyId && enabled),
+  });
+}
+
 function invalidateCustomerQueries(companyId: string) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["companies", companyId, "customers"] }),
@@ -62,7 +71,12 @@ export function useCreateCustomer(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: CustomerPayload) => createCustomer(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateCustomerQueries(companyId);
+      if (companyId) {
+        await invalidateCustomerQueries(companyId);
+        await queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "customers", "next-code"],
+        });
+      }
     },
   });
 }

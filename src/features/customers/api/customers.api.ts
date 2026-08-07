@@ -37,6 +37,13 @@ export async function getCustomer(companyId: string, customerId: string) {
   return data;
 }
 
+export async function getNextCustomerCode(companyId: string) {
+  const { data } = await apiClient.get<{ customerCode: string }>(
+    `/companies/${companyId}/customers/next-code`,
+  );
+  return data.customerCode;
+}
+
 export async function createCustomer(companyId: string, payload: CustomerPayload) {
   const { data } = await apiClient.post<Customer>(
     `/companies/${companyId}/customers`,

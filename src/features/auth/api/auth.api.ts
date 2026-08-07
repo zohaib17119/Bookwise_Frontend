@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api/client";
+import { apiClient, refreshAccessToken } from "@/lib/api/client";
 import type {
   AuthResponse,
   LoginPayload,
@@ -63,9 +63,9 @@ export async function register(payload: RegisterPayload) {
   return normalizeAuthResponse(data);
 }
 
-export async function refreshSession() {
-  const { data } = await apiClient.post<RefreshResponse>("/auth/refresh");
-  return data;
+export async function refreshSession(): Promise<RefreshResponse> {
+  const accessToken = await refreshAccessToken();
+  return { accessToken };
 }
 
 export async function logout() {

@@ -29,8 +29,8 @@ import { useOpenInvoicesByCustomer } from "@/features/invoices/hooks/use-invoice
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency } from "@/lib/utils/format";
 import { getAllocatedTotal } from "@/features/shared/utils/document-calculations";
-import { toDecimalString } from "@/features/shared/utils/decimal-string";
-import { parseMoney, validateAllocations } from "@/lib/utils/money";
+import { toMoneyDecimalString } from "@/features/shared/utils/decimal-string";
+import { parseMoney, toMoneyString, validateAllocations } from "@/lib/utils/money";
 
 export function CustomerPaymentFormPage() {
   const navigate = useNavigate();
@@ -42,18 +42,24 @@ export function CustomerPaymentFormPage() {
   const createMutation = useCreateCustomerPayment(companyId);
   const allocateMutation = useAllocateCustomerPayment(companyId);
   const canManage = canManageEntity(permissions, "customer_payments");
+  const currencyCode = company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
   const form = useForm<CustomerPaymentFormInput, undefined, CustomerPaymentFormValues>({
     resolver: zodResolver(customerPaymentSchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       customerId: presetCustomerId,
-      paymentDate: "",
+      paymentDate: new Date().toISOString().slice(0, 10),
       paymentMethod: "Bank Transfer",
       referenceNumber: "",
-      amount: undefined,
+      amount: "",
       notes: "",
     },
   });
+  const formErrors = form.formState.errors;
+  const hasFormErrors = Object.keys(formErrors).length > 0 && form.formState.isSubmitted;
   const selectedCustomerId = form.watch("customerId");
+  const watchedAmount = form.watch("amount");
   const openInvoicesQuery = useOpenInvoicesByCustomer(companyId, selectedCustomerId || undefined);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
   const [allocationError, setAllocationError] = useState<string | null>(null);
@@ -65,7 +71,7 @@ export function CustomerPaymentFormPage() {
         number: invoice.invoiceNumber || "Invoice",
         documentDate: invoice.issueDate,
         dueDate: invoice.dueDate,
-        amountDue: parseMoney(invoice.amountDue),
+        amountDue: invoice.amountDue ?? "0",
       })),
     [openInvoicesQuery.data],
   );
@@ -75,7 +81,7 @@ export function CustomerPaymentFormPage() {
       allocatedAmount,
     })),
   );
-  const unappliedPreview = Number(form.watch("amount") || 0) - allocatedTotal;
+  const unappliedPreview = parseMoney(watchedAmount) - allocatedTotal;
 
   if (!canManage) {
     return <Alert title="Customer payments are unavailable" description="Your current company membership does not include customer payment management." variant="destructive" />;
@@ -96,7 +102,7 @@ export function CustomerPaymentFormPage() {
         className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]"
         onSubmit={form.handleSubmit(async (values) => {
           const validationErrors = validateAllocations({
-            paymentAmount: parseMoney(values.amount),
+            paymentAmount: values.amount,
             allocations,
             documents: allocationDocuments,
           });
@@ -110,16 +116,19 @@ export function CustomerPaymentFormPage() {
 
           const payment = await createMutation.mutateAsync({
             customerId: values.customerId,
-            paymentDate: values.paymentDate || undefined,
+            paymentDate: values.paymentDate,
             paymentMethod: values.paymentMethod,
             referenceNumber: values.referenceNumber || undefined,
-            amount: toDecimalString(values.amount),
+            amount: toMoneyDecimalString(values.amount),
             notes: values.notes || undefined,
           });
 
           const nonZeroAllocations = Object.entries(allocations)
-            .filter(([, amount]) => amount > 0)
-            .map(([invoiceId, amount]) => ({ invoiceId, amount: toDecimalString(amount) }));
+            .filter(([, amount]) => parseMoney(amount) > 0)
+            .map(([invoiceId, amount]) => ({
+              invoiceId,
+              amount: toMoneyDecimalString(amount),
+            }));
 
           if (nonZeroAllocations.length) {
             await allocateMutation.mutateAsync({
@@ -132,6 +141,13 @@ export function CustomerPaymentFormPage() {
         })}
       >
         <div className="space-y-6">
+          {hasFormErrors ? (
+            <Alert
+              description="Fix the highlighted fields before recording this payment."
+              title="Please complete required fields"
+              variant="destructive"
+            />
+          ) : null}
           {createMutation.error ? <Alert title={createMutation.error.message} variant="destructive" /> : null}
           {allocateMutation.error ? <Alert title={allocateMutation.error.message} variant="destructive" /> : null}
           {allocationError ? <Alert title={allocationError} variant="destructive" /> : null}
@@ -139,9 +155,9 @@ export function CustomerPaymentFormPage() {
           <FormSection title="Payment details">
             <FieldGrid>
               <CounterpartySelect
-                error={form.formState.errors.customerId?.message}
+                error={formErrors.customerId?.message}
                 label="Customer"
-                onChange={(value) => form.setValue("customerId", value)}
+                onChange={(value) => form.setValue("customerId", value, { shouldValidate: true })}
                 options={(customersQuery.data ?? []).map((customer) => ({
                   id: customer.id,
                   label: customer.displayName,
@@ -150,16 +166,16 @@ export function CustomerPaymentFormPage() {
                 placeholder="Select customer"
                 value={selectedCustomerId}
               />
-              <FormField label="Payment date">
+              <FormField label="Payment date" error={formErrors.paymentDate?.message}>
                 <Input type="date" {...form.register("paymentDate")} />
               </FormField>
-              <FormField label="Payment method" error={form.formState.errors.paymentMethod?.message}>
+              <FormField label="Payment method" error={formErrors.paymentMethod?.message}>
                 <Input {...form.register("paymentMethod")} placeholder="Bank Transfer" />
               </FormField>
               <FormField label="Reference number">
                 <Input {...form.register("referenceNumber")} placeholder="Bank reference" />
               </FormField>
-              <FormField label="Amount" error={form.formState.errors.amount?.message}>
+              <FormField label="Amount" error={formErrors.amount?.message}>
                 <Input type="number" step="0.01" {...form.register("amount")} />
               </FormField>
             </FieldGrid>
@@ -171,7 +187,7 @@ export function CustomerPaymentFormPage() {
           <FormSection title="Invoice allocation" description="Allocate this payment across open invoices if the backend allocation endpoint is available.">
             <AllocationEditor
               allocations={allocations}
-              currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
+              currencyCode={currencyCode}
               documents={allocationDocuments}
               onAllocationChange={(documentId, amount) => {
                 setAllocationError(null);
@@ -184,22 +200,22 @@ export function CustomerPaymentFormPage() {
         <div className="space-y-4">
           <AllocationSummaryCard
             allocations={allocationDocuments
-              .filter((document) => (allocations[document.id] ?? 0) > 0)
+              .filter((document) => parseMoney(allocations[document.id] ?? 0) > 0)
               .map((document) => ({
                 documentId: document.id,
                 documentNumber: document.number,
-                amountDue: toDecimalString(document.amountDue),
-                allocatedAmount: toDecimalString(allocations[document.id] ?? 0),
+                amountDue: toMoneyString(document.amountDue),
+                allocatedAmount: toMoneyString(allocations[document.id] ?? 0),
               }))}
-            currencyCode={company?.baseCurrencyCode ?? company?.currencyCode}
+            currencyCode={currencyCode}
             title="Allocation preview"
-            totalAmount={Number(form.watch("amount") || 0)}
-            unappliedAmount={unappliedPreview}
+            totalAmount={toMoneyString(watchedAmount)}
+            unappliedAmount={toMoneyString(unappliedPreview)}
           />
           <div className="surface p-5">
             <p className="text-sm text-muted-foreground">Amount preview</p>
             <p className="mt-3 text-2xl font-semibold">
-              {formatCurrency(Number(form.watch("amount") || 0), company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
+              {formatCurrency(toMoneyString(watchedAmount), currencyCode)}
             </p>
           </div>
           <Button

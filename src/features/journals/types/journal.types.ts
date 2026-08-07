@@ -3,6 +3,7 @@ import type { BaseEntityListParams } from "@/features/shared/types/common";
 export interface JournalEntryLine {
   id?: string;
   accountId: string;
+  accountCode?: string | null;
   accountName?: string | null;
   description?: string | null;
   debitAmount: number;
@@ -48,8 +49,21 @@ export interface LedgerRow {
   entryDate?: string | null;
   entryNumber?: string | null;
   description?: string | null;
-  debitAmount?: number | null;
-  creditAmount?: number | null;
-  runningBalance?: number | null;
+  debitAmount?: number | string | null;
+  creditAmount?: number | string | null;
+  runningBalance?: number | string | null;
   sourceModule?: string | null;
+  voucherType?: string | null;
+  voucherNumber?: string | null;
+}
+
+export interface AccountLedgerResult {
+  account?: {
+    id: string;
+    code: string;
+    name: string;
+    normalSide?: string;
+  };
+  summary?: Record<string, string | number | null>;
+  lines: LedgerRow[];
 }

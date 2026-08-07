@@ -13,8 +13,28 @@ export function formatCurrency(
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(numericValue) ? numericValue : 0);
+}
+
+/** Format a money amount as a plain 2-decimal string (no currency symbol). */
+export function formatMoneyAmount(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return "0.00";
+  }
+
+  const raw = typeof value === "string" ? value.trim().replace(/,/g, "") : value;
+  if (raw === "") {
+    return "0.00";
+  }
+
+  const parsed = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return "0.00";
+  }
+
+  return parsed.toFixed(2);
 }
 
 export function formatNumber(value: number, locale = "en-US") {

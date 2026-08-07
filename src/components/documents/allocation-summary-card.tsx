@@ -4,8 +4,8 @@ import type { AllocationEntry } from "@/features/shared/types/documents";
 interface AllocationSummaryCardProps {
   allocations: AllocationEntry[];
   currencyCode?: string | null;
-  totalAmount?: number | null;
-  unappliedAmount?: number | null;
+  totalAmount?: number | string | null;
+  unappliedAmount?: number | string | null;
   title: string;
 }
 
@@ -24,12 +24,12 @@ export function AllocationSummaryCard({
       <div className="mt-4 space-y-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Payment amount</span>
-          <span className="font-medium">{formatCurrency(totalAmount ?? 0, currency)}</span>
+          <span className="font-medium">{formatCurrency(totalAmount ?? "0", currency)}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Unapplied amount</span>
           <span className="font-medium">
-            {formatCurrency(unappliedAmount ?? 0, currency)}
+            {formatCurrency(unappliedAmount ?? "0", currency)}
           </span>
         </div>
       </div>
@@ -43,7 +43,7 @@ export function AllocationSummaryCard({
               <div>
                 <p className="font-medium">{allocation.documentNumber}</p>
                 <p className="text-xs text-muted-foreground">
-                  Due remaining: {formatCurrency(allocation.amountDue ?? 0, currency)}
+                  Due remaining: {formatCurrency(allocation.amountDue ?? "0", currency)}
                 </p>
               </div>
               <p className="font-medium">

@@ -107,6 +107,13 @@ export async function sendInvoice(companyId: string, invoiceId: string) {
   return data;
 }
 
+export async function markInvoiceTaxReported(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<Invoice>(
+    `/companies/${companyId}/invoices/${invoiceId}/mark-tax-reported`,
+  );
+  return data;
+}
+
 export async function submitInvoiceCompliance(companyId: string, invoiceId: string) {
   const { data } = await apiClient.post<{ jobId: string }>(
     `/companies/${companyId}/invoices/${invoiceId}/compliance/submit`,

@@ -79,7 +79,7 @@ export function ExpenseDetailPage() {
             <div>
               <dt className="text-sm text-muted-foreground">Amount</dt>
               <dd className="font-medium">
-                {formatCurrency(Number(expense.amount), expense.currencyCode ?? displayCurrency)}
+                {formatCurrency(expense.amount, expense.currencyCode ?? displayCurrency)}
               </dd>
             </div>
             <div>

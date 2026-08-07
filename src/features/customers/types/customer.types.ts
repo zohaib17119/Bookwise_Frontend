@@ -38,8 +38,8 @@ export interface CustomerListParams extends BaseEntityListParams {}
 
 export interface CustomerPayload {
   customerCode?: string;
-  displayName: string;
-  legalName?: string;
+  displayName?: string;
+  legalName: string;
   firstName?: string;
   lastName?: string;
   email?: string;

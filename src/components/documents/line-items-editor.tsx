@@ -205,7 +205,9 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       setValue(`${name}.${index}.taxCodeId` as never, taxCodeId as never);
 
       const taxCode = taxCodeMap.get(taxCodeId);
-      if (taxCode && !taxCode.isExempt && taxCode.effectiveRatePercent != null) {
+      const isExempt =
+        Boolean(taxCode?.isExempt) || taxCode?.calculationMode === "EXEMPT";
+      if (taxCode && !isExempt && taxCode.effectiveRatePercent != null) {
         setValue(
           `${name}.${index}.taxRate` as never,
           toDecimalString(taxCode.effectiveRatePercent) as never,
@@ -630,14 +632,20 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                             (inputField.value as string | undefined) ?? ""
                           }
                         >
-                          <option value="">No Tax</option>
-                          {taxCodeOptions.map((tc) => (
-                            <option key={tc.id} value={tc.id}>
-                              {tc.code
-                                ? `${tc.code} (${tc.effectiveRatePercent ?? 0}%)`
-                                : `${tc.name} (${tc.effectiveRatePercent ?? 0}%)`}
-                            </option>
-                          ))}
+                          <option value="">No tax</option>
+                          {taxCodeOptions.map((tc) => {
+                            const labelName = tc.name || tc.code || "Tax";
+                            const rate = tc.effectiveRatePercent ?? 0;
+                            const label =
+                              tc.isExempt || tc.calculationMode === "EXEMPT"
+                                ? labelName
+                                : `${labelName} (${rate}%)`;
+                            return (
+                              <option key={tc.id} value={tc.id}>
+                                {label}
+                              </option>
+                            );
+                          })}
                         </Select>
                       )}
                     />

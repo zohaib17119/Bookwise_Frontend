@@ -1,12 +1,19 @@
 import { z } from "zod";
 import {
   DECIMAL_STRING_REGEX,
+  MONEY_STRING_REGEX,
   toDecimalString,
+  toMoneyDecimalString,
   toOptionalDecimalString,
 } from "@/features/shared/utils/decimal-string";
 
 const optionalString = z.string().optional().or(z.literal(""));
 const optionalDate = optionalString;
+const requiredPaymentDateSchema = z
+  .string()
+  .trim()
+  .min(1, "Payment date is required")
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid payment date");
 
 const moneyStringSchema = z.preprocess(
   (value) => toOptionalDecimalString(value),
@@ -14,6 +21,21 @@ const moneyStringSchema = z.preprocess(
     .string()
     .regex(DECIMAL_STRING_REGEX, "Enter a valid amount")
     .or(z.literal("")),
+);
+
+const requiredPaymentAmountSchema = z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) {
+      return "";
+    }
+    return toMoneyDecimalString(value) || toDecimalString(value, 2);
+  },
+  z
+    .string()
+    .regex(MONEY_STRING_REGEX, "Enter a valid amount")
+    .refine((value) => Number(value) >= 0.01, {
+      message: "Amount is required",
+    }),
 );
 
 const requiredQuantitySchema = z.preprocess(
@@ -57,14 +79,22 @@ export const documentBaseSchema = z.object({
 
 export const allocationLineSchema = z.object({
   documentId: z.string().min(1),
-  allocatedAmount: z.coerce.number().min(0),
+  allocatedAmount: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return "0.00";
+      }
+      return toMoneyDecimalString(value) || toDecimalString(value, 2);
+    },
+    z.string().regex(MONEY_STRING_REGEX, "Enter a valid amount"),
+  ),
 });
 
 export const paymentBaseSchema = z.object({
-  paymentDate: optionalDate,
-  paymentMethod: z.string().min(1, "Payment method is required").max(80),
+  paymentDate: requiredPaymentDateSchema,
+  paymentMethod: z.string().trim().min(1, "Payment method is required").max(80),
   referenceNumber: optionalString,
-  amount: z.coerce.number().min(0.01, "Amount is required"),
+  amount: requiredPaymentAmountSchema,
   notes: optionalString,
 });
 

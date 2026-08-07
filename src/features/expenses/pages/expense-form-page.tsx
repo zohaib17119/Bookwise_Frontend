@@ -24,6 +24,7 @@ import {
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import { formatCurrency } from "@/lib/utils/format";
+import { toMoneyString } from "@/lib/utils/money";
 
 export function ExpenseFormPage() {
   const navigate = useNavigate();
@@ -55,11 +56,12 @@ export function ExpenseFormPage() {
       paymentAccountId: "",
       expenseAccountId: "",
       vendorId: "",
-      amount: undefined,
+      amount: "",
       description: "",
       referenceNumber: "",
     },
   });
+  const watchedAmount = form.watch("amount");
 
   if (!canManage) {
     return (
@@ -164,7 +166,7 @@ export function ExpenseFormPage() {
           <div className="surface p-5">
             <p className="text-sm text-muted-foreground">Amount preview</p>
             <p className="mt-3 text-2xl font-semibold">
-              {formatCurrency(Number(form.watch("amount") || 0), displayCurrency)}
+              {formatCurrency(toMoneyString(watchedAmount), displayCurrency)}
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Posts immediately: debit expense category, credit payment account.

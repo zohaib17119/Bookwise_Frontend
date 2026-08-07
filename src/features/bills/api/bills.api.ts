@@ -117,3 +117,10 @@ export async function voidBill(companyId: string, billId: string) {
   const { data } = await apiClient.post<Bill>(`/companies/${companyId}/bills/${billId}/void`);
   return data;
 }
+
+export async function markBillTaxReported(companyId: string, billId: string) {
+  const { data } = await apiClient.post<Bill>(
+    `/companies/${companyId}/bills/${billId}/mark-tax-reported`,
+  );
+  return data;
+}

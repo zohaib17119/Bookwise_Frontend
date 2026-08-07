@@ -1,6 +1,7 @@
 import { createPdfUrl } from "@/components/pdfCreation/createPdfUrl";
 import { generateInvoicePdf } from "@/components/pdfCreation/pdf";
 import { Button } from "@/components/ui/button";
+import { renderInvoiceHtml } from "@/features/settings/api/invoice-templates.api";
 import { escapeHtml, safeHttpUrl } from "@/lib/utils/html";
 import { useEffect, useMemo, useState } from "react";
 import Modal from "react-modal";
@@ -39,201 +40,140 @@ function buildInvoicePdfHtml(invoice: Invoice | null | undefined): string {
     })
     .join("");
 
-  const notes = invoice?.notes ? `Note: ${e(invoice.notes)}` : "";
+  const notes = e(invoice?.notes);
+  const companyName = e(company.name);
+  const companyAddress = e(company.addressLine1);
+  const companyCity = e(
+    [company.city, company.state, company.country].filter(Boolean).join(" "),
+  );
+  const customerName = e(customer.displayName ?? customer.legalName ?? customer.name);
+  const billingAddress = e(customer.billingAddressLine1);
+  const billingCity = e(
+    [customer.billingCity, customer.billingState, customer.billingCountry]
+      .filter(Boolean)
+      .join(" "),
+  );
 
-  return `
-<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="utf-8" />
-  <title>Invoice</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <title>Invoice ${e(invoice?.invoiceNumber)}</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: geometricPrecision;
-      padding: 30px;
-      color: #333;
-    }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 2px solid #eee;
-      padding-bottom: 5px;
-    }
-
-    .logo {
-      width: 180px;
-    }
-
-    .company {
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .section {
-      padding-top: 20px;
-      padding-bottom: 40px;
-      display: flex;
-      justify-content: space-between;
-      border-bottom: 2px dotted grey;
-    }
-    .section2 {
-      padding-top: 40px;
-      padding-bottom: 20px;
-      display: flex;
-    }
-
-    .box {
-      width: 48%;
-      font-size: 12px;
-    }
-
-    table {
-      width: 100%;
-      border: 1px solid grey;
-      margin-top: 20px;
-    }
-
-    table th,
-    table td {
-      border: 1px solid #eee;
-      padding: 12px;
-      font-size: 11px;
-      text-align: left;
-    }
-
-    .summary {
-      margin-top: 20px;
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-    }
-
-    .note {
-      margin-top: 0px;
-      font-size: 12px;
-      padding: 30px;
-    }
-
-    .main-bod {
-      padding: 30px;
-    }
-
-    .main-bod-second {
-      padding: 0px 30px 5px;
-      background-color: #EBF4FB;
-    }
+    body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+    .logo { width: 180px; }
+    .company { font-size: 12px; line-height: 1.5; }
+    .section { padding-top: 20px; padding-bottom: 40px; display: flex; justify-content: space-between; border-bottom: 2px dotted grey; }
+    .box { width: 48%; font-size: 12px; }
+    table { width: 100%; border: 1px solid grey; margin-top: 20px; border-collapse: collapse; }
+    table th, table td { border: 1px solid #eee; padding: 12px; font-size: 11px; text-align: left; }
+    .note { margin-top: 0; font-size: 12px; padding: 30px; }
   </style>
 </head>
-
 <body>
-  <div>
-    <div class="main-bod">
-      <div class="header">
-        <div class="company">
-          <h2 style="color:#1d4ed8; font-size:14px"><b>INVOICE</b></h2>
-          <b>${e(company.name)}</b><br />
-          ${e(company.addressLine1)}<br />
-          ${e(company.city)} ${e(company.state)} ${e(company.Country ?? company.country)}<br />
-          ${e(company.email)}<br>
-          ${e(company.phone)}
-        </div>
-        ${logoUrl ? `<img class="logo" src="${logoUrl}" alt="Company Logo" />` : ""}
+  <div class="header">
+    <div class="company">
+      <h2 style="color:#1d4ed8; font-size:14px"><b>INVOICE</b></h2>
+      <b>${companyName}</b><br />
+      ${companyAddress}<br />
+      ${companyCity}<br />
+      ${e(company.email)}<br>
+      ${e(company.phone)}
+    </div>
+    ${logoUrl ? `<img class="logo" src='${logoUrl}' alt="Company Logo" />` : ""}
+  </div>
+  <div class="section">
+    <div class="box">
+      <h4><b>Bill To</b></h4>
+      <div>
+        ${customerName}<br />
+        ${billingAddress}<br />
+        ${billingCity}<br />
+        ${e(customer.email)}<br>
+        ${e(customer.phone)}
       </div>
     </div>
-  </div>
-
-  <div class="main-bod-second">
-    <div class="section">
-      <div class="box">
-        <h4><b>Bill To</b></h4>
-        <div>
-          ${e(customer.displayName)}<br />
-          ${e(customer.billingAddressLine1)}<br />
-          ${e(customer.billingCity)} ${e(customer.billingState)} ${e(customer.billingCountry)}<br />
-          ${e(customer.email)}<br>
-          ${e(customer.phone)}
-        </div>
-      </div>
-      <div class="box">
-        <h4><b>Ship To</b></h4>
-        <div>
-          ${e(customer.displayName)}<br />
-          ${e(customer.shippingAddressLine1)}<br />
-          ${e(customer.shippingCity)} ${e(customer.shippingState)} ${e(customer.shippingCountry)}<br />
-          ${e(customer.email)}<br>
-          ${e(customer.phone)}
-        </div>
-      </div>
-    </div>
-
-    <div class="section2">
-      <div class="box">
-        <b>Invoice Details</b><br>
-        Invoice No: ${e(invoice?.invoiceNumber)} <br>
-        Terms: ${e(invoice?.terms)} <br>
-        Invoice Date: ${e(invoice?.issueDate)} <br>
-        Due Date: ${e(invoice?.dueDate)}
-      </div>
+    <div class="box">
+      <b>Invoice Details</b><br>
+      Invoice No: ${e(invoice?.invoiceNumber)} <br>
+      Terms: ${e(invoice?.terms)} <br>
+      Invoice Date: ${e(invoice?.issueDate)} <br>
+      Due Date: ${e(invoice?.dueDate)}
     </div>
   </div>
-
-  <div class="main-bod">
-    <table bordered>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Product / Service</th>
-          <th>Description</th>
-          <th>Qty</th>
-          <th>Rate</th>
-          <th>Amount</th>
-          <th>Tax</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lineRows}
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td><b>${currencyCode} ${e(invoiceRecord.subtotal ?? invoice?.totals?.subtotal)}</b></td>
-        <td><b>${currencyCode} ${e(invoiceRecord.taxAmount ?? invoice?.totals?.taxTotal)}</b></td>
-        <td><b>${currencyCode} ${e(invoiceRecord.total ?? invoice?.totals?.total)}</b></td>
-      </tbody>
-    </table>
-    <div class="summary"></div>
-  </div>
-
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Product / Service</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Rate</th>
+        <th>Amount</th>
+        <th>Tax</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${lineRows}
+    </tbody>
+  </table>
   <div class="note">${notes}</div>
 </body>
-
 </html>`;
 }
 
-export default function InvoiceView({ invoice }: { invoice: Invoice }) {
+export default function InvoiceView({
+  invoice,
+  companyId,
+}: {
+  invoice: Invoice;
+  companyId?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
-  const pdfInvoice = useMemo(() => buildInvoicePdfHtml(invoice), [invoice]);
+  const [html, setHtml] = useState("");
+  const [loading, setLoading] = useState(false);
+  const fallbackHtml = useMemo(() => buildInvoicePdfHtml(invoice), [invoice]);
 
   useEffect(() => {
     Modal.setAppElement("#root");
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      void createPdfUrl(pdfInvoice).then(setPdfUrl);
-    } else {
+    if (!isOpen) {
       setPdfUrl("");
+      return;
     }
-  }, [isOpen, pdfInvoice]);
+
+    let cancelled = false;
+    setLoading(true);
+
+    const load = async () => {
+      let nextHtml = fallbackHtml;
+      if (companyId && invoice.id) {
+        try {
+          const rendered = await renderInvoiceHtml(companyId, invoice.id, "a4");
+          if (rendered?.content && rendered.contentType?.includes("html")) {
+            nextHtml = rendered.content;
+          }
+        } catch {
+          // Fall back to local HTML when render API/template is unavailable.
+        }
+      }
+      if (cancelled) return;
+      setHtml(nextHtml);
+      const url = await createPdfUrl(nextHtml);
+      if (!cancelled) setPdfUrl(url);
+      setLoading(false);
+    };
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, companyId, invoice.id, fallbackHtml]);
 
   return (
     <div>
@@ -259,7 +199,9 @@ export default function InvoiceView({ invoice }: { invoice: Invoice }) {
           </button>
         </div>
 
-        {pdfUrl ? (
+        {loading ? (
+          <p className="mt-6 text-sm text-muted-foreground">Preparing invoice PDF…</p>
+        ) : pdfUrl ? (
           <div style={{ width: "100%", height: "80%", marginTop: 10 }}>
             <iframe src={pdfUrl} width="100%" height="100%" title="Invoice Preview" />
           </div>
@@ -268,7 +210,7 @@ export default function InvoiceView({ invoice }: { invoice: Invoice }) {
         <div className="flex items-center justify-between pt-2">
           <Button
             variant="secondary"
-            onClick={() => generateInvoicePdf(pdfInvoice, "invoice.pdf")}
+            onClick={() => generateInvoicePdf(html || fallbackHtml, "invoice.pdf")}
           >
             Download Invoice
           </Button>

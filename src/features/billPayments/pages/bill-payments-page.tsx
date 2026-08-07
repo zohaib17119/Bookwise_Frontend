@@ -53,7 +53,7 @@ export function BillPaymentsPage() {
       key: "unapplied",
       header: "Unapplied",
       className: "text-right",
-      render: (payment) => formatCurrency(payment.unappliedAmount ?? 0, payment.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
+      render: (payment) => formatCurrency(payment.unappliedAmount ?? "0.00", payment.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
     },
     { key: "method", header: "Payment Method", render: (payment) => payment.paymentMethod },
   ];

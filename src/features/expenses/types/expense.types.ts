@@ -34,9 +34,9 @@ export interface ExpensePayload {
   paymentAccountId: string;
   expenseAccountId: string;
   vendorId?: string;
-  amount: number;
+  amount: string;
   currencyCode?: string;
-  exchangeRate?: number;
+  exchangeRate?: string;
   description: string;
   referenceNumber?: string;
   taxRateId?: string;

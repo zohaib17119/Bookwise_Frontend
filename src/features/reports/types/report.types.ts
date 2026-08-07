@@ -9,10 +9,10 @@ export interface ReportFilterParams {
 export interface ReportRow {
   label: string;
   value?: number | string | null;
-  debit?: number | null;
-  credit?: number | null;
-  balance?: number | null;
-  amount?: number | null;
+  debit?: number | string | null;
+  credit?: number | string | null;
+  balance?: number | string | null;
+  amount?: number | string | null;
   depth?: number;
   [key: string]: unknown;
 }

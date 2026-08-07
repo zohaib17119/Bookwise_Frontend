@@ -9,7 +9,8 @@ import type {
   StockMovementParams,
   StockOnHandRow,
 } from "@/features/inventory/types/inventory.types";
-import { omitEmptyFields, serializeMoneyField, serializeOptionalMoneyField } from "@/features/shared/utils/api-payload";
+import { omitEmptyFields } from "@/features/shared/utils/api-payload";
+import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 
 function buildMovementQuery(params: StockMovementParams) {
   const query = new URLSearchParams();
@@ -28,8 +29,8 @@ function serializeInventoryLine(line: InventoryAdjustmentLinePayload): Inventory
   return omitEmptyFields({
     itemId: line.itemId,
     direction: line.direction,
-    quantity: serializeMoneyField(line.quantity),
-    unitCost: serializeOptionalMoneyField(line.unitCost),
+    quantity: toDecimalString(line.quantity, 4),
+    unitCost: toOptionalDecimalString(line.unitCost, 4) || undefined,
     notes: line.notes || undefined,
   }) as InventoryAdjustmentLinePayload;
 }

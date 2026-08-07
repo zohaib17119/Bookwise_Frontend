@@ -8,8 +8,24 @@ import { DocumentHeaderCard } from "@/components/documents/document-header-card"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { useCustomerPayment } from "@/features/customerPayments/hooks/use-customer-payments";
+import type { CustomerPaymentAllocation } from "@/features/customerPayments/types/customer-payment.types";
 import { canViewEntity } from "@/features/permissions/utils/module-permissions";
-import { formatDate } from "@/lib/utils/format";
+import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { parseMoney, toMoneyString } from "@/lib/utils/money";
+
+function mapAllocationRow(allocation: CustomerPaymentAllocation) {
+  const invoice = allocation.invoice;
+  return {
+    documentId: allocation.documentId || allocation.invoiceId || allocation.id || "",
+    documentNumber:
+      allocation.documentNumber ||
+      invoice?.invoiceNumber ||
+      allocation.invoiceId ||
+      "Invoice",
+    amountDue: toMoneyString(allocation.amountDue ?? invoice?.amountDue ?? "0"),
+    allocatedAmount: toMoneyString(allocation.allocatedAmount ?? allocation.amount ?? "0"),
+  };
+}
 
 export function CustomerPaymentDetailPage() {
   const { paymentId, companyId } = useParams();
@@ -30,13 +46,15 @@ export function CustomerPaymentDetailPage() {
   }
 
   const payment = paymentQuery.data;
+  const currency = payment.currencyCode ?? "USD";
+  const hasUnapplied = parseMoney(payment.unappliedAmount) > 0;
 
   return (
     <PageContainer className="space-y-6">
       <DocumentHeaderCard
         description="Review the payment receipt and how it was allocated across invoices."
         number={payment.referenceNumber || payment.id}
-        status={payment.unappliedAmount ? "PARTIALLY_PAID" : "PAID"}
+        status={hasUnapplied ? "PARTIALLY_PAID" : "PAID"}
         title="Customer payment details"
       />
 
@@ -57,8 +75,11 @@ export function CustomerPaymentDetailPage() {
           />
           <DocumentMetaSection
             items={[
-              { label: "Amount", value: String(payment.amount) },
-              { label: "Unapplied amount", value: String(payment.unappliedAmount ?? 0) },
+              { label: "Amount", value: formatCurrency(payment.amount ?? "0", currency) },
+              {
+                label: "Unapplied amount",
+                value: formatCurrency(payment.unappliedAmount ?? "0", currency),
+              },
               { label: "Notes", value: payment.notes || "-" },
             ]}
             title="Amounts"
@@ -66,14 +87,15 @@ export function CustomerPaymentDetailPage() {
         </div>
 
         <AllocationSummaryCard
-          allocations={payment.allocations ?? []}
-          currencyCode={payment.currencyCode}
+          allocations={(payment.allocations ?? []).map((allocation) =>
+            mapAllocationRow(allocation as CustomerPaymentAllocation),
+          )}
+          currencyCode={currency}
           title="Allocation summary"
-          totalAmount={payment.amount}
-          unappliedAmount={payment.unappliedAmount}
+          totalAmount={toMoneyString(payment.amount)}
+          unappliedAmount={toMoneyString(payment.unappliedAmount ?? 0)}
         />
       </div>
     </PageContainer>
   );
-  
 }

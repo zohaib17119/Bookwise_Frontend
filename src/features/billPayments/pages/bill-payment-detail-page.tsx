@@ -8,8 +8,21 @@ import { DocumentHeaderCard } from "@/components/documents/document-header-card"
 import { DocumentMetaSection } from "@/components/documents/document-meta-section";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { useBillPayment } from "@/features/billPayments/hooks/use-bill-payments";
+import type { BillPaymentAllocation } from "@/features/billPayments/types/bill-payment.types";
 import { canViewEntity } from "@/features/permissions/utils/module-permissions";
-import { formatDate } from "@/lib/utils/format";
+import { formatCurrency, formatDate } from "@/lib/utils/format";
+import { parseMoney, toMoneyString } from "@/lib/utils/money";
+
+function mapAllocationRow(allocation: BillPaymentAllocation) {
+  const bill = allocation.bill;
+  return {
+    documentId: allocation.documentId || allocation.billId || allocation.id || "",
+    documentNumber:
+      allocation.documentNumber || bill?.billNumber || allocation.billId || "Bill",
+    amountDue: toMoneyString(allocation.amountDue ?? bill?.amountDue ?? "0"),
+    allocatedAmount: toMoneyString(allocation.allocatedAmount ?? allocation.amount ?? "0"),
+  };
+}
 
 export function BillPaymentDetailPage() {
   const { paymentId, companyId } = useParams();
@@ -30,13 +43,15 @@ export function BillPaymentDetailPage() {
   }
 
   const payment = paymentQuery.data;
+  const currency = payment.currencyCode ?? "USD";
+  const hasUnapplied = parseMoney(payment.unappliedAmount) > 0;
 
   return (
     <PageContainer className="space-y-6">
       <DocumentHeaderCard
         description="Review the outgoing vendor payment and bill allocation summary."
         number={payment.referenceNumber || payment.id}
-        status={payment.unappliedAmount ? "PARTIALLY_PAID" : "PAID"}
+        status={hasUnapplied ? "PARTIALLY_PAID" : "PAID"}
         title="Bill payment details"
       />
 
@@ -57,8 +72,11 @@ export function BillPaymentDetailPage() {
           />
           <DocumentMetaSection
             items={[
-              { label: "Amount", value: String(payment.amount) },
-              { label: "Unapplied amount", value: String(payment.unappliedAmount ?? 0) },
+              { label: "Amount", value: formatCurrency(payment.amount ?? "0", currency) },
+              {
+                label: "Unapplied amount",
+                value: formatCurrency(payment.unappliedAmount ?? "0", currency),
+              },
               { label: "Notes", value: payment.notes || "-" },
             ]}
             title="Amounts"
@@ -66,11 +84,13 @@ export function BillPaymentDetailPage() {
         </div>
 
         <AllocationSummaryCard
-          allocations={payment.allocations ?? []}
-          currencyCode={payment.currencyCode}
+          allocations={(payment.allocations ?? []).map((allocation) =>
+            mapAllocationRow(allocation as BillPaymentAllocation),
+          )}
+          currencyCode={currency}
           title="Allocation summary"
-          totalAmount={payment.amount}
-          unappliedAmount={payment.unappliedAmount}
+          totalAmount={toMoneyString(payment.amount)}
+          unappliedAmount={toMoneyString(payment.unappliedAmount ?? 0)}
         />
       </div>
     </PageContainer>

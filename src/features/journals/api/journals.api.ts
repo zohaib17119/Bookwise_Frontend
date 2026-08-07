@@ -1,11 +1,11 @@
 import { apiClient } from "@/lib/api/client";
 import { extractListData } from "@/lib/api/response";
 import type {
+  AccountLedgerResult,
   JournalEntry,
   JournalEntryLinePayload,
   JournalEntryPayload,
   JournalListParams,
-  LedgerRow,
 } from "@/features/journals/types/journal.types";
 import { omitEmptyFields, serializeOptionalMoneyField } from "@/features/shared/utils/api-payload";
 
@@ -94,13 +94,37 @@ export async function reverseJournalEntry(companyId: string, journalEntryId: str
   return data;
 }
 
-export async function getLedger(companyId: string, accountId: string, params: { fromDate?: string; toDate?: string } = {}) {
+export async function getLedger(
+  companyId: string,
+  accountId: string,
+  params: { fromDate?: string; toDate?: string } = {},
+) {
   const query = new URLSearchParams();
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
   const suffix = query.toString() ? `?${query.toString()}` : "";
-  const { data } = await apiClient.get<LedgerRow[]>(
+  const { data } = await apiClient.get<AccountLedgerResult>(
     `/companies/${companyId}/accounts/${accountId}/ledger${suffix}`,
   );
-  return extractListData(data);
+  const payload = data as AccountLedgerResult | { data?: AccountLedgerResult };
+  const body =
+    payload && typeof payload === "object" && "lines" in payload
+      ? (payload as AccountLedgerResult)
+      : ((payload as { data?: AccountLedgerResult }).data ?? { lines: [] });
+
+  return {
+    account: body.account,
+    summary: body.summary,
+    lines: (body.lines ?? []).map((line) => ({
+      ...line,
+      entryDate: line.entryDate ?? (line as { journalEntry?: { entryDate?: string } }).journalEntry?.entryDate,
+      entryNumber:
+        line.entryNumber ?? (line as { journalEntry?: { entryNumber?: string } }).journalEntry?.entryNumber,
+      debitAmount: String(line.debitAmount ?? "0.00"),
+      creditAmount: String(line.creditAmount ?? "0.00"),
+      runningBalance: String(line.runningBalance ?? "0.00"),
+      voucherType: line.voucherType ?? line.sourceModule ?? "Journal",
+      voucherNumber: line.voucherNumber ?? line.entryNumber ?? "—",
+    })),
+  };
 }

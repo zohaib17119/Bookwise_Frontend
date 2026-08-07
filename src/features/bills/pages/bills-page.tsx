@@ -11,6 +11,7 @@ import { SearchInput } from "@/components/shared/search-input";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { canShowFbr } from "@/features/compliance/utils/compliance-access";
 import { useVendors, useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import type { Bill } from "@/features/bills/types/bill.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
@@ -36,6 +37,7 @@ export function BillsPage() {
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
   const baseCurrency = getCompanyBaseCurrency(company);
+  const showFbr = canShowFbr(company);
 
   if (!canView) {
     return <ErrorState title="Bills access restricted" description="Your current company membership does not include bill access." />;
@@ -59,13 +61,24 @@ export function BillsPage() {
     { key: "dueDate", header: "Due Date", render: (bill) => formatDate(bill.dueDate) },
     { key: "payment", header: "Payment", render: (bill) => <DocumentStatusBadge status={bill.paymentStatus === "UNPAID" ? "UNPAID" : bill.status} /> },
     { key: "goods", header: "Goods", render: (bill) => <DocumentStatusBadge status={bill.goodsStatus ?? "NOT_APPLICABLE"} /> },
+    ...(showFbr
+      ? [
+          {
+            key: "fbrTaxReported",
+            header: "FBR / Tax reported",
+            render: (bill: Bill) => (
+              <DocumentStatusBadge status={bill.complianceStatus ?? "NOT_APPLICABLE"} />
+            ),
+          } satisfies DataTableColumn<Bill>,
+        ]
+      : []),
     {
       key: "total",
       header: "Total",
       className: "text-right",
       render: (bill) =>
         formatCurrency(
-          Number(bill.total ?? bill.totals?.total ?? 0),
+          bill.total ?? bill.totals?.total ?? "0",
           bill.currencyCode ?? baseCurrency,
         ),
     },
@@ -74,7 +87,7 @@ export function BillsPage() {
       header: "Amount Due",
       className: "text-right",
       render: (bill) =>
-        formatCurrency(Number(bill.amountDue ?? 0), bill.currencyCode ?? baseCurrency),
+        formatCurrency(bill.amountDue ?? "0", bill.currencyCode ?? baseCurrency),
     },
   ];
 
