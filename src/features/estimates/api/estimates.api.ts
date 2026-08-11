@@ -5,6 +5,7 @@ import type {
   EstimateLine,
   EstimateListParams,
   EstimatePayload,
+  ConvertEstimateToInvoicePayload,
 } from "@/features/estimates/types/estimate.types";
 import { omitEmptyFields, serializeDocumentLineMoney } from "@/features/shared/utils/api-payload";
 import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
@@ -27,6 +28,8 @@ function serializeEstimateLine(line: EstimateLine): EstimateLine {
     itemId: line.itemId || undefined,
     discountType: line.discountType || undefined,
     taxCodeId: line.taxCodeId || undefined,
+    taxCode: line.taxCode || undefined,
+    taxRate: line.taxRate || undefined,
   }) as EstimateLine;
 }
 
@@ -65,6 +68,13 @@ export async function getEstimate(companyId: string, estimateId: string) {
   return data;
 }
 
+export async function getNextEstimateNumber(companyId: string) {
+  const { data } = await apiClient.get<{ estimateNumber: string }>(
+    `/companies/${companyId}/estimates/next-number`,
+  );
+  return data.estimateNumber;
+}
+
 export async function createEstimate(companyId: string, payload: EstimatePayload) {
   const { data } = await apiClient.post<Estimate>(
     `/companies/${companyId}/estimates`,
@@ -89,9 +99,14 @@ export async function deleteEstimate(companyId: string, estimateId: string) {
   await apiClient.delete(`/companies/${companyId}/estimates/${estimateId}`);
 }
 
-export async function convertEstimateToInvoice(companyId: string, estimateId: string) {
-  const { data } = await apiClient.post<{ invoiceId?: string }>(
+export async function convertEstimateToInvoice(
+  companyId: string,
+  estimateId: string,
+  payload: ConvertEstimateToInvoicePayload,
+) {
+  const { data } = await apiClient.post<{ id: string }>(
     `/companies/${companyId}/estimates/${estimateId}/convert-to-invoice`,
+    payload,
   );
   return data;
 }

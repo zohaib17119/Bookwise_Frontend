@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Controller, useWatch } from "react-hook-form";
@@ -11,6 +11,15 @@ import { DocumentCurrencyFields } from "@/components/documents/document-currency
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
+
+const DOCUMENT_TERMS_DAYS = [0, 15, 30, 45, 60, 90] as const;
+
+function termsFromPaymentDays(days: number): string {
+  if ((DOCUMENT_TERMS_DAYS as readonly number[]).includes(days)) {
+    return String(days);
+  }
+  return "30";
+}
 
 export default function InvoiceEditorPage({
   company,
@@ -152,6 +161,25 @@ export default function InvoiceEditorPage({
       }
     }
   }, [watchedTerms, watchedIssueDate, form]);
+
+  // Create mode: when customer changes, apply payment terms (default 30).
+  const previousCustomerIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (!watchedCustomerId) {
+      previousCustomerIdRef.current = watchedCustomerId;
+      return;
+    }
+    if (previousCustomerIdRef.current === watchedCustomerId) return;
+    previousCustomerIdRef.current = watchedCustomerId;
+    const customer = customersQuery.data?.find((c: { id: string }) => c.id === watchedCustomerId) as
+      | { paymentTermsDays?: number | null }
+      | undefined;
+    const rawDays = customer?.paymentTermsDays;
+    const days =
+      rawDays == null || Number.isNaN(Number(rawDays)) ? 30 : Math.max(0, Number(rawDays));
+    form.setValue("terms", termsFromPaymentDays(days), { shouldDirty: true, shouldValidate: true });
+  }, [watchedCustomerId, mode, customersQuery.data, form]);
 
   const selectedCustomer = customersQuery.data?.find(
     (c: any) => c.id === watchedCustomerId

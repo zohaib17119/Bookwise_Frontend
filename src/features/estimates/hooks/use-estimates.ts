@@ -5,9 +5,11 @@ import {
   deleteEstimate,
   getEstimate,
   getEstimates,
+  getNextEstimateNumber,
   updateEstimate,
 } from "@/features/estimates/api/estimates.api";
 import type {
+  ConvertEstimateToInvoicePayload,
   EstimateListParams,
   EstimatePayload,
 } from "@/features/estimates/types/estimate.types";
@@ -44,11 +46,26 @@ export function useEstimate(companyId: string | undefined, estimateId: string | 
   });
 }
 
+export function useNextEstimateNumber(companyId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["companies", companyId, "estimates", "next-number"],
+    queryFn: () => getNextEstimateNumber(companyId!),
+    enabled: Boolean(companyId && enabled),
+  });
+}
+
 export function useCreateEstimate(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: EstimatePayload) => createEstimate(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateEstimateQueries(companyId);
+      if (companyId) {
+        await Promise.all([
+          invalidateEstimateQueries(companyId),
+          queryClient.invalidateQueries({
+            queryKey: ["companies", companyId, "estimates", "next-number"],
+          }),
+        ]);
+      }
     },
   });
 }
@@ -74,7 +91,13 @@ export function useDeleteEstimate(companyId: string | undefined) {
 
 export function useConvertEstimateToInvoice(companyId: string | undefined) {
   return useMutation({
-    mutationFn: (estimateId: string) => convertEstimateToInvoice(companyId!, estimateId),
+    mutationFn: ({
+      estimateId,
+      payload,
+    }: {
+      estimateId: string;
+      payload: ConvertEstimateToInvoicePayload;
+    }) => convertEstimateToInvoice(companyId!, estimateId, payload),
     onSuccess: async () => {
       if (companyId) {
         await Promise.all([

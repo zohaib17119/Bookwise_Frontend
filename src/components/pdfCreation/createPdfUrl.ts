@@ -13,7 +13,10 @@ export const createPdfUrl = async (
 
   container.style.background = "#ffffff";
   container.style.color = "#111";
-  container.style.width = "794px";
+  container.style.width = "210mm";
+  container.style.maxWidth = "210mm";
+  container.style.overflow = "hidden";
+  container.style.boxSizing = "border-box";
 
   const containerStyle = container.style as PdfContainerStyle;
   containerStyle.fontFamily = "Arial, sans-serif";
@@ -25,6 +28,8 @@ export const createPdfUrl = async (
   const pdfBlob = await html2pdf()
     .from(container)
     .set({
+      // Padding comes from HTML .page shell (invoice-style A4), not jsPDF margins.
+      margin: 0,
       image: {
         type: "jpeg" as const,
         quality: 1,
@@ -35,6 +40,7 @@ export const createPdfUrl = async (
         useCORS: true,
         backgroundColor: "#ffffff",
         letterRendering: true,
+        windowWidth: 794,
       },
 
       jsPDF: {

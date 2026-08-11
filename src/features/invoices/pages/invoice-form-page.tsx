@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
@@ -45,6 +45,18 @@ function normalizePaymentOptions(options?: string[] | null): InvoicePaymentOptio
   );
 }
 
+function toDateInputValue(value?: string | null) {
+  if (!value) return "";
+  return value.includes("T") ? value.split("T")[0]! : value.slice(0, 10);
+}
+
+function ratesEqual(a: string | number | null | undefined, b: string | number | null | undefined) {
+  const left = Number(a);
+  const right = Number(b);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
+  return Math.abs(left - right) < 0.0001;
+}
+
 interface InvoiceFormPageProps {
   mode: "create" | "edit";
 }
@@ -65,6 +77,23 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   const [customerDrawerOpen, setCustomerDrawerOpen] = useState(false);
   const canManage = canManageEntity(permissions, "invoices");
 
+  const taxCodeIdByCode = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const taxCode of taxCodesQuery.data ?? []) {
+      if (taxCode.code) map.set(taxCode.code, taxCode.id);
+    }
+    return map;
+  }, [taxCodesQuery.data]);
+
+  const taxRateIdByPercent = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const taxRate of taxRatesQuery.data ?? []) {
+      const key = String(Number(taxRate.ratePercent));
+      if (!map.has(key)) map.set(key, taxRate.id);
+    }
+    return map;
+  }, [taxRatesQuery.data]);
+
   const form = useForm<InvoiceFormInput, undefined, InvoiceFormValues>({
     resolver: zodResolver(invoiceSchema),
     values:
@@ -74,8 +103,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             estimateId: invoiceQuery.data.estimateId ?? "",
             invoiceNumber: invoiceQuery.data.invoiceNumber ?? "",
             referenceNumber: invoiceQuery.data.referenceNumber ?? "",
-            issueDate: invoiceQuery.data.issueDate ?? "",
-            dueDate: invoiceQuery.data.dueDate ?? "",
+            issueDate: toDateInputValue(invoiceQuery.data.issueDate),
+            dueDate: toDateInputValue(invoiceQuery.data.dueDate),
             currencyCode: invoiceQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
             exchangeRate: invoiceQuery.data.exchangeRate ?? "",
             notes: invoiceQuery.data.notes ?? "",
@@ -88,18 +117,31 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 ? toOptionalDecimalString(invoiceQuery.data.discountValue)
                 : "",
             lines:
-              invoiceQuery.data.lines?.map((line) => ({
-                itemId: line.itemId ?? "",
-                description: line.description,
-                quantity: toDecimalString(line.quantity),
-                unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
-                discountType: line.discountType ?? undefined,
-                discountValue:
-                  line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
-                taxCodeId: line.taxCodeId ?? "",
-                taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
-                itemName: line.itemName ?? "",
-              })) ?? [],
+              invoiceQuery.data.lines?.map((line) => {
+                const taxCodeId =
+                  line.taxCodeId ||
+                  (line.taxCode ? taxCodeIdByCode.get(line.taxCode) : undefined) ||
+                  "";
+                const taxRateId =
+                  line.taxRateId ||
+                  (line.taxRate != null
+                    ? taxRateIdByPercent.get(String(Number(line.taxRate)))
+                    : undefined) ||
+                  "";
+                return {
+                  itemId: line.itemId ?? "",
+                  description: line.description,
+                  quantity: toDecimalString(line.quantity),
+                  unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
+                  discountType: line.discountType ?? undefined,
+                  discountValue:
+                    line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
+                  taxCodeId,
+                  taxRateId,
+                  taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+                  itemName: line.itemName ?? "",
+                };
+              }) ?? [],
           }
         : {
             customerId: "",
@@ -125,6 +167,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 discountType: undefined,
                 discountValue: "",
                 taxCodeId: "",
+                taxRateId: "",
                 taxRate: "",
                 itemName: "",
               },
@@ -139,6 +182,30 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
     company,
     mode,
   });
+
+  // Keep taxRate in sync when taxRateId is resolved on edit load.
+  const taxHydratedRef = useRef(false);
+  useEffect(() => {
+    if (mode !== "edit" || !invoiceQuery.data || taxHydratedRef.current) return;
+    if (!taxRatesQuery.data?.length && !taxCodesQuery.data?.length) return;
+    taxHydratedRef.current = true;
+    const lines = form.getValues("lines") ?? [];
+    lines.forEach((line, index) => {
+      if (line.taxRateId && !line.taxRate) {
+        const rate = taxRatesQuery.data?.find((row) => row.id === line.taxRateId);
+        if (rate) {
+          form.setValue(`lines.${index}.taxRate`, toOptionalDecimalString(rate.ratePercent) ?? "", {
+            shouldDirty: false,
+          });
+        }
+      } else if (!line.taxRateId && line.taxRate) {
+        const match = taxRatesQuery.data?.find((row) => ratesEqual(row.ratePercent, line.taxRate));
+        if (match) {
+          form.setValue(`lines.${index}.taxRateId`, match.id, { shouldDirty: false });
+        }
+      }
+    });
+  }, [mode, invoiceQuery.data, taxRatesQuery.data, taxCodesQuery.data, form]);
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
@@ -199,6 +266,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 ? { discountValue: String(line.discountValue) }
                 : {}),
               ...(line.taxRateId ? { taxRateId: line.taxRateId } : {}),
+              ...(line.taxCodeId ? { taxCodeId: line.taxCodeId } : {}),
             })),
           };
           const result =

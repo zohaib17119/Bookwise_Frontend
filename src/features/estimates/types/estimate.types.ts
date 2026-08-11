@@ -23,6 +23,8 @@ export interface Estimate {
   referenceNumber?: string | null;
   customerId: string;
   customerName?: string | null;
+  customer?: Record<string, unknown> | null;
+  company?: Record<string, unknown> | null;
   issueDate?: string | null;
   expiryDate?: string | null;
   currencyCode?: string | null;
@@ -34,6 +36,13 @@ export interface Estimate {
   status?: EstimateStatus | null;
   lines: EstimateLine[];
   totals?: DocumentTotals | null;
+}
+
+export interface ConvertEstimateToInvoicePayload {
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate?: string;
+  status?: "DRAFT" | "ISSUED";
 }
 
 export interface EstimateListParams extends BaseEntityListParams {

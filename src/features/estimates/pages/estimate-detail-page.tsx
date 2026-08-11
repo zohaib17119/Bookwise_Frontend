@@ -13,13 +13,24 @@ import { DocumentTotalsCard } from "@/components/documents/document-totals-card"
 import { formatDate } from "@/lib/utils/format";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
+import EstimateView from "@/features/estimates/pages/estimate-view";
 import {
   useConvertEstimateToInvoice,
   useDeleteEstimate,
   useEstimate,
 } from "@/features/estimates/hooks/use-estimates";
+import { useNextInvoiceNumber } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { useState } from "react";
+
+function todayIsoDate() {
+  return new Date().toISOString().split("T")[0]!;
+}
+
+function plusDaysIsoDate(days: number) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString().split("T")[0]!;
+}
 
 export function EstimateDetailPage() {
   const navigate = useNavigate();
@@ -27,10 +38,13 @@ export function EstimateDetailPage() {
   const { permissions, company } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const estimateQuery = useEstimate(companyId, estimateId ?? null);
+  const customersQuery = useCustomerOptions(companyId);
   const deleteMutation = useDeleteEstimate(companyId);
   const convertMutation = useConvertEstimateToInvoice(companyId);
+  const nextNumberQuery = useNextInvoiceNumber(companyId, true);
   const canView = canViewEntity(permissions, "estimates");
   const canManage = canManageEntity(permissions, "estimates");
+  const canManageInvoices = canManageEntity(permissions, "invoices");
 
   if (!canView) {
     return (
@@ -56,6 +70,13 @@ export function EstimateDetailPage() {
 
   const estimate = estimateQuery.data;
   const documentCurrency = estimate.currencyCode ?? getCompanyBaseCurrency(company);
+  const canConvert =
+    canManage &&
+    canManageInvoices &&
+    estimate.status !== "CANCELLED" &&
+    estimate.status !== "REJECTED" &&
+    estimate.status !== "EXPIRED" &&
+    estimate.status !== "ACCEPTED";
 
   return (
     <PageContainer className="space-y-6">
@@ -63,23 +84,45 @@ export function EstimateDetailPage() {
         actions={
           canManage ? (
             <div className="flex flex-wrap gap-3">
+              <EstimateView estimate={estimate} />
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/estimates/${estimate.id}/edit`}>
                   Edit estimate
                 </Link>
               </Button>
-              <Button
-                isLoading={convertMutation.isPending}
-                onClick={async () => {
-                  const result = await convertMutation.mutateAsync(estimate.id);
-                  if (result.invoiceId) {
-                    navigate(`/app/company/${companyId}/invoices/${result.invoiceId}`);
-                  }
-                }}
-                variant="secondary"
-              >
-                Convert to invoice
-              </Button>
+              {canConvert ? (
+                <Button
+                  isLoading={convertMutation.isPending || nextNumberQuery.isLoading}
+                  onClick={async () => {
+                    const nextNumber = nextNumberQuery.data?.nextNumber;
+                    const invoiceNumber =
+                      nextNumber != null ? String(nextNumber) : `INV-${Date.now()}`;
+                    const customer = customersQuery.data?.find(
+                      (row) => row.id === estimate.customerId,
+                    );
+                    const rawDays = customer?.paymentTermsDays;
+                    const termsDays =
+                      rawDays == null || Number.isNaN(Number(rawDays))
+                        ? 30
+                        : Math.max(0, Number(rawDays));
+                    const result = await convertMutation.mutateAsync({
+                      estimateId: estimate.id,
+                      payload: {
+                        invoiceNumber,
+                        issueDate: todayIsoDate(),
+                        dueDate: plusDaysIsoDate(termsDays),
+                        status: "DRAFT",
+                      },
+                    });
+                    if (result.id) {
+                      navigate(`/app/company/${companyId}/invoices/${result.id}`);
+                    }
+                  }}
+                  variant="secondary"
+                >
+                  Convert to invoice
+                </Button>
+              ) : null}
               <Button onClick={() => setDeleteOpen(true)} variant="ghost">
                 Delete
               </Button>
