@@ -4,6 +4,7 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
@@ -17,6 +18,15 @@ import { PageHeader } from "@/components/shared/page-header";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
+import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
+import {
+  defaultWhtHeldBy,
+  whtHeldByHint,
+  whtHeldByLabel,
+  whtNetLabel,
+  whtSettlementAddsToCash,
+} from "@/features/shared/utils/wht-labels";
+import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
@@ -99,6 +109,14 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               estimateQuery.data.discountValue != null
                 ? toOptionalDecimalString(estimateQuery.data.discountValue)
                 : "",
+            whtEnabled: Boolean(estimateQuery.data.whtEnabled),
+            whtType: estimateQuery.data.whtType ?? "",
+            whtRate:
+              estimateQuery.data.whtRate != null
+                ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                : "",
+            whtBase: estimateQuery.data.whtBase ?? "",
+            whtHeldBy: estimateQuery.data.whtHeldBy ?? "COUNTERPARTY",
             lines:
               estimateQuery.data.lines?.map((line) => {
                 const resolvedTaxCodeId =
@@ -132,6 +150,11 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             terms: "",
             discountType: undefined,
             discountValue: "",
+            whtEnabled: false,
+            whtType: "",
+            whtRate: "",
+            whtBase: "",
+            whtHeldBy: "COUNTERPARTY",
             lines: [
               {
                 itemId: "",
@@ -164,6 +187,12 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
   const watchedEstimateNumber = form.watch("estimateNumber");
+  const watchedDiscountType = form.watch("discountType");
+  const watchedDiscountValue = form.watch("discountValue");
+  const watchedWhtEnabled = form.watch("whtEnabled");
+  const watchedWhtRate = form.watch("whtRate");
+  const watchedWhtBase = form.watch("whtBase");
+  const watchedWhtHeldBy = form.watch("whtHeldBy");
 
   useCounterpartyCurrencyDefault({
     form,
@@ -222,10 +251,46 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
   const exchangeRateString =
     typeof watchedExchangeRate === "string" ? watchedExchangeRate : String(watchedExchangeRate ?? "");
 
-  const previewTotals = useMemo(
-    () => getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview)),
-    [watchedLines],
-  );
+  const previewTotals = useMemo(() => {
+    const base = getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview));
+    const subtotal = Number(base.subtotal) || 0;
+    const tax = Number(base.taxTotal) || 0;
+    let headerDiscount = Number(base.discountTotal) || 0;
+    if (watchedDiscountType === "PERCENTAGE") {
+      headerDiscount = (subtotal * (Number(watchedDiscountValue) || 0)) / 100;
+    } else if (watchedDiscountType === "FIXED") {
+      headerDiscount = Number(watchedDiscountValue) || 0;
+    }
+    const adjustedTotal = subtotal - headerDiscount + tax;
+    const whtAmount = previewWhtAmount({
+      enabled: Boolean(watchedWhtEnabled),
+      rate: watchedWhtRate as string | number | null | undefined,
+      base: watchedWhtBase as string | null | undefined,
+      subtotal,
+      discount: headerDiscount,
+      tax,
+      total: adjustedTotal,
+    });
+    return {
+      ...base,
+      discountTotal: headerDiscount,
+      total: adjustedTotal,
+      whtAmount,
+      netSettlementAmount: previewNetSettlement(
+        adjustedTotal,
+        whtAmount,
+        whtSettlementAddsToCash(watchedWhtHeldBy, "invoice"),
+      ),
+    };
+  }, [
+    watchedLines,
+    watchedDiscountType,
+    watchedDiscountValue,
+    watchedWhtEnabled,
+    watchedWhtRate,
+    watchedWhtBase,
+    watchedWhtHeldBy,
+  ]);
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
@@ -279,6 +344,19 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               values.discountValue === undefined || values.discountValue === null || values.discountValue === ""
                 ? undefined
                 : toOptionalDecimalString(values.discountValue),
+            whtEnabled: Boolean(values.whtEnabled),
+            ...(values.whtEnabled
+              ? {
+                  whtType: values.whtType as "INCOME" | "SALES_TAX",
+                  whtRate: values.whtRate ? String(values.whtRate) : undefined,
+                  whtBase: values.whtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
             lines: values.lines.map((line) => {
               const taxMeta = line.taxCodeId ? taxCodeById.get(line.taxCodeId) : undefined;
               return {
@@ -424,7 +502,50 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             taxTotal={previewTotals.taxTotal}
             title="Provisional totals"
             total={previewTotals.total}
+            whtAmount={watchedWhtEnabled ? previewTotals.whtAmount : undefined}
+            netSettlementAmount={
+              watchedWhtEnabled ? previewTotals.netSettlementAmount : undefined
+            }
+            netLabel={whtNetLabel(watchedWhtHeldBy, "invoice")}
+            whtAddsToTotal={whtSettlementAddsToCash(watchedWhtHeldBy, "invoice")}
+            whtHeldByHint={whtHeldByHint(
+              watchedWhtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
+            whtHeldByLabel={whtHeldByLabel(
+              watchedWhtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
           />
+          <div className="space-y-3 rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={Boolean(watchedWhtEnabled)}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  form.setValue("whtEnabled", enabled, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  if (enabled && !form.getValues("whtHeldBy")) {
+                    form.setValue("whtHeldBy", defaultWhtHeldBy("invoice"), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+              />
+              <span>Apply withholding tax</span>
+            </label>
+            <WhtSettingsFields
+              companyName={company?.name ?? company?.legalName}
+              documentKind="invoice"
+              enabled={Boolean(watchedWhtEnabled)}
+              form={form}
+            />
+          </div>
           <Button className="w-full" isLoading={activeMutation.isPending} type="submit">
             {mode === "create" ? "Create estimate" : "Save estimate"}
           </Button>

@@ -22,18 +22,21 @@ import {
   COLUMN_LABELS,
   DEFAULT_INVOICE_TEMPLATE_LAYOUT,
   addChildToBox,
+  applyQuotationTitle,
   createBoxAfterTable,
   createBoxBeforeTable,
   newElementId,
   removeElementAndChildren,
   reorderBoxChild,
-  getTopLevelElements,
   inferYAnchor,
   getLineTableElement,
+  sanitizeTemplateLayoutForApi,
+  type DocumentTemplateKind,
   type InvoiceTableColumnKey,
   type InvoiceTemplateLayout,
   type TemplateElement,
 } from "@/features/settings/types/invoice-template.types";
+import { firstFieldErrorMessage } from "@/lib/api/error";
 
 function cloneLayout(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
   return structuredClone(layout);
@@ -57,16 +60,29 @@ function moveColumn(
   return next;
 }
 
-export function InvoiceTemplateSettingsPage() {
+export function InvoiceTemplateSettingsPage({
+  documentKind = "INVOICE",
+}: {
+  documentKind?: DocumentTemplateKind;
+}) {
+  const isEstimate = documentKind === "ESTIMATE";
   const { companyId, permissions } = useActiveCompany();
-  const canManage = canUsePermission(permissions, ["invoices.manage", "company.update"]);
+  const canManage = canUsePermission(permissions, [
+    "invoices.manage",
+    "company.update",
+    ...(isEstimate ? (["estimates.manage"] as const) : []),
+  ]);
   const companySettingsQuery = useCompanySettings(companyId);
-  const templatesQuery = useInvoiceDocumentTemplates(companyId);
-  const createMutation = useCreateInvoiceDocumentTemplate(companyId);
-  const updateMutation = useUpdateInvoiceDocumentTemplate(companyId);
+  const templatesQuery = useInvoiceDocumentTemplates(companyId, documentKind);
+  const invoiceTemplatesQuery = useInvoiceDocumentTemplates(
+    isEstimate ? companyId : undefined,
+    "INVOICE",
+  );
+  const createMutation = useCreateInvoiceDocumentTemplate(companyId, documentKind);
+  const updateMutation = useUpdateInvoiceDocumentTemplate(companyId, documentKind);
   const previewMutation = usePreviewInvoiceDocumentTemplate(companyId);
 
-  const [name, setName] = useState("Company invoice");
+  const [name, setName] = useState(isEstimate ? "Company quotation" : "Company invoice");
   const [layout, setLayout] = useState<InvoiceTemplateLayout>(DEFAULT_INVOICE_TEMPLATE_LAYOUT);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
@@ -78,10 +94,43 @@ export function InvoiceTemplateSettingsPage() {
     () => templatesQuery.data?.find((t) => t.isDefault) ?? templatesQuery.data?.[0] ?? null,
     [templatesQuery.data],
   );
+  const invoiceFallbackTemplate = useMemo(
+    () =>
+      invoiceTemplatesQuery.data?.find((t) => t.isDefault) ??
+      invoiceTemplatesQuery.data?.[0] ??
+      null,
+    [invoiceTemplatesQuery.data],
+  );
 
   const companyLogoUrl = companySettingsQuery.data?.logoUrl ?? "";
 
   useEffect(() => {
+    if (isEstimate) {
+      if (templatesQuery.isLoading || invoiceTemplatesQuery.isLoading) return;
+      if (defaultTemplate) {
+        setActiveTemplateId(defaultTemplate.id);
+        setName(defaultTemplate.name);
+        const next = ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson));
+        if (!next.logoUrl && companyLogoUrl) {
+          next.logoUrl = companyLogoUrl;
+        }
+        setLayout(next);
+        setPreviewHtml(defaultTemplate.compiledHtml || "");
+        return;
+      }
+      setActiveTemplateId(null);
+      setName("Company quotation");
+      const source = invoiceFallbackTemplate
+        ? applyQuotationTitle(cloneLayout(invoiceFallbackTemplate.layoutJson))
+        : applyQuotationTitle(cloneLayout(DEFAULT_INVOICE_TEMPLATE_LAYOUT));
+      if (!source.logoUrl && companyLogoUrl) {
+        source.logoUrl = companyLogoUrl;
+      }
+      setLayout(ensureSerialColumn(source));
+      setPreviewHtml("");
+      return;
+    }
+
     if (!defaultTemplate) return;
     setActiveTemplateId(defaultTemplate.id);
     setName(defaultTemplate.name);
@@ -91,7 +140,14 @@ export function InvoiceTemplateSettingsPage() {
     }
     setLayout(next);
     setPreviewHtml(defaultTemplate.compiledHtml || "");
-  }, [defaultTemplate?.id, companyLogoUrl]);
+  }, [
+    isEstimate,
+    defaultTemplate?.id,
+    invoiceFallbackTemplate?.id,
+    companyLogoUrl,
+    templatesQuery.isLoading,
+    invoiceTemplatesQuery.isLoading,
+  ]);
 
   const selectedElement = layout.elements.find((el) => el.id === selectedId) ?? null;
   const selectedBoxId =
@@ -147,7 +203,7 @@ export function InvoiceTemplateSettingsPage() {
 
   const handleSave = async () => {
     if (!companyId) return;
-    const payload = { ...layout, version: 2 as const };
+    const payload = sanitizeTemplateLayoutForApi({ ...layout, version: 2 });
     if (activeTemplateId) {
       await updateMutation.mutateAsync({
         templateId: activeTemplateId,
@@ -156,6 +212,7 @@ export function InvoiceTemplateSettingsPage() {
     } else {
       const created = await createMutation.mutateAsync({
         name,
+        kind: documentKind,
         isDefault: true,
         layoutJson: payload,
       });
@@ -166,7 +223,9 @@ export function InvoiceTemplateSettingsPage() {
   };
 
   const handlePreview = async () => {
-    const html = await previewMutation.mutateAsync({ ...layout, version: 2 });
+    const html = await previewMutation.mutateAsync(
+      sanitizeTemplateLayoutForApi({ ...layout, version: 2 }),
+    );
     setPreviewHtml(html);
   };
 
@@ -174,7 +233,7 @@ export function InvoiceTemplateSettingsPage() {
     return (
       <ErrorState
         description={templatesQuery.error.message}
-        title="Unable to load invoice templates"
+        title={isEstimate ? "Unable to load estimate templates" : "Unable to load invoice templates"}
       />
     );
   }
@@ -183,6 +242,11 @@ export function InvoiceTemplateSettingsPage() {
     <div className="space-y-6">
       {(createMutation.error || updateMutation.error || previewMutation.error) && (
         <Alert
+          description={
+            firstFieldErrorMessage(
+              createMutation.error || updateMutation.error || previewMutation.error,
+            ) || undefined
+          }
           title={
             createMutation.error?.message ||
             updateMutation.error?.message ||
@@ -194,8 +258,12 @@ export function InvoiceTemplateSettingsPage() {
       )}
 
       <SettingsSectionCard
-        description="Add boxes, select a box, then place fields inside it. Each line has its own label and font. Empty values are hidden on the invoice PDF."
-        title="Invoice PDF template"
+        description={
+          isEstimate
+            ? "Starts as a copy of your invoice template until you save. After the first save, quotation layout is independent."
+            : "Add boxes, select a box, then place fields inside it. Each line has its own label and font. Empty values are hidden on the invoice PDF."
+        }
+        title={isEstimate ? "Estimate / quotation PDF template" : "Invoice PDF template"}
       >
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
@@ -406,7 +474,7 @@ export function InvoiceTemplateSettingsPage() {
                 <iframe
                   className="h-[520px] w-full bg-white"
                   srcDoc={previewHtml}
-                  title="Invoice template preview"
+                  title={isEstimate ? "Estimate template preview" : "Invoice template preview"}
                 />
               </div>
             ) : (

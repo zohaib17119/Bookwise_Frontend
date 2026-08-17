@@ -28,6 +28,7 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
   const metrics = (raw.metrics ?? {}) as Record<string, unknown>;
   const previous = (metrics.previous ?? {}) as Record<string, unknown>;
   const changePercent = (metrics.changePercent ?? {}) as Record<string, unknown>;
+  const taxBalances = (metrics.taxBalances ?? {}) as Record<string, unknown>;
   const period = (raw.period ?? {}) as Record<string, unknown>;
   const cashFlowOverview = (raw.cashFlowOverview ?? {}) as Record<string, unknown>;
   const sparklines = (raw.sparklines ?? {}) as Record<string, unknown>;
@@ -77,6 +78,14 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
       cashBalance: parseNumber(metrics.cashBalance),
       accountsReceivable: parseNumber(metrics.accountsReceivable),
       accountsPayable: parseNumber(metrics.accountsPayable),
+      taxBalances: {
+        salesTaxPayable: parseNumber(taxBalances.salesTaxPayable),
+        salesTaxReceivable: parseNumber(taxBalances.salesTaxReceivable),
+        salesTaxWhtPayable: parseNumber(taxBalances.salesTaxWhtPayable),
+        salesTaxWhtReceivable: parseNumber(taxBalances.salesTaxWhtReceivable),
+        incomeWhtPayable: parseNumber(taxBalances.incomeWhtPayable),
+        incomeWhtReceivable: parseNumber(taxBalances.incomeWhtReceivable),
+      },
       previous: {
         totalRevenue: parseNumber(previous.totalRevenue),
         totalCogs: parseNumber(previous.totalCogs),

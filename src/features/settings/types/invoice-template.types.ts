@@ -75,10 +75,13 @@ export interface InvoiceTemplateLayout {
   elements: TemplateElement[];
 }
 
+export type DocumentTemplateKind = "INVOICE" | "ESTIMATE";
+
 export interface InvoiceDocumentTemplate {
   id: string;
   companyId: string;
   name: string;
+  kind?: DocumentTemplateKind;
   isDefault: boolean;
   layoutJson: InvoiceTemplateLayout;
   compiledHtml: string;
@@ -588,5 +591,39 @@ export function createBoxAfterTable(layout: InvoiceTemplateLayout): TemplateElem
     visible: true,
     yAnchor: "afterLineTable",
     style: defaultBoxStyle(),
+  };
+}
+
+export function applyQuotationTitle(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
+  return {
+    ...layout,
+    elements: layout.elements.map((el) =>
+      el.kind === "text" && el.content?.trim().toUpperCase() === "INVOICE"
+        ? { ...el, content: "QUOTATION" }
+        : el,
+    ),
+  };
+}
+
+function emptyToOmittedUrl(value?: string | null): string | null {
+  if (value == null || value.trim() === "") return null;
+  return value;
+}
+
+/** Drop null/empty bindings and image URLs before POST/PATCH so Zod does not 400. */
+export function sanitizeTemplateLayoutForApi(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
+  return {
+    ...layout,
+    version: 2,
+    letterheadUrl: emptyToOmittedUrl(layout.letterheadUrl),
+    logoUrl: emptyToOmittedUrl(layout.logoUrl),
+    footerImageUrl: emptyToOmittedUrl(layout.footerImageUrl),
+    elements: layout.elements.map((el) => {
+      const next: TemplateElement = { ...el };
+      if (!next.titleBinding) delete next.titleBinding;
+      if (!next.binding) delete next.binding;
+      if (!next.parentId) delete next.parentId;
+      return next;
+    }),
   };
 }

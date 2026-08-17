@@ -34,6 +34,14 @@ export interface Estimate {
   discountType?: DiscountType | null;
   discountValue?: number | null;
   status?: EstimateStatus | null;
+  whtEnabled?: boolean | null;
+  whtType?: "INCOME" | "SALES_TAX" | null;
+  whtRate?: string | null;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  whtAmount?: string | null;
+  whtAmountBase?: string | null;
+  netSettlementAmount?: string | null;
   lines: EstimateLine[];
   totals?: DocumentTotals | null;
 }
@@ -62,5 +70,10 @@ export interface EstimatePayload {
   terms?: string;
   discountType?: DiscountType;
   discountValue?: string | number;
+  whtEnabled?: boolean;
+  whtType?: "INCOME" | "SALES_TAX";
+  whtRate?: string;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: EstimateLine[];
 }

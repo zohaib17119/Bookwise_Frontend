@@ -182,7 +182,7 @@ export function StyleInspector({
               onChange={(e) => {
                 const value = e.target.value;
                 if (!value) {
-                  onChange({ titleBinding: null });
+                  onChange({ titleBinding: undefined });
                   return;
                 }
                 onChange({ titleBinding: value, content: "" });
@@ -202,7 +202,7 @@ export function StyleInspector({
               {isFooter ? "Footer title" : "Box title"}
               <Input
                 disabled={!canManage}
-                onChange={(e) => onChange({ content: e.target.value, titleBinding: null })}
+                onChange={(e) => onChange({ content: e.target.value, titleBinding: undefined })}
                 placeholder={isFooter ? "Thank you" : "Bill To"}
                 value={element.content ?? ""}
               />

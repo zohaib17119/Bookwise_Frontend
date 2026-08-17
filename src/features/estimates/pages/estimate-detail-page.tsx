@@ -22,6 +22,7 @@ import {
 } from "@/features/estimates/hooks/use-estimates";
 import { useNextInvoiceNumber } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { useState } from "react";
 
 function todayIsoDate() {
@@ -84,7 +85,7 @@ export function EstimateDetailPage() {
         actions={
           canManage ? (
             <div className="flex flex-wrap gap-3">
-              <EstimateView estimate={estimate} />
+              <EstimateView companyId={companyId} estimate={estimate} />
               <Button asChild variant="secondary">
                 <Link to={`/app/company/${companyId}/estimates/${estimate.id}/edit`}>
                   Edit estimate
@@ -194,6 +195,24 @@ export function EstimateDetailPage() {
             subtotal={estimate.totals?.subtotal}
             taxTotal={estimate.totals?.taxTotal}
             total={estimate.totals?.total}
+            whtAmount={estimate.whtEnabled ? estimate.whtAmount ?? estimate.totals?.whtAmount : undefined}
+            netSettlementAmount={
+              estimate.whtEnabled
+                ? estimate.netSettlementAmount ?? estimate.totals?.netSettlementAmount
+                : undefined
+            }
+            netLabel={whtNetLabel(estimate.whtHeldBy, "invoice")}
+            whtAddsToTotal={whtSettlementAddsToCash(estimate.whtHeldBy, "invoice")}
+            whtHeldByHint={whtHeldByHint(
+              estimate.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
+            whtHeldByLabel={whtHeldByLabel(
+              estimate.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
           />
         </div>
       </div>

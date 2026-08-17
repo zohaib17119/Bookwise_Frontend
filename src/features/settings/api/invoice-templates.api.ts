@@ -1,12 +1,16 @@
 import { apiClient } from "@/lib/api/client";
 import type {
+  DocumentTemplateKind,
   InvoiceDocumentTemplate,
   InvoiceTemplateLayout,
 } from "@/features/settings/types/invoice-template.types";
 
-export async function listInvoiceDocumentTemplates(companyId: string) {
+export async function listInvoiceDocumentTemplates(
+  companyId: string,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   const { data } = await apiClient.get<InvoiceDocumentTemplate[]>(
-    `/companies/${companyId}/invoice-document-templates`,
+    `/companies/${companyId}/invoice-document-templates?kind=${kind}`,
   );
   return Array.isArray(data) ? data : [];
 }
@@ -18,16 +22,24 @@ export async function getInvoiceDocumentTemplate(companyId: string, templateId: 
   return data;
 }
 
-export async function getDefaultInvoiceTemplateLayout(companyId: string) {
+export async function getDefaultInvoiceTemplateLayout(
+  companyId: string,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   const { data } = await apiClient.get<{ layoutJson: InvoiceTemplateLayout }>(
-    `/companies/${companyId}/invoice-document-templates/default-layout`,
+    `/companies/${companyId}/invoice-document-templates/default-layout?kind=${kind}`,
   );
   return data.layoutJson;
 }
 
 export async function createInvoiceDocumentTemplate(
   companyId: string,
-  payload: { name: string; isDefault?: boolean; layoutJson: InvoiceTemplateLayout },
+  payload: {
+    name: string;
+    kind?: DocumentTemplateKind;
+    isDefault?: boolean;
+    layoutJson: InvoiceTemplateLayout;
+  },
 ) {
   const { data } = await apiClient.post<InvoiceDocumentTemplate>(
     `/companies/${companyId}/invoice-document-templates`,

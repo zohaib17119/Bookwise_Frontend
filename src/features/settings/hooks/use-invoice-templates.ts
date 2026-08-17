@@ -6,53 +6,69 @@ import {
   previewInvoiceDocumentTemplate,
   updateInvoiceDocumentTemplate,
 } from "@/features/settings/api/invoice-templates.api";
-import type { InvoiceTemplateLayout } from "@/features/settings/types/invoice-template.types";
+import type {
+  DocumentTemplateKind,
+  InvoiceTemplateLayout,
+} from "@/features/settings/types/invoice-template.types";
 import { queryClient } from "@/lib/query/query-client";
 
-function invalidate(companyId: string) {
+function invalidate(companyId: string, kind: DocumentTemplateKind = "INVOICE") {
   return queryClient.invalidateQueries({
-    queryKey: ["companies", companyId, "invoice-document-templates"],
+    queryKey: ["companies", companyId, "invoice-document-templates", kind],
   });
 }
 
-export function useInvoiceDocumentTemplates(companyId: string | undefined) {
+export function useInvoiceDocumentTemplates(
+  companyId: string | undefined,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   return useQuery({
-    queryKey: ["companies", companyId, "invoice-document-templates"],
-    queryFn: () => listInvoiceDocumentTemplates(companyId!),
+    queryKey: ["companies", companyId, "invoice-document-templates", kind],
+    queryFn: () => listInvoiceDocumentTemplates(companyId!, kind),
     enabled: Boolean(companyId),
   });
 }
 
-export function useCreateInvoiceDocumentTemplate(companyId: string | undefined) {
+export function useCreateInvoiceDocumentTemplate(
+  companyId: string | undefined,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   return useMutation({
     mutationFn: (payload: {
       name: string;
+      kind?: DocumentTemplateKind;
       isDefault?: boolean;
       layoutJson: InvoiceTemplateLayout;
-    }) => createInvoiceDocumentTemplate(companyId!, payload),
+    }) => createInvoiceDocumentTemplate(companyId!, { ...payload, kind: payload.kind ?? kind }),
     onSuccess: async () => {
-      if (companyId) await invalidate(companyId);
+      if (companyId) await invalidate(companyId, kind);
     },
   });
 }
 
-export function useUpdateInvoiceDocumentTemplate(companyId: string | undefined) {
+export function useUpdateInvoiceDocumentTemplate(
+  companyId: string | undefined,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   return useMutation({
     mutationFn: (args: {
       templateId: string;
       payload: Partial<{ name: string; isDefault: boolean; layoutJson: InvoiceTemplateLayout }>;
     }) => updateInvoiceDocumentTemplate(companyId!, args.templateId, args.payload),
     onSuccess: async () => {
-      if (companyId) await invalidate(companyId);
+      if (companyId) await invalidate(companyId, kind);
     },
   });
 }
 
-export function useDeleteInvoiceDocumentTemplate(companyId: string | undefined) {
+export function useDeleteInvoiceDocumentTemplate(
+  companyId: string | undefined,
+  kind: DocumentTemplateKind = "INVOICE",
+) {
   return useMutation({
     mutationFn: (templateId: string) => deleteInvoiceDocumentTemplate(companyId!, templateId),
     onSuccess: async () => {
-      if (companyId) await invalidate(companyId);
+      if (companyId) await invalidate(companyId, kind);
     },
   });
 }

@@ -14,6 +14,8 @@ import { useEstimates } from "@/features/estimates/hooks/use-estimates";
 import type { Estimate } from "@/features/estimates/types/estimate.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
+import { FieldHint } from "@/components/shared/field-hint";
+import { whtHeldByHint, whtHeldByLabel, whtTypeShortLabel } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 
 export function EstimatesPage() {
@@ -84,6 +86,56 @@ export function EstimatesPage() {
       className: "text-right",
       render: (estimate) =>
         formatCurrency(estimate.totals?.total ?? 0, estimate.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD"),
+    },
+    {
+      key: "wht",
+      header: "WHT",
+      className: "text-right",
+      render: (estimate) => {
+        const currency =
+          estimate.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
+        if (!estimate.whtEnabled) return "—";
+        const rate = estimate.whtRate != null ? `@${Number(estimate.whtRate)}%` : "";
+        const type = whtTypeShortLabel(estimate.whtType);
+        const holder = whtHeldByLabel(estimate.whtHeldBy, "invoice", company?.name ?? company?.legalName);
+        const amount = formatCurrency(
+          estimate.whtAmount ?? estimate.totals?.whtAmount ?? "0",
+          currency,
+        );
+        return (
+          <div className="text-right">
+            <p className="tabular-nums">
+              {type} {rate}
+            </p>
+            <p className="inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
+              {holder}
+              <FieldHint
+                text={whtHeldByHint(
+                  estimate.whtHeldBy,
+                  "invoice",
+                  company?.name ?? company?.legalName,
+                )}
+              />
+            </p>
+            <p className="tabular-nums text-muted-foreground">{amount}</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "net",
+      header: "Net",
+      className: "text-right",
+      render: (estimate) =>
+        formatCurrency(
+          estimate.whtEnabled
+            ? (estimate.netSettlementAmount ??
+                estimate.totals?.netSettlementAmount ??
+                estimate.totals?.total ??
+                "0")
+            : (estimate.totals?.total ?? "0"),
+          estimate.currencyCode ?? company?.baseCurrencyCode ?? company?.currencyCode ?? "USD",
+        ),
     },
   ];
 

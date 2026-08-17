@@ -1,6 +1,7 @@
 import { createPdfUrl } from "@/components/pdfCreation/createPdfUrl";
 import { generateInvoicePdf } from "@/components/pdfCreation/pdf";
 import { Button } from "@/components/ui/button";
+import { renderEstimateHtml } from "@/features/estimates/api/estimates.api";
 import type { Estimate } from "@/features/estimates/types/estimate.types";
 import { formatDate } from "@/lib/utils/format";
 import { escapeHtml, safeHttpUrl } from "@/lib/utils/html";
@@ -215,7 +216,13 @@ function buildEstimatePdfHtml(estimate: Estimate | null | undefined): string {
   </div>`;
 }
 
-export default function EstimateView({ estimate }: { estimate: Estimate }) {
+export default function EstimateView({
+  estimate,
+  companyId,
+}: {
+  estimate: Estimate;
+  companyId?: string;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState("");
   const [html, setHtml] = useState("");
@@ -237,8 +244,20 @@ export default function EstimateView({ estimate }: { estimate: Estimate }) {
     setLoading(true);
 
     const load = async () => {
-      setHtml(fallbackHtml);
-      const url = await createPdfUrl(fallbackHtml);
+      let nextHtml = fallbackHtml;
+      if (companyId && estimate.id) {
+        try {
+          const rendered = await renderEstimateHtml(companyId, estimate.id, "a4");
+          if (rendered?.content && rendered.contentType?.includes("html")) {
+            nextHtml = rendered.content;
+          }
+        } catch {
+          // Fall back to local HTML when render API/template is unavailable.
+        }
+      }
+      if (cancelled) return;
+      setHtml(nextHtml);
+      const url = await createPdfUrl(nextHtml);
       if (!cancelled) setPdfUrl(url);
       setLoading(false);
     };
@@ -247,7 +266,7 @@ export default function EstimateView({ estimate }: { estimate: Estimate }) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, fallbackHtml]);
+  }, [isOpen, companyId, estimate.id, fallbackHtml]);
 
   return (
     <div>

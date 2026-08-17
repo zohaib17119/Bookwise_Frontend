@@ -171,3 +171,12 @@ export function getFirstFieldError(error: unknown, field: string): string | unde
   const apiError = normalizeApiError(error);
   return apiError.fieldErrors?.[field]?.[0];
 }
+
+export function firstFieldErrorMessage(error: unknown): string | undefined {
+  const apiError = normalizeApiError(error);
+  if (!apiError.fieldErrors) return undefined;
+  for (const messages of Object.values(apiError.fieldErrors)) {
+    if (messages?.[0]) return messages[0];
+  }
+  return undefined;
+}

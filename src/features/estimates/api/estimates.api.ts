@@ -49,6 +49,13 @@ function serializeEstimatePayload(payload: EstimatePayload): EstimatePayload {
       discountValue: payload.discountValue
         ? toOptionalDecimalString(payload.discountValue)
         : undefined,
+      whtEnabled: payload.whtEnabled === true ? true : payload.whtEnabled === false ? false : undefined,
+      whtType: payload.whtEnabled ? payload.whtType || undefined : undefined,
+      whtRate: payload.whtEnabled && payload.whtRate
+        ? toOptionalDecimalString(payload.whtRate)
+        : undefined,
+      whtBase: payload.whtEnabled ? payload.whtBase || undefined : undefined,
+      whtHeldBy: payload.whtEnabled ? payload.whtHeldBy || undefined : undefined,
     }),
     lines: payload.lines.map(serializeEstimateLine),
   };
@@ -108,5 +115,18 @@ export async function convertEstimateToInvoice(
     `/companies/${companyId}/estimates/${estimateId}/convert-to-invoice`,
     payload,
   );
+  return data;
+}
+
+export async function renderEstimateHtml(
+  companyId: string,
+  estimateId: string,
+  format: "a4" = "a4",
+) {
+  const { data } = await apiClient.get<{
+    format: string;
+    content: string;
+    contentType: string;
+  }>(`/companies/${companyId}/estimates/${estimateId}/render?format=${format}`);
   return data;
 }
