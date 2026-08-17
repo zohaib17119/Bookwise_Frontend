@@ -16,6 +16,7 @@ import type { JournalEntry } from "@/features/journals/types/journal.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { parseMoney } from "@/lib/utils/money";
+import { formatJournalSourceModule } from "@/features/journals/utils/journal-source-label";
 
 export function JournalsPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -74,7 +75,7 @@ export function JournalsPage() {
     {
       key: "source",
       header: "Source",
-      render: (entry) => entry.sourceModule || "Manual",
+      render: (entry) => formatJournalSourceModule(entry.sourceModule),
     },
     {
       key: "status",
@@ -158,11 +159,15 @@ export function JournalsPage() {
             value={sourceModule}
           >
             <option value="">All sources</option>
-            <option value="manual">Manual</option>
-            <option value="sales">Sales</option>
-            <option value="purchases">Purchases</option>
-            <option value="inventory">Inventory</option>
-            <option value="banking">Banking</option>
+            <option value="MANUAL">Manual</option>
+            <option value="INVOICE">Invoice</option>
+            <option value="BILL">Bill</option>
+            <option value="CUSTOMER_PAYMENT">Customer payment</option>
+            <option value="BILL_PAYMENT">Bill payment</option>
+            <option value="WITHHOLDING_TAX">Withholding tax</option>
+            <option value="TAX_PAYMENT">Tax payment</option>
+            <option value="EXPENSE">Expense</option>
+            <option value="BILL_RECEIVE">Bill receive</option>
           </Select>
           <DateRangeToolbar
             fromDate={fromDate}

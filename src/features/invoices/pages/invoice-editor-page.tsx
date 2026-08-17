@@ -4,6 +4,8 @@ import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Controller, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
+import { defaultWhtHeldBy, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
@@ -11,6 +13,8 @@ import { DocumentCurrencyFields } from "@/components/documents/document-currency
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
+import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
+import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
 
 const DOCUMENT_TERMS_DAYS = [0, 15, 30, 45, 60, 90] as const;
 
@@ -54,6 +58,11 @@ export default function InvoiceEditorPage({
   const watchedIssueDate = form.watch("issueDate");
   const watchedDiscountType = form.watch("discountType");
   const watchedDiscountValue = form.watch("discountValue");
+  const watchedWhtEnabled = form.watch("whtEnabled");
+  const watchedWhtType = form.watch("whtType");
+  const watchedWhtRate = form.watch("whtRate");
+  const watchedWhtBase = form.watch("whtBase");
+  const watchedWhtHeldBy = form.watch("whtHeldBy");
   const setLineValueOptions = { shouldDirty: true, shouldValidate: true } as const;
 
   // Get item details by ID
@@ -141,14 +150,39 @@ export default function InvoiceEditorPage({
     }
 
     const total = subtotal - discountAmount + totalTax;
+    const whtAmount = previewWhtAmount({
+      enabled: Boolean(watchedWhtEnabled),
+      rate: watchedWhtRate,
+      base: watchedWhtBase,
+      subtotal,
+      discount: discountAmount,
+      tax: totalTax,
+      total,
+    });
+    const netSettlement = previewNetSettlement(
+      total,
+      whtAmount,
+      whtSettlementAddsToCash(watchedWhtHeldBy, "invoice"),
+    );
 
     return {
       subtotal: formatMoneyAmount(subtotal),
       discount: formatMoneyAmount(discountAmount),
       tax: formatMoneyAmount(totalTax),
       total: formatMoneyAmount(total),
+      whtAmount: formatMoneyAmount(whtAmount),
+      netSettlement: formatMoneyAmount(netSettlement),
     };
-  }, [watchedLines, watchedDiscountType, watchedDiscountValue, getTaxRateFromCode]);
+  }, [
+    watchedLines,
+    watchedDiscountType,
+    watchedDiscountValue,
+    watchedWhtEnabled,
+    watchedWhtRate,
+    watchedWhtBase,
+    watchedWhtHeldBy,
+    getTaxRateFromCode,
+  ]);
 
   // Auto-calculate due date when terms or issue date changes
   useEffect(() => {
@@ -173,12 +207,28 @@ export default function InvoiceEditorPage({
     if (previousCustomerIdRef.current === watchedCustomerId) return;
     previousCustomerIdRef.current = watchedCustomerId;
     const customer = customersQuery.data?.find((c: { id: string }) => c.id === watchedCustomerId) as
-      | { paymentTermsDays?: number | null }
+      | {
+          paymentTermsDays?: number | null;
+          firstName?: string | null;
+          lastName?: string | null;
+          phone?: string | null;
+          mobile?: string | null;
+          contactPersonDepartment?: string | null;
+        }
       | undefined;
     const rawDays = customer?.paymentTermsDays;
     const days =
       rawDays == null || Number.isNaN(Number(rawDays)) ? 30 : Math.max(0, Number(rawDays));
     form.setValue("terms", termsFromPaymentDays(days), { shouldDirty: true, shouldValidate: true });
+    form.setValue(
+      "contactPersonName",
+      buildContactPersonName(customer?.firstName, customer?.lastName),
+      { shouldDirty: true },
+    );
+    form.setValue("contactMobile", customer?.mobile ?? customer?.phone ?? "", { shouldDirty: true });
+    form.setValue("contactPersonDepartment", customer?.contactPersonDepartment ?? "", {
+      shouldDirty: true,
+    });
   }, [watchedCustomerId, mode, customersQuery.data, form]);
 
   const selectedCustomer = customersQuery.data?.find(
@@ -327,9 +377,62 @@ export default function InvoiceEditorPage({
                 <label className="text-sm font-medium">Invoice No</label>
                 <Input
                   {...form.register("invoiceNumber")}
+                  className="border p-2 font-semibold"
                   placeholder="Auto-generated"
-                  className="border p-2 bg-gray-100 cursor-not-allowed font-semibold text-gray-700"
-                  readOnly
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">PO Reference</label>
+                <Input
+                  {...form.register("referenceNumber")}
+                  className="border p-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Contact person</label>
+                <Input
+                  {...form.register("contactPersonName")}
+                  className="border p-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Contact mobile</label>
+                <Input
+                  {...form.register("contactMobile")}
+                  className="border p-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Department</label>
+                <Input
+                  {...form.register("contactPersonDepartment")}
+                  className="border p-2"
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Delivery date</label>
+                <Input
+                  type="date"
+                  {...form.register("deliveryDate")}
+                  className="border p-2"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Delivery challan no</label>
+                <Input
+                  {...form.register("deliveryChallanNumber")}
+                  className="border p-2"
+                  placeholder="Optional"
                 />
               </div>
 
@@ -595,10 +698,53 @@ export default function InvoiceEditorPage({
                 <span>{formatCurrency(totals.tax, currency)}</span>
               </div>
 
+              <div className="space-y-3 border-t pt-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={Boolean(watchedWhtEnabled)}
+                    onChange={(event) => {
+                      const enabled = event.target.checked;
+                      form.setValue("whtEnabled", enabled, {
+                        shouldDirty: true,
+                        shouldValidate: true,
+                      });
+                      if (enabled && !form.getValues("whtHeldBy")) {
+                        form.setValue("whtHeldBy", defaultWhtHeldBy("invoice"), {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <span>Apply withholding tax</span>
+                </label>
+                <WhtSettingsFields
+                  companyName={company?.name ?? company?.legalName}
+                  documentKind="invoice"
+                  enabled={Boolean(watchedWhtEnabled)}
+                  form={form}
+                />
+              </div>
+
               <div className="flex justify-between text-xl font-bold border-t pt-4">
                 <span>Invoice Total</span>
                 <span>{formatCurrency(totals.total, currency)}</span>
               </div>
+              {watchedWhtEnabled ? (
+                <>
+                  <div className="flex justify-between">
+                    <span>Withholding tax</span>
+                    <span>
+                      {whtSettlementAddsToCash(watchedWhtHeldBy, "invoice") ? "+" : "-"}
+                      {formatCurrency(totals.whtAmount, currency)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-semibold">
+                    <span>{whtNetLabel(watchedWhtHeldBy, "invoice")}</span>
+                    <span>{formatCurrency(totals.netSettlement, currency)}</span>
+                  </div>
+                </>
+              ) : null}
             </div>
           </div>
         </div>

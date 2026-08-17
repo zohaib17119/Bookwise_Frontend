@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { TaxModuleNav } from "@/features/tax/components/tax-module-nav";
 import { TaxRateFormDrawer } from "@/features/tax/components/tax-rate-form-drawer";
 import {
   useCreateTaxRate,
@@ -103,6 +104,7 @@ export function TaxRatesPage() {
           </Button>
         }
         title="Tax Rates"
+        toolbar={<TaxModuleNav />}
       />
 
       <TaxRateFormDrawer

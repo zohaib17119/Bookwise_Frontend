@@ -5,6 +5,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import FileInput from "@/components/ui/fileInput";
 import { ErrorState } from "@/components/shared/error-state";
+import { FieldPalette } from "@/features/settings/components/invoice-template-builder/field-palette";
+import { StyleInspector } from "@/features/settings/components/invoice-template-builder/style-inspector";
+import { TemplateCanvas } from "@/features/settings/components/invoice-template-builder/template-canvas";
 import { SettingsSectionCard } from "@/components/settings/settings-section-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canUsePermission } from "@/features/permissions/utils/module-permissions";
@@ -16,17 +19,29 @@ import {
   useUpdateInvoiceDocumentTemplate,
 } from "@/features/settings/hooks/use-invoice-templates";
 import {
-  BLOCK_LABELS,
   COLUMN_LABELS,
   DEFAULT_INVOICE_TEMPLATE_LAYOUT,
+  addChildToBox,
+  createBoxAfterTable,
+  createBoxBeforeTable,
+  newElementId,
+  removeElementAndChildren,
+  reorderBoxChild,
+  getTopLevelElements,
+  inferYAnchor,
+  getLineTableElement,
   type InvoiceTableColumnKey,
-  type InvoiceTemplateBlock,
-  type InvoiceTemplateBlockType,
   type InvoiceTemplateLayout,
+  type TemplateElement,
 } from "@/features/settings/types/invoice-template.types";
 
 function cloneLayout(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
   return structuredClone(layout);
+}
+
+function ensureSerialColumn(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
+  if (layout.columns.includes("serial")) return layout;
+  return { ...layout, columns: ["serial", ...layout.columns] };
 }
 
 function moveColumn(
@@ -42,44 +57,6 @@ function moveColumn(
   return next;
 }
 
-function SizeControls({
-  block,
-  canManage,
-  onChange,
-}: {
-  block: InvoiceTemplateBlock | undefined;
-  canManage: boolean;
-  onChange: (patch: Partial<InvoiceTemplateBlock>) => void;
-}) {
-  if (!block) return null;
-  return (
-    <div className="grid grid-cols-2 gap-2">
-      <label className="text-xs text-muted-foreground">
-        Width %
-        <Input
-          disabled={!canManage}
-          max={100}
-          min={10}
-          onChange={(e) => onChange({ width: Number(e.target.value) || 10 })}
-          type="number"
-          value={Math.round(block.width)}
-        />
-      </label>
-      <label className="text-xs text-muted-foreground">
-        Height %
-        <Input
-          disabled={!canManage}
-          max={80}
-          min={4}
-          onChange={(e) => onChange({ height: Number(e.target.value) || 4 })}
-          type="number"
-          value={Math.round(block.height ?? 10)}
-        />
-      </label>
-    </div>
-  );
-}
-
 export function InvoiceTemplateSettingsPage() {
   const { companyId, permissions } = useActiveCompany();
   const canManage = canUsePermission(permissions, ["invoices.manage", "company.update"]);
@@ -93,8 +70,8 @@ export function InvoiceTemplateSettingsPage() {
   const [layout, setLayout] = useState<InvoiceTemplateLayout>(DEFAULT_INVOICE_TEMPLATE_LAYOUT);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const defaultTemplate = useMemo(
@@ -108,7 +85,7 @@ export function InvoiceTemplateSettingsPage() {
     if (!defaultTemplate) return;
     setActiveTemplateId(defaultTemplate.id);
     setName(defaultTemplate.name);
-    const next = cloneLayout(defaultTemplate.layoutJson);
+    const next = ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson));
     if (!next.logoUrl && companyLogoUrl) {
       next.logoUrl = companyLogoUrl;
     }
@@ -116,46 +93,53 @@ export function InvoiceTemplateSettingsPage() {
     setPreviewHtml(defaultTemplate.compiledHtml || "");
   }, [defaultTemplate?.id, companyLogoUrl]);
 
-  const getBlock = (type: InvoiceTemplateBlockType) =>
-    layout.blocks.find((b) => b.type === type);
+  const selectedElement = layout.elements.find((el) => el.id === selectedId) ?? null;
+  const selectedBoxId =
+    selectedElement?.kind === "box"
+      ? selectedElement.id
+      : selectedElement?.parentId ?? null;
+  const resolvedLogoUrl = layout.logoUrl || companyLogoUrl || "";
 
-  const updateBlock = (idOrType: string, patch: Partial<InvoiceTemplateBlock>) => {
+  const updateElement = (id: string, patch: Partial<TemplateElement>) => {
     setLayout((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((b) =>
-        b.id === idOrType || b.type === idOrType ? { ...b, ...patch } : b,
-      ),
+      elements: prev.elements.map((el) => (el.id === id ? { ...el, ...patch } : el)),
     }));
   };
 
-  const resolvedLogoUrl = layout.logoUrl || companyLogoUrl || "";
-
-  const onPointerDown = (event: React.PointerEvent, block: InvoiceTemplateBlock) => {
-    if (!canManage || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
+  const onPointerDown = (event: React.PointerEvent, element: TemplateElement) => {
+    if (!canManage) return;
+    const canvas = (event.currentTarget as HTMLElement).parentElement;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
     const startXPct = ((event.clientX - rect.left) / rect.width) * 100;
     const startYPct = ((event.clientY - rect.top) / rect.height) * 100;
-    dragOffset.current = { x: startXPct - block.x, y: startYPct - block.y };
-    setDragId(block.id);
+    dragOffset.current = { x: startXPct - element.x, y: startYPct - element.y };
+    setDragId(element.id);
     (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
-    if (!dragId || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
+    if (!dragId) return;
+    const canvas = event.currentTarget as HTMLElement;
+    const rect = canvas.getBoundingClientRect();
     const xPct = ((event.clientX - rect.left) / rect.width) * 100 - dragOffset.current.x;
     const yPct = ((event.clientY - rect.top) / rect.height) * 100 - dragOffset.current.y;
+    const lineTableY = getLineTableElement(layout.elements)?.y ?? 38;
     setLayout((prev) => ({
       ...prev,
-      blocks: prev.blocks.map((b) =>
-        b.id === dragId
-          ? {
-              ...b,
-              x: Math.min(100 - b.width, Math.max(0, xPct)),
-              y: Math.min(95, Math.max(0, yPct)),
-            }
-          : b,
-      ),
+      elements: prev.elements.map((el) => {
+        if (el.id !== dragId) return el;
+        const anchor = inferYAnchor(el, lineTableY);
+        return {
+          ...el,
+          x: Math.min(100 - el.width, Math.max(0, xPct)),
+          y:
+            anchor === "pageTop" || el.kind === "lineTable"
+              ? Math.min(95, Math.max(0, yPct))
+              : el.y,
+        };
+      }),
     }));
   };
 
@@ -163,25 +147,26 @@ export function InvoiceTemplateSettingsPage() {
 
   const handleSave = async () => {
     if (!companyId) return;
+    const payload = { ...layout, version: 2 as const };
     if (activeTemplateId) {
       await updateMutation.mutateAsync({
         templateId: activeTemplateId,
-        payload: { name, isDefault: true, layoutJson: layout },
+        payload: { name, isDefault: true, layoutJson: payload },
       });
     } else {
       const created = await createMutation.mutateAsync({
         name,
         isDefault: true,
-        layoutJson: layout,
+        layoutJson: payload,
       });
       setActiveTemplateId(created.id);
     }
-    const html = await previewMutation.mutateAsync(layout);
+    const html = await previewMutation.mutateAsync(payload);
     setPreviewHtml(html);
   };
 
   const handlePreview = async () => {
-    const html = await previewMutation.mutateAsync(layout);
+    const html = await previewMutation.mutateAsync({ ...layout, version: 2 });
     setPreviewHtml(html);
   };
 
@@ -193,10 +178,6 @@ export function InvoiceTemplateSettingsPage() {
       />
     );
   }
-
-  const letterheadBlock = getBlock("letterhead");
-  const logoBlock = getBlock("logo");
-  const footerBlock = getBlock("footer");
 
   return (
     <div className="space-y-6">
@@ -213,7 +194,7 @@ export function InvoiceTemplateSettingsPage() {
       )}
 
       <SettingsSectionCard
-        description="Drag blocks on the A4 canvas, upload letterhead/logo/footer images, resize them, and reorder line columns. Saved layout becomes this company’s invoice PDF template."
+        description="Add boxes, select a box, then place fields inside it. Each line has its own label and font. Empty values are hidden on the invoice PDF."
         title="Invoice PDF template"
       >
         <div className="mb-4 flex flex-wrap items-end gap-3">
@@ -221,11 +202,7 @@ export function InvoiceTemplateSettingsPage() {
             <label className="mb-1 block text-xs font-medium text-muted-foreground">
               Template name
             </label>
-            <Input
-              disabled={!canManage}
-              onChange={(e) => setName(e.target.value)}
-              value={name}
-            />
+            <Input disabled={!canManage} onChange={(e) => setName(e.target.value)} value={name} />
           </div>
           <Button
             disabled={!canManage || createMutation.isPending || updateMutation.isPending}
@@ -238,18 +215,79 @@ export function InvoiceTemplateSettingsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="space-y-5">
-            <div className="space-y-2 rounded-xl border p-3">
-              <p className="text-sm font-semibold">Letterhead</p>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={letterheadBlock?.visible ?? false}
-                  disabled={!canManage}
-                  onChange={(e) => updateBlock("letterhead", { visible: e.target.checked })}
-                />
-                Show letterhead image
-              </label>
+        <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_280px]">
+          <aside className="space-y-4 rounded-xl border p-3">
+            <p className="text-sm font-semibold">Available fields</p>
+            <FieldPalette
+              canManage={canManage}
+              onAddBoxBeforeTable={() => {
+                const element = createBoxBeforeTable(layout);
+                setLayout((prev) => ({ ...prev, elements: [...prev.elements, element] }));
+                setSelectedId(element.id);
+              }}
+              onAddBoxAfterTable={() => {
+                const element = createBoxAfterTable(layout);
+                setLayout((prev) => ({ ...prev, elements: [...prev.elements, element] }));
+                setSelectedId(element.id);
+              }}
+              onAddField={(binding, label) => {
+                if (!selectedBoxId) return;
+                setLayout((prev) =>
+                  addChildToBox(prev, selectedBoxId, {
+                    id: newElementId("field"),
+                    kind: "field",
+                    binding,
+                    label,
+                    showLabel: true,
+                    x: 0,
+                    y: 0,
+                    width: 100,
+                    visible: true,
+                    style: { fontSize: 11, color: "#334155", textAlign: "left" },
+                  }),
+                );
+              }}
+              onAddSpecial={(kind) => {
+                const id = newElementId(kind);
+                setLayout((prev) => ({
+                  ...prev,
+                  elements: [
+                    ...prev.elements,
+                    {
+                      id,
+                      kind,
+                      x: 10,
+                      y: 40,
+                      width: kind === "lineTable" ? 96 : 40,
+                      height: kind === "lineTable" ? undefined : 10,
+                      visible: true,
+                      ...(kind === "lineTable" ? { yAnchor: "pageTop" as const } : {}),
+                    },
+                  ],
+                }));
+                setSelectedId(id);
+              }}
+              onAddText={() => {
+                if (!selectedBoxId) return;
+                setLayout((prev) =>
+                  addChildToBox(prev, selectedBoxId, {
+                    id: newElementId("text"),
+                    kind: "text",
+                    content: "Your text",
+                    x: 0,
+                    y: 0,
+                    width: 100,
+                    visible: true,
+                    style: { fontSize: 11, color: "#334155", textAlign: "left" },
+                  }),
+                );
+              }}
+              selectedBoxId={selectedBoxId}
+            />
+
+            <div className="space-y-2 border-t pt-3">
+              <p className="text-sm font-semibold">Images</p>
+              <label className="text-xs text-muted-foreground">Letterhead</label>
               {canManage ? (
                 <FileInput
                   logo={layout.letterheadUrl ?? ""}
@@ -257,36 +295,31 @@ export function InvoiceTemplateSettingsPage() {
                     setLayout((prev) => ({
                       ...prev,
                       letterheadUrl: url || null,
-                      blocks: prev.blocks.map((b) =>
-                        b.type === "letterhead" ? { ...b, visible: Boolean(url) } : b,
-                      ),
+                      elements: prev.elements.some((el) => el.kind === "letterhead")
+                        ? prev.elements.map((el) =>
+                            el.kind === "letterhead" ? { ...el, visible: Boolean(url) } : el,
+                          )
+                        : [
+                            ...prev.elements,
+                            {
+                              id: "letterhead",
+                              kind: "letterhead" as const,
+                              x: 0,
+                              y: 0,
+                              width: 100,
+                              height: 12,
+                              visible: Boolean(url),
+                            },
+                          ],
                     }))
                   }
                 />
               ) : null}
-              <SizeControls
-                block={letterheadBlock}
-                canManage={canManage}
-                onChange={(patch) => updateBlock("letterhead", patch)}
-              />
-            </div>
-
-            <div className="space-y-2 rounded-xl border p-3">
-              <p className="text-sm font-semibold">Logo</p>
               <label className="flex items-center gap-2 text-sm">
                 <Checkbox
-                  checked={layout.showLogo && (logoBlock?.visible ?? true)}
+                  checked={layout.showLogo !== false}
                   disabled={!canManage}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setLayout((prev) => ({
-                      ...prev,
-                      showLogo: checked,
-                      blocks: prev.blocks.map((b) =>
-                        b.type === "logo" ? { ...b, visible: checked } : b,
-                      ),
-                    }));
-                  }}
+                  onChange={(e) => setLayout((prev) => ({ ...prev, showLogo: e.target.checked }))}
                 />
                 Show logo
               </label>
@@ -298,81 +331,21 @@ export function InvoiceTemplateSettingsPage() {
                       ...prev,
                       logoUrl: url || null,
                       showLogo: Boolean(url) || prev.showLogo,
-                      blocks: prev.blocks.map((b) =>
-                        b.type === "logo" ? { ...b, visible: Boolean(url) || b.visible } : b,
-                      ),
                     }))
                   }
                 />
-              ) : resolvedLogoUrl ? (
-                <img
-                  alt="Company logo"
-                  className="h-16 w-auto rounded-lg border object-contain"
-                  src={resolvedLogoUrl}
-                />
               ) : null}
-              {!layout.logoUrl && companyLogoUrl ? (
-                <p className="text-xs text-muted-foreground">
-                  Using company settings logo. Upload here to override for invoices.
-                </p>
-              ) : null}
-              <SizeControls
-                block={logoBlock}
-                canManage={canManage}
-                onChange={(patch) => updateBlock("logo", patch)}
-              />
-            </div>
-
-            <div className="space-y-2 rounded-xl border p-3">
-              <p className="text-sm font-semibold">Footer image</p>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={footerBlock?.visible ?? false}
-                  disabled={!canManage}
-                  onChange={(e) => updateBlock("footer", { visible: e.target.checked })}
-                />
-                Show footer block
-              </label>
+              <label className="text-xs text-muted-foreground">Footer image</label>
               {canManage ? (
                 <FileInput
                   logo={layout.footerImageUrl ?? ""}
-                  setlogo={(url) =>
-                    setLayout((prev) => ({
-                      ...prev,
-                      footerImageUrl: url || null,
-                      blocks: prev.blocks.map((b) =>
-                        b.type === "footer" ? { ...b, visible: true } : b,
-                      ),
-                    }))
-                  }
+                  setlogo={(url) => setLayout((prev) => ({ ...prev, footerImageUrl: url || null }))}
                 />
               ) : null}
-              <SizeControls
-                block={footerBlock}
-                canManage={canManage}
-                onChange={(patch) => updateBlock("footer", patch)}
-              />
             </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">Blocks</p>
-              {layout.blocks.map((block) => (
-                <label className="flex items-center gap-2 text-sm" key={block.id}>
-                  <Checkbox
-                    checked={block.visible}
-                    disabled={!canManage}
-                    onChange={(e) => updateBlock(block.id, { visible: e.target.checked })}
-                  />
-                  {BLOCK_LABELS[block.type]}
-                </label>
-              ))}
-            </div>
-
-            <div className="space-y-2">
+            <div className="space-y-2 border-t pt-3">
               <p className="text-sm font-semibold">Table columns</p>
-              <p className="text-xs text-muted-foreground">
-                Move columns up/down to change invoice line order.
-              </p>
               <ul className="space-y-2">
                 {layout.columns.map((column, index) => (
                   <li
@@ -417,66 +390,17 @@ export function InvoiceTemplateSettingsPage() {
           </aside>
 
           <div className="space-y-4">
-            <div
-              className="relative mx-auto aspect-[210/297] w-full max-w-[640px] overflow-hidden rounded-xl border bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_40%)] shadow-sm"
+            <TemplateCanvas
+              canManage={canManage}
+              dragId={dragId}
+              layout={layout}
+              onPointerDown={onPointerDown}
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
-              ref={canvasRef}
-            >
-              {layout.blocks
-                .filter((b) => b.visible)
-                .map((block) => {
-                  const mediaUrl =
-                    block.type === "letterhead"
-                      ? layout.letterheadUrl
-                      : block.type === "logo"
-                        ? resolvedLogoUrl
-                        : block.type === "footer"
-                          ? layout.footerImageUrl
-                          : null;
-
-                  return (
-                    <div
-                      className={`absolute cursor-grab overflow-hidden rounded-md border border-dashed border-primary/40 bg-white/90 p-2 text-[10px] shadow-sm ${
-                        dragId === block.id ? "cursor-grabbing ring-2 ring-primary" : ""
-                      }`}
-                      key={block.id}
-                      onPointerDown={(e) => onPointerDown(e, block)}
-                      style={{
-                        left: `${block.x}%`,
-                        top: `${block.y}%`,
-                        width: `${block.width}%`,
-                        height:
-                          block.height != null
-                            ? `${block.height}%`
-                            : block.type === "lineTable"
-                              ? "18%"
-                              : "auto",
-                        minHeight: block.type === "lineTable" ? "18%" : "6%",
-                      }}
-                    >
-                      <p className="mb-1 font-semibold text-primary">
-                        {BLOCK_LABELS[block.type]}
-                      </p>
-                      {mediaUrl ? (
-                        <img
-                          alt={BLOCK_LABELS[block.type]}
-                          className="h-[calc(100%-1.25rem)] w-full object-contain"
-                          draggable={false}
-                          src={mediaUrl}
-                        />
-                      ) : block.type === "lineTable" ? (
-                        <p className="text-muted-foreground">
-                          Columns: {layout.columns.map((c) => COLUMN_LABELS[c]).join(" → ")}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground">Drag to reposition</p>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
-
+              onSelect={setSelectedId}
+              resolvedLogoUrl={resolvedLogoUrl}
+              selectedId={selectedId}
+            />
             {previewHtml ? (
               <div className="overflow-hidden rounded-xl border">
                 <iframe
@@ -491,6 +415,42 @@ export function InvoiceTemplateSettingsPage() {
               </p>
             )}
           </div>
+
+          <aside className="rounded-xl border p-3">
+            <p className="mb-3 text-sm font-semibold">Element settings</p>
+            <StyleInspector
+              canManage={canManage}
+              element={selectedElement}
+              layout={layout}
+              onAddTextToBox={(boxId) => {
+                setLayout((prev) =>
+                  addChildToBox(prev, boxId, {
+                    id: newElementId("text"),
+                    kind: "text",
+                    content: "Your text",
+                    x: 0,
+                    y: 0,
+                    width: 100,
+                    visible: true,
+                    style: { fontSize: 11, color: "#334155", textAlign: "left" },
+                  }),
+                );
+              }}
+              onChange={(patch) => {
+                if (!selectedId) return;
+                updateElement(selectedId, patch);
+              }}
+              onDelete={() => {
+                if (!selectedId) return;
+                setLayout((prev) => removeElementAndChildren(prev, selectedId));
+                setSelectedId(null);
+              }}
+              onReorderChild={(childId, direction) => {
+                setLayout((prev) => reorderBoxChild(prev, childId, direction));
+              }}
+              onSelectChild={setSelectedId}
+            />
+          </aside>
         </div>
       </SettingsSectionCard>
     </div>

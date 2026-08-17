@@ -67,6 +67,7 @@ export function CustomerFormDrawer({
       email: "",
       phone: "",
       mobile: "",
+      contactPersonDepartment: "",
       website: "",
       taxRegistrationNumber: "",
       currencyCode: companyCurrency ?? "USD",
@@ -101,6 +102,7 @@ export function CustomerFormDrawer({
       email: customer?.email ?? "",
       phone: customer?.phone ?? "",
       mobile: customer?.mobile ?? "",
+      contactPersonDepartment: customer?.contactPersonDepartment ?? "",
       website: customer?.website ?? "",
       taxRegistrationNumber: customer?.taxRegistrationNumber ?? "",
       currencyCode: customer?.currencyCode ?? companyCurrency ?? "USD",
@@ -207,6 +209,9 @@ export function CustomerFormDrawer({
                 </FormField>
                 <FormField label="Mobile">
                   <Input {...form.register("mobile")} placeholder="+1 555 222 3300" />
+                </FormField>
+                <FormField label="Department">
+                  <Input {...form.register("contactPersonDepartment")} placeholder="Sales, Admin…" />
                 </FormField>
                 <FormField label="Website">
                   <Input {...form.register("website")} placeholder="https://acme.com" />

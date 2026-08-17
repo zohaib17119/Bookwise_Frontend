@@ -68,6 +68,15 @@ export interface Bill {
   total?: string | null;
   amountPaid?: number | null;
   amountDue?: number | null;
+  whtEnabled?: boolean | null;
+  whtType?: "INCOME" | "SALES_TAX" | null;
+  whtRate?: string | null;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  whtAmount?: string | null;
+  whtAmountBase?: string | null;
+  netSettlementAmount?: string | null;
+  whtSettledAmount?: string | null;
   lines: BillLine[];
   totals?: DocumentTotals | null;
 }
@@ -88,5 +97,10 @@ export interface BillPayload {
   notes?: string;
   discountType?: DiscountType;
   discountValue?: string;
+  whtEnabled?: boolean;
+  whtType?: "INCOME" | "SALES_TAX";
+  whtRate?: string;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: BillLine[];
 }

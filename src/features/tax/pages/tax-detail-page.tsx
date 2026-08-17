@@ -12,6 +12,7 @@ import { getCompanyBaseCurrency } from "@/features/companies/utils/company-curre
 import { canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { defaultMonthToTodayRange } from "@/features/reports/types/ledger-report.types";
 import type { ReportFilterParams } from "@/features/reports/types/report.types";
+import { TaxModuleNav } from "@/features/tax/components/tax-module-nav";
 import { useTaxDetailReport } from "@/features/tax/hooks/use-tax";
 import type { TaxDetailRow } from "@/features/tax/types/tax.types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
@@ -123,7 +124,9 @@ export function TaxDetailPage() {
       description="Line-level tax detail by document and tax code (amounts in base currency)."
       eyebrow="Tax"
       filters={
-        <ReportFilterBar
+        <div className="space-y-3">
+          <TaxModuleNav />
+          <ReportFilterBar
           actions={
             <>
               <Button
@@ -150,6 +153,7 @@ export function TaxDetailPage() {
             toDate={filters.toDate ?? ""}
           />
         </ReportFilterBar>
+        </div>
       }
       title="Tax Detail Report"
     />

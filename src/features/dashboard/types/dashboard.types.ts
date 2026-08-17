@@ -19,6 +19,14 @@ export interface DashboardMetrics extends DashboardMetricsSnapshot {
   cashBalance: number;
   accountsReceivable: number;
   accountsPayable: number;
+  taxBalances?: {
+    salesTaxPayable: number | string;
+    salesTaxReceivable: number | string;
+    salesTaxWhtPayable: number | string;
+    salesTaxWhtReceivable: number | string;
+    incomeWhtPayable: number | string;
+    incomeWhtReceivable: number | string;
+  };
   previous: DashboardMetricsSnapshot;
   changePercent: {
     totalRevenue: number | null;

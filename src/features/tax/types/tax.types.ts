@@ -105,3 +105,77 @@ export interface TaxDetailReportResult {
   count?: number;
   currencyCode?: string | null;
 }
+
+export interface WhtSummaryRow {
+  whtType: "INCOME" | "SALES_TAX";
+  whtHeldBy: "COMPANY" | "COUNTERPARTY";
+  documentCount: number;
+  whtAmount: string;
+  whtAmountBase: string;
+  whtSettledAmount: string;
+  whtOutstandingAmount: string;
+}
+
+export interface WhtSummaryReportResult {
+  rows: WhtSummaryRow[];
+  totals: {
+    whtAmountBase: string;
+    whtSettledAmount: string;
+    whtOutstandingAmount: string;
+  };
+}
+
+export type TaxBalanceRole =
+  | "VAT_PAYABLE"
+  | "VAT_RECEIVABLE"
+  | "SALES_TAX_WHT_PAYABLE"
+  | "SALES_TAX_WHT_RECEIVABLE"
+  | "INCOME_WHT_PAYABLE"
+  | "INCOME_WHT_RECEIVABLE";
+
+export interface TaxAccountBalanceDetail {
+  accountId: string;
+  code: string;
+  name: string;
+  role: TaxBalanceRole;
+  side: "PAYABLE" | "RECEIVABLE";
+  balance: string;
+}
+
+export interface TaxBalancesResult {
+  salesTaxPayable: string;
+  salesTaxReceivable: string;
+  salesTaxWhtPayable: string;
+  salesTaxWhtReceivable: string;
+  incomeWhtPayable: string;
+  incomeWhtReceivable: string;
+  detail: TaxAccountBalanceDetail[];
+}
+
+export type TaxPaymentDirection = "PAY" | "COLLECT";
+export type TaxPaymentBucket = "VAT" | "SALES_TAX_WHT" | "INCOME_WHT";
+
+export interface TaxPayment {
+  id: string;
+  companyId: string;
+  direction: TaxPaymentDirection;
+  bucket: TaxPaymentBucket;
+  taxAccountId: string;
+  bankAccountId: string;
+  amount: string;
+  amountBase: string;
+  paymentDate: string;
+  memo?: string | null;
+  journalEntryId?: string | null;
+  createdAt: string;
+}
+
+export interface TaxPaymentPayload {
+  direction: TaxPaymentDirection;
+  bucket: TaxPaymentBucket;
+  accountId?: string;
+  amount: string;
+  paymentDate: string;
+  bankAccountId: string;
+  memo?: string;
+}

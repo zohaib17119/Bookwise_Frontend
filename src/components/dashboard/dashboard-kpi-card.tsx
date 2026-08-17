@@ -1,3 +1,4 @@
+import { FieldHint } from "@/components/shared/field-hint";
 import type { LucideIcon } from "lucide-react";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
 import { cn } from "@/lib/utils/cn";
@@ -12,6 +13,7 @@ interface DashboardKpiCardProps {
   tone?: "green" | "red" | "blue";
   isLoading?: boolean;
   footer?: string;
+  hint?: string;
   miniChartData?: number[];
 }
 
@@ -65,6 +67,7 @@ export function DashboardKpiCard({
   tone = "blue",
   isLoading,
   footer,
+  hint,
   miniChartData,
 }: DashboardKpiCardProps) {
   const styles = toneStyles[tone];
@@ -87,7 +90,10 @@ export function DashboardKpiCard({
         <Icon className="h-5 w-5" />
       </div>
 
-      <p className="mt-3 px-4 text-sm text-muted-foreground">{title}</p>
+      <p className="mt-3 inline-flex items-center gap-1 px-4 text-sm text-muted-foreground">
+        {title}
+        {hint ? <FieldHint text={hint} /> : null}
+      </p>
       </div>
 
       <div className="mt-1 flex items-end justify-between gap-3">

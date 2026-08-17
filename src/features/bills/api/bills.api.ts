@@ -45,6 +45,13 @@ function serializeBillPayload(payload: BillPayload): BillPayload {
       discountValue: payload.discountValue
         ? toOptionalDecimalString(payload.discountValue)
         : undefined,
+      whtEnabled: payload.whtEnabled === true ? true : payload.whtEnabled === false ? false : undefined,
+      whtType: payload.whtEnabled ? payload.whtType || undefined : undefined,
+      whtRate: payload.whtEnabled && payload.whtRate
+        ? toOptionalDecimalString(payload.whtRate)
+        : undefined,
+      whtBase: payload.whtEnabled ? payload.whtBase || undefined : undefined,
+      whtHeldBy: payload.whtEnabled ? payload.whtHeldBy || undefined : undefined,
     }),
     lines: payload.lines.map(serializeBillLine),
   };

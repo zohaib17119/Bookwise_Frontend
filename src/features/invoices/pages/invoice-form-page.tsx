@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
+import { ErrorState } from "@/components/shared/error-state";
+import { PageContainer } from "@/components/shared/page-container";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
@@ -29,6 +31,7 @@ import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schem
 import type { DiscountType } from "@/features/shared/types/documents";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
+import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
 import { queryClient } from "@/lib/query/query-client";
 import InvoiceEditorPage from "./invoice-editor-page";
 
@@ -103,6 +106,11 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             estimateId: invoiceQuery.data.estimateId ?? "",
             invoiceNumber: invoiceQuery.data.invoiceNumber ?? "",
             referenceNumber: invoiceQuery.data.referenceNumber ?? "",
+            contactPersonName: invoiceQuery.data.contactPersonName ?? "",
+            contactMobile: invoiceQuery.data.contactMobile ?? "",
+            contactPersonDepartment: invoiceQuery.data.contactPersonDepartment ?? "",
+            deliveryDate: toDateInputValue(invoiceQuery.data.deliveryDate),
+            deliveryChallanNumber: invoiceQuery.data.deliveryChallanNumber ?? "",
             issueDate: toDateInputValue(invoiceQuery.data.issueDate),
             dueDate: toDateInputValue(invoiceQuery.data.dueDate),
             currencyCode: invoiceQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
@@ -116,6 +124,14 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
               invoiceQuery.data.discountValue != null
                 ? toOptionalDecimalString(invoiceQuery.data.discountValue)
                 : "",
+            whtEnabled: Boolean(invoiceQuery.data.whtEnabled),
+            whtType: invoiceQuery.data.whtType ?? "",
+            whtRate:
+              invoiceQuery.data.whtRate != null
+                ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                : "",
+            whtBase: invoiceQuery.data.whtBase ?? "",
+            whtHeldBy: invoiceQuery.data.whtHeldBy ?? "COUNTERPARTY",
             lines:
               invoiceQuery.data.lines?.map((line) => {
                 const taxCodeId =
@@ -148,6 +164,11 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             estimateId: "",
             invoiceNumber: nextNumberQuery.data?.nextNumber ? String(nextNumberQuery.data.nextNumber) : "",
             referenceNumber: "",
+            contactPersonName: "",
+            contactMobile: "",
+            contactPersonDepartment: "",
+            deliveryDate: "",
+            deliveryChallanNumber: "",
             issueDate: new Date().toISOString().split("T")[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             currencyCode: getCompanyBaseCurrency(company),
@@ -158,6 +179,11 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             paymentOptions: [],
             discountType: undefined,
             discountValue: "",
+            whtEnabled: false,
+            whtType: "",
+            whtRate: "",
+            whtBase: "",
+            whtHeldBy: "COUNTERPARTY",
             lines: [
               {
                 itemId: "",
@@ -199,7 +225,9 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           });
         }
       } else if (!line.taxRateId && line.taxRate) {
-        const match = taxRatesQuery.data?.find((row) => ratesEqual(row.ratePercent, line.taxRate));
+        const match = taxRatesQuery.data?.find((row) =>
+          ratesEqual(row.ratePercent, line.taxRate as string | number | null | undefined),
+        );
         if (match) {
           form.setValue(`lines.${index}.taxRateId`, match.id, { shouldDirty: false });
         }
@@ -215,6 +243,23 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         title="Invoice editing is unavailable"
         description="Your current company membership does not include invoice management."
         variant="destructive"
+      />
+    );
+  }
+
+  if (mode === "edit" && invoiceQuery.isLoading) {
+    return (
+      <PageContainer>
+        <div className="surface p-6">Loading invoice...</div>
+      </PageContainer>
+    );
+  }
+
+  if (mode === "edit" && (invoiceQuery.error || !invoiceQuery.data)) {
+    return (
+      <ErrorState
+        title="Invoice not found"
+        description={invoiceQuery.error?.message ?? "The requested invoice is unavailable."}
       />
     );
   }
@@ -238,6 +283,11 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             estimateId: values.estimateId || undefined,
             invoiceNumber: values.invoiceNumber || undefined,
             referenceNumber: values.referenceNumber || undefined,
+            contactPersonName: values.contactPersonName || undefined,
+            contactMobile: values.contactMobile || undefined,
+            contactPersonDepartment: values.contactPersonDepartment || undefined,
+            deliveryDate: values.deliveryDate || undefined,
+            deliveryChallanNumber: values.deliveryChallanNumber || undefined,
             issueDate: values.issueDate || undefined,
             dueDate: values.dueDate || undefined,
             currencyCode: values.currencyCode || undefined,
@@ -253,6 +303,19 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
               values.discountValue === undefined
                 ? undefined
                 : String(values.discountValue),
+            whtEnabled: Boolean(values.whtEnabled),
+            ...(values.whtEnabled
+              ? {
+                  whtType: values.whtType as "INCOME" | "SALES_TAX",
+                  whtRate: values.whtRate ? String(values.whtRate) : undefined,
+                  whtBase: values.whtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
             lines: values.lines.map((line: any) => ({
               description: line.description,
               quantity: String(line.quantity),
@@ -304,6 +367,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             email: values.email || undefined,
             phone: values.phone || undefined,
             mobile: values.mobile || undefined,
+            contactPersonDepartment: values.contactPersonDepartment || undefined,
             website: values.website || undefined,
             taxRegistrationNumber: values.taxRegistrationNumber || undefined,
             currencyCode: values.currencyCode || undefined,
@@ -329,6 +393,15 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           });
           await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "customers"] });
           form.setValue("customerId", customer.id, { shouldValidate: true, shouldDirty: true });
+          form.setValue(
+            "contactPersonName",
+            buildContactPersonName(customer.firstName, customer.lastName),
+            { shouldDirty: true },
+          );
+          form.setValue("contactMobile", customer.mobile ?? customer.phone ?? "", { shouldDirty: true });
+          form.setValue("contactPersonDepartment", customer.contactPersonDepartment ?? "", {
+            shouldDirty: true,
+          });
           setCustomerDrawerOpen(false);
         }}
         open={customerDrawerOpen}

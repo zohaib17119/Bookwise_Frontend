@@ -40,6 +40,11 @@ export interface Invoice {
   id: string;
   invoiceNumber?: string | null;
   referenceNumber?: string | null;
+  contactPersonName?: string | null;
+  contactMobile?: string | null;
+  contactPersonDepartment?: string | null;
+  deliveryDate?: string | null;
+  deliveryChallanNumber?: string | null;
   customerId: string;
   customerName?: string | null;
   estimateId?: string | null;
@@ -72,6 +77,15 @@ export interface Invoice {
   total?: string | null;
   amountPaid?: string | null;
   amountDue?: string | null;
+  whtEnabled?: boolean | null;
+  whtType?: "INCOME" | "SALES_TAX" | null;
+  whtRate?: string | null;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  whtAmount?: string | null;
+  whtAmountBase?: string | null;
+  netSettlementAmount?: string | null;
+  whtSettledAmount?: string | null;
   lines: InvoiceLine[];
   totals?: DocumentTotals | null;
 }
@@ -86,6 +100,11 @@ export interface InvoicePayload {
   estimateId?: string;
   invoiceNumber?: string;
   referenceNumber?: string;
+  contactPersonName?: string;
+  contactMobile?: string;
+  contactPersonDepartment?: string;
+  deliveryDate?: string;
+  deliveryChallanNumber?: string;
   issueDate?: string;
   dueDate?: string;
   currencyCode?: string;
@@ -96,5 +115,10 @@ export interface InvoicePayload {
   paymentOptions?: string[];
   discountType?: DiscountType;
   discountValue?: string;
+  whtEnabled?: boolean;
+  whtType?: "INCOME" | "SALES_TAX";
+  whtRate?: string;
+  whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  whtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: InvoiceLine[];
 }

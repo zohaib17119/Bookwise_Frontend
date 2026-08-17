@@ -85,13 +85,29 @@ export function BillPaymentFormPage() {
 
   const allocationDocuments = useMemo(
     () =>
-      (openBillsQuery.data ?? []).map((bill) => ({
-        id: bill.id,
-        number: bill.billNumber || "Bill",
-        documentDate: bill.issueDate,
-        dueDate: bill.dueDate,
-        amountDue: bill.amountDue ?? "0",
-      })),
+      (openBillsQuery.data ?? []).map((bill) => {
+        const total = bill.total ?? bill.totals?.total ?? "0";
+        const whtAmount = bill.whtAmount ?? bill.totals?.whtAmount ?? "0";
+        const net =
+          bill.netSettlementAmount ?? bill.totals?.netSettlementAmount ?? total;
+        const amountPaid = parseMoney(bill.amountPaid);
+        const cashDue = bill.whtEnabled
+          ? Math.max(parseMoney(net) - amountPaid, 0)
+          : parseMoney(bill.amountDue);
+        return {
+          id: bill.id,
+          number: bill.billNumber || "Bill",
+          documentDate: bill.issueDate,
+          dueDate: bill.dueDate,
+          amountDue: toMoneyString(cashDue),
+          total,
+          whtEnabled: Boolean(bill.whtEnabled),
+          whtAmount,
+          whtRate: bill.whtRate,
+          whtType: bill.whtType,
+          netSettlementAmount: net,
+        };
+      }),
     [openBillsQuery.data],
   );
 
@@ -222,6 +238,7 @@ export function BillPaymentFormPage() {
               allocations={allocations}
               currencyCode={currencyCode}
               documents={allocationDocuments}
+              settlementLabel="Payable"
               onAllocationChange={(documentId, amount) => {
                 setAllocationError(null);
                 setAllocations((current) => ({ ...current, [documentId]: amount }));

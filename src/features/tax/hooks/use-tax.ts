@@ -9,6 +9,10 @@ import {
   getTaxRates,
   getTaxSettings,
   getTaxSummaryReport,
+  getWhtSummaryReport,
+  getTaxBalances,
+  getTaxPayments,
+  createTaxPayment,
   updateTaxCode,
   updateTaxRate,
   upsertTaxSettings,
@@ -17,6 +21,7 @@ import type {
   TaxCodePayload,
   TaxRatePayload,
   TaxSettingsPayload,
+  TaxPaymentPayload,
 } from "@/features/tax/types/tax.types";
 import type { ReportFilterParams } from "@/features/reports/types/report.types";
 import { queryClient } from "@/lib/query/query-client";
@@ -130,5 +135,43 @@ export function useTaxDetailReport(companyId: string | undefined, params: Report
     queryKey: ["companies", companyId, "tax-reports", "detail", params],
     queryFn: () => getTaxDetailReport(companyId!, params),
     enabled: Boolean(companyId),
+  });
+}
+
+export function useWhtSummaryReport(companyId: string | undefined, params: ReportFilterParams) {
+  return useQuery({
+    queryKey: ["companies", companyId, "tax-reports", "wht-summary", params],
+    queryFn: () => getWhtSummaryReport(companyId!, params),
+    enabled: Boolean(companyId),
+  });
+}
+
+export function useTaxBalances(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ["companies", companyId, "tax-balances"],
+    queryFn: () => getTaxBalances(companyId!),
+    enabled: Boolean(companyId),
+  });
+}
+
+export function useTaxPayments(companyId: string | undefined) {
+  return useQuery({
+    queryKey: ["companies", companyId, "tax-payments"],
+    queryFn: () => getTaxPayments(companyId!),
+    enabled: Boolean(companyId),
+  });
+}
+
+export function useCreateTaxPayment(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (payload: TaxPaymentPayload) => createTaxPayment(companyId!, payload),
+    onSuccess: async () => {
+      if (!companyId) return;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-balances"] }),
+        queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-payments"] }),
+        queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] }),
+      ]);
+    },
   });
 }

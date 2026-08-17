@@ -15,6 +15,8 @@ import { canShowFbr } from "@/features/compliance/utils/compliance-access";
 import { useVendors, useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import type { Bill } from "@/features/bills/types/bill.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { FieldHint } from "@/components/shared/field-hint";
+import { whtHeldByHint, whtHeldByLabel, whtTypeShortLabel } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { useBillsPaginated } from "@/features/bills/hooks/use-bills";
 
@@ -79,6 +81,52 @@ export function BillsPage() {
       render: (bill) =>
         formatCurrency(
           bill.total ?? bill.totals?.total ?? "0",
+          bill.currencyCode ?? baseCurrency,
+        ),
+    },
+    {
+      key: "wht",
+      header: "WHT",
+      className: "text-right",
+      render: (bill) => {
+        const currency = bill.currencyCode ?? baseCurrency;
+        if (!bill.whtEnabled) return "—";
+        const rate = bill.whtRate != null ? `@${Number(bill.whtRate)}%` : "";
+        const type = whtTypeShortLabel(bill.whtType);
+        const holder = whtHeldByLabel(bill.whtHeldBy, "bill", company?.name ?? company?.legalName);
+        const amount = formatCurrency(
+          bill.whtAmount ?? bill.totals?.whtAmount ?? "0",
+          currency,
+        );
+        return (
+          <div className="text-right">
+            <p className="tabular-nums">
+              {type} {rate}
+            </p>
+            <p className="inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
+              {holder}
+              <FieldHint
+                text={whtHeldByHint(
+                  bill.whtHeldBy,
+                  "bill",
+                  company?.name ?? company?.legalName,
+                )}
+              />
+            </p>
+            <p className="tabular-nums text-muted-foreground">{amount}</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "netPayable",
+      header: "Net payable",
+      className: "text-right",
+      render: (bill) =>
+        formatCurrency(
+          bill.whtEnabled
+            ? (bill.netSettlementAmount ?? bill.totals?.netSettlementAmount ?? bill.total ?? "0")
+            : (bill.total ?? bill.totals?.total ?? "0"),
           bill.currencyCode ?? baseCurrency,
         ),
     },

@@ -16,6 +16,8 @@ import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { FieldHint } from "@/components/shared/field-hint";
+import { whtHeldByHint, whtHeldByLabel, whtTypeShortLabel } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import InvoiceEditorPage from "./invoice-editor-page";
 
@@ -118,6 +120,55 @@ export function InvoicesPage() {
       render: (invoice) =>
         formatCurrency(
           invoice.total ?? invoice.totals?.total ?? "0",
+          invoice.currencyCode ?? baseCurrency,
+        ),
+    },
+    {
+      key: "wht",
+      header: "WHT",
+      className: "text-right",
+      render: (invoice) => {
+        const currency = invoice.currencyCode ?? baseCurrency;
+        if (!invoice.whtEnabled) return "—";
+        const rate = invoice.whtRate != null ? `@${Number(invoice.whtRate)}%` : "";
+        const type = whtTypeShortLabel(invoice.whtType);
+        const holder = whtHeldByLabel(invoice.whtHeldBy, "invoice", company?.name ?? company?.legalName);
+        const amount = formatCurrency(
+          invoice.whtAmount ?? invoice.totals?.whtAmount ?? "0",
+          currency,
+        );
+        return (
+          <div className="text-right">
+            <p className="tabular-nums">
+              {type} {rate}
+            </p>
+            <p className="inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
+              {holder}
+              <FieldHint
+                text={whtHeldByHint(
+                  invoice.whtHeldBy,
+                  "invoice",
+                  company?.name ?? company?.legalName,
+                )}
+              />
+            </p>
+            <p className="tabular-nums text-muted-foreground">{amount}</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "receivable",
+      header: "Receivable",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.whtEnabled
+            ? (invoice.netSettlementAmount ??
+                invoice.totals?.netSettlementAmount ??
+                invoice.total ??
+                "0")
+            : (invoice.total ?? invoice.totals?.total ?? "0"),
           invoice.currencyCode ?? baseCurrency,
         ),
     },

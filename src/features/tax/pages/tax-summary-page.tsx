@@ -12,8 +12,10 @@ import { getCompanyBaseCurrency } from "@/features/companies/utils/company-curre
 import { canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { defaultMonthToTodayRange } from "@/features/reports/types/ledger-report.types";
 import type { ReportFilterParams } from "@/features/reports/types/report.types";
-import { useTaxSummaryReport } from "@/features/tax/hooks/use-tax";
-import type { TaxSummaryRow } from "@/features/tax/types/tax.types";
+import { TaxModuleNav } from "@/features/tax/components/tax-module-nav";
+import { useTaxSummaryReport, useWhtSummaryReport } from "@/features/tax/hooks/use-tax";
+import type { TaxSummaryRow, WhtSummaryRow } from "@/features/tax/types/tax.types";
+import { whtSummaryHeldByLabel } from "@/features/shared/utils/wht-labels";
 import { formatCurrency } from "@/lib/utils/format";
 
 function buildDefaultFilters(): ReportFilterParams {
@@ -36,9 +38,12 @@ export function TaxSummaryPage() {
   const canView = canViewEntity(permissions, "reports");
   const [filters, setFilters] = useState<ReportFilterParams>(buildDefaultFilters);
   const query = useTaxSummaryReport(companyId, filters);
+  const whtQuery = useWhtSummaryReport(companyId, filters);
   const currencyCode = query.data?.currencyCode ?? getCompanyBaseCurrency(company);
   const rows = query.data?.rows ?? [];
   const totals = query.data?.totals;
+  const whtRows = whtQuery.data?.rows ?? [];
+  const whtTotals = whtQuery.data?.totals;
 
   const columns: DataTableColumn<TaxSummaryRow>[] = useMemo(
     () => [
@@ -76,6 +81,58 @@ export function TaxSummaryPage() {
         className: "text-right",
         render: (row) => (
           <span className="tabular-nums">{formatCurrency(row.netTaxAmount, currencyCode)}</span>
+        ),
+      },
+    ],
+    [currencyCode],
+  );
+
+  const whtColumns: DataTableColumn<WhtSummaryRow>[] = useMemo(
+    () => [
+      {
+        key: "whtType",
+        header: "WHT type",
+        render: (row) => (
+          <span>{row.whtType === "INCOME" ? "Income WHT" : "Sales tax WHT"}</span>
+        ),
+      },
+      {
+        key: "whtHeldBy",
+        header: "Held by",
+        render: (row) => <span>{whtSummaryHeldByLabel(row.whtHeldBy)}</span>,
+      },
+      {
+        key: "documentCount",
+        header: "Docs",
+        className: "text-right",
+        render: (row) => <span className="tabular-nums">{row.documentCount}</span>,
+      },
+      {
+        key: "whtAmountBase",
+        header: "WHT (base)",
+        className: "text-right",
+        render: (row) => (
+          <span className="tabular-nums">{formatCurrency(row.whtAmountBase, currencyCode)}</span>
+        ),
+      },
+      {
+        key: "whtSettledAmount",
+        header: "Settled",
+        className: "text-right",
+        render: (row) => (
+          <span className="tabular-nums">
+            {formatCurrency(row.whtSettledAmount, currencyCode)}
+          </span>
+        ),
+      },
+      {
+        key: "whtOutstandingAmount",
+        header: "Outstanding",
+        className: "text-right",
+        render: (row) => (
+          <span className="tabular-nums">
+            {formatCurrency(row.whtOutstandingAmount, currencyCode)}
+          </span>
         ),
       },
     ],
@@ -126,39 +183,75 @@ export function TaxSummaryPage() {
               getRowKey={(row) => row.taxCodeId}
               isLoading={query.isLoading}
             />
+            <div className="space-y-3 border-t border-border/70 pt-4">
+              <h3 className="text-sm font-semibold">Withholding tax (separate from VAT)</h3>
+              {whtTotals ? (
+                <div className="flex flex-wrap gap-6 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">WHT base</p>
+                    <p className="font-medium tabular-nums">
+                      {formatCurrency(whtTotals.whtAmountBase, currencyCode)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Settled</p>
+                    <p className="font-medium tabular-nums">
+                      {formatCurrency(whtTotals.whtSettledAmount, currencyCode)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Outstanding</p>
+                    <p className="font-medium tabular-nums">
+                      {formatCurrency(whtTotals.whtOutstandingAmount, currencyCode)}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              <DataTable
+                columns={whtColumns}
+                data={whtRows}
+                emptyDescription="No withholding tax documents in this period."
+                emptyTitle="No WHT rows"
+                getRowKey={(row) => `${row.whtType}-${row.whtHeldBy}`}
+                isLoading={whtQuery.isLoading}
+              />
+            </div>
           </div>
         )
       }
       description="Summarize tax collected, recoverable tax, and net tax payable for the selected period (base currency)."
       eyebrow="Tax"
       filters={
-        <ReportFilterBar
-          actions={
-            <>
-              <Button
-                onClick={() => setFilters(buildDefaultFilters())}
-                type="button"
-                variant="secondary"
-              >
-                Reset
-              </Button>
-              <Button onClick={() => void query.refetch()} type="button">
-                Refresh
-              </Button>
-            </>
-          }
-        >
-          <DateRangeToolbar
-            fromDate={filters.fromDate ?? ""}
-            onFromDateChange={(fromDate) =>
-              setFilters((current) => ({ ...current, fromDate: fromDate || undefined }))
+        <div className="space-y-3">
+          <TaxModuleNav />
+          <ReportFilterBar
+            actions={
+              <>
+                <Button
+                  onClick={() => setFilters(buildDefaultFilters())}
+                  type="button"
+                  variant="secondary"
+                >
+                  Reset
+                </Button>
+                <Button onClick={() => void query.refetch()} type="button">
+                  Refresh
+                </Button>
+              </>
             }
-            onToDateChange={(toDate) =>
-              setFilters((current) => ({ ...current, toDate: toDate || undefined }))
-            }
-            toDate={filters.toDate ?? ""}
-          />
-        </ReportFilterBar>
+          >
+            <DateRangeToolbar
+              fromDate={filters.fromDate ?? ""}
+              onFromDateChange={(fromDate) =>
+                setFilters((current) => ({ ...current, fromDate: fromDate || undefined }))
+              }
+              onToDateChange={(toDate) =>
+                setFilters((current) => ({ ...current, toDate: toDate || undefined }))
+              }
+              toDate={filters.toDate ?? ""}
+            />
+          </ReportFilterBar>
+        </div>
       }
       title="Tax Summary Report"
     />

@@ -212,7 +212,7 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
     const map = new Map<string, { code: string; effectiveRatePercent: number }>();
     for (const option of salesTaxCodeOptions) {
       map.set(option.id, {
-        code: option.code,
+        code: option.code ?? "",
         effectiveRatePercent: option.effectiveRatePercent ?? 0,
       });
     }

@@ -29,6 +29,7 @@ import {
   useSubmitInvoiceCompliance,
 } from "@/features/invoices/hooks/use-invoices";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { formatDate } from "@/lib/utils/format";
 import { formatPaymentOptions } from "@/features/invoices/constants/payment-options";
 import InvoiceView from "./InvoiceView";
@@ -207,6 +208,11 @@ export function InvoiceDetailPage() {
                 items={[
                   { label: "Customer", value: invoice.customerName || "-" },
                   { label: "Reference", value: invoice.referenceNumber || "-" },
+                  { label: "Contact person", value: invoice.contactPersonName || "-" },
+                  { label: "Contact mobile", value: invoice.contactMobile || "-" },
+                  { label: "Department", value: invoice.contactPersonDepartment || "-" },
+                  { label: "Delivery date", value: formatDate(invoice.deliveryDate) },
+                  { label: "Delivery challan no", value: invoice.deliveryChallanNumber || "-" },
                   { label: "Issue date", value: formatDate(invoice.issueDate) },
                   ...(isAdjustmentNote
                     ? []
@@ -307,6 +313,24 @@ export function InvoiceDetailPage() {
             subtotal={invoice.totals?.subtotal}
             taxTotal={invoice.totals?.taxTotal}
             total={invoice.totals?.total}
+            whtAmount={invoice.whtEnabled ? invoice.whtAmount ?? invoice.totals?.whtAmount : undefined}
+            netSettlementAmount={
+              invoice.whtEnabled
+                ? invoice.netSettlementAmount ?? invoice.totals?.netSettlementAmount
+                : undefined
+            }
+            netLabel={whtNetLabel(invoice.whtHeldBy, "invoice")}
+            whtAddsToTotal={whtSettlementAddsToCash(invoice.whtHeldBy, "invoice")}
+            whtHeldByHint={whtHeldByHint(
+              invoice.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
+            whtHeldByLabel={whtHeldByLabel(
+              invoice.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
           />
           <AmountSummaryCard amount={invoice.amountPaid} currencyCode={documentCurrency} label="Amount paid" />
           <AmountSummaryCard amount={invoice.amountDue} currencyCode={documentCurrency} label="Amount due" />

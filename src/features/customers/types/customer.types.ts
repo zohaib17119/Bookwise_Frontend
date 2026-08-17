@@ -10,6 +10,7 @@ export interface Customer {
   email?: string | null;
   phone?: string | null;
   mobile?: string | null;
+  contactPersonDepartment?: string | null;
   website?: string | null;
   taxRegistrationNumber?: string | null;
   currencyCode?: string | null;
@@ -45,6 +46,7 @@ export interface CustomerPayload {
   email?: string;
   phone?: string;
   mobile?: string;
+  contactPersonDepartment?: string;
   website?: string;
   taxRegistrationNumber?: string;
   currencyCode?: string;

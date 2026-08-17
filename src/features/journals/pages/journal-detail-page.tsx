@@ -18,6 +18,7 @@ import type { JournalEntryLine } from "@/features/journals/types/journal.types";
 import { canManageEntity, canUsePermission, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { parseMoney } from "@/lib/utils/money";
+import { formatJournalSourceModule } from "@/features/journals/utils/journal-source-label";
 
 export function JournalDetailPage() {
   const { companyId, journalEntryId } = useParams();
@@ -130,7 +131,7 @@ export function JournalDetailPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Source module</p>
-                <p className="mt-1 text-sm">{journal.sourceModule || "Manual"}</p>
+                <p className="mt-1 text-sm">{formatJournalSourceModule(journal.sourceModule)}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Source ID</p>

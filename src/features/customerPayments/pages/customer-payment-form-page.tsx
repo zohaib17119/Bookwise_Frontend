@@ -66,13 +66,31 @@ export function CustomerPaymentFormPage() {
 
   const allocationDocuments = useMemo(
     () =>
-      (openInvoicesQuery.data ?? []).map((invoice) => ({
-        id: invoice.id,
-        number: invoice.invoiceNumber || "Invoice",
-        documentDate: invoice.issueDate,
-        dueDate: invoice.dueDate,
-        amountDue: invoice.amountDue ?? "0",
-      })),
+      (openInvoicesQuery.data ?? []).map((invoice) => {
+        const total = invoice.total ?? invoice.totals?.total ?? "0";
+        const whtAmount = invoice.whtAmount ?? invoice.totals?.whtAmount ?? "0";
+        const net =
+          invoice.netSettlementAmount ??
+          invoice.totals?.netSettlementAmount ??
+          total;
+        const amountPaid = parseMoney(invoice.amountPaid);
+        const cashDue = invoice.whtEnabled
+          ? Math.max(parseMoney(net) - amountPaid, 0)
+          : parseMoney(invoice.amountDue);
+        return {
+          id: invoice.id,
+          number: invoice.invoiceNumber || "Invoice",
+          documentDate: invoice.issueDate,
+          dueDate: invoice.dueDate,
+          amountDue: toMoneyString(cashDue),
+          total,
+          whtEnabled: Boolean(invoice.whtEnabled),
+          whtAmount,
+          whtRate: invoice.whtRate,
+          whtType: invoice.whtType,
+          netSettlementAmount: net,
+        };
+      }),
     [openInvoicesQuery.data],
   );
   const allocatedTotal = getAllocatedTotal(
@@ -189,6 +207,7 @@ export function CustomerPaymentFormPage() {
               allocations={allocations}
               currencyCode={currencyCode}
               documents={allocationDocuments}
+              settlementLabel="Receivable"
               onAllocationChange={(documentId, amount) => {
                 setAllocationError(null);
                 setAllocations((current) => ({ ...current, [documentId]: amount }));

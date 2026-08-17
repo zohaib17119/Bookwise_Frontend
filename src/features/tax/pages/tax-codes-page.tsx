@@ -9,6 +9,7 @@ import { TableActions } from "@/components/shared/table-actions";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { TaxCodeFormDrawer } from "@/features/tax/components/tax-code-form-drawer";
+import { TaxModuleNav } from "@/features/tax/components/tax-module-nav";
 import {
   useCreateTaxCode,
   useDeleteTaxCode,
@@ -111,6 +112,7 @@ export function TaxCodesPage() {
           </Button>
         }
         title="Tax Codes"
+        toolbar={<TaxModuleNav />}
       />
 
       <TaxCodeFormDrawer

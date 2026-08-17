@@ -38,6 +38,11 @@ function serializeInvoicePayload(payload: InvoicePayload): InvoicePayload {
       estimateId: payload.estimateId || undefined,
       invoiceNumber: payload.invoiceNumber || undefined,
       referenceNumber: payload.referenceNumber || undefined,
+      contactPersonName: payload.contactPersonName || undefined,
+      contactMobile: payload.contactMobile || undefined,
+      contactPersonDepartment: payload.contactPersonDepartment || undefined,
+      deliveryDate: payload.deliveryDate || undefined,
+      deliveryChallanNumber: payload.deliveryChallanNumber || undefined,
       issueDate: payload.issueDate || undefined,
       dueDate: payload.dueDate || undefined,
       currencyCode: payload.currencyCode || undefined,
@@ -50,6 +55,13 @@ function serializeInvoicePayload(payload: InvoicePayload): InvoicePayload {
       discountValue: payload.discountValue
         ? toOptionalDecimalString(payload.discountValue)
         : undefined,
+      whtEnabled: payload.whtEnabled === true ? true : payload.whtEnabled === false ? false : undefined,
+      whtType: payload.whtEnabled ? payload.whtType || undefined : undefined,
+      whtRate: payload.whtEnabled && payload.whtRate
+        ? toOptionalDecimalString(payload.whtRate)
+        : undefined,
+      whtBase: payload.whtEnabled ? payload.whtBase || undefined : undefined,
+      whtHeldBy: payload.whtEnabled ? payload.whtHeldBy || undefined : undefined,
     }),
     lines: payload.lines.map(serializeInvoiceLine),
   };

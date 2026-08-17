@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import { TaxModuleNav } from "@/features/tax/components/tax-module-nav";
 import {
   taxSettingsSchema,
   type TaxSettingsFormInput,
@@ -48,6 +49,8 @@ export function TaxSettingsPage() {
         />
       }
     >
+      <TaxModuleNav />
+
       {settingsQuery.error ? (
         <ErrorState title="Unable to load tax settings" description={settingsQuery.error.message} />
       ) : null}

@@ -30,6 +30,8 @@ export interface DocumentTotals {
   discountTotal?: string | null;
   taxTotal?: string | null;
   total?: string | null;
+  whtAmount?: string | null;
+  netSettlementAmount?: string | null;
 }
 
 export interface AllocationEntry {

@@ -19,6 +19,7 @@ export const customerSchema = z.object({
   email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
   phone: optionalString,
   mobile: optionalString,
+  contactPersonDepartment: optionalString,
   website: optionalString,
   taxRegistrationNumber: optionalString,
   currencyCode: z.string().min(3).max(3).optional().or(z.literal("")),

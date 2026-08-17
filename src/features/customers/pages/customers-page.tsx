@@ -224,6 +224,7 @@ export function CustomersPage() {
             email: values.email || undefined,
             phone: values.phone || undefined,
             mobile: values.mobile || undefined,
+            contactPersonDepartment: values.contactPersonDepartment || undefined,
             website: values.website || undefined,
             taxRegistrationNumber: values.taxRegistrationNumber || undefined,
             currencyCode: values.currencyCode || undefined,

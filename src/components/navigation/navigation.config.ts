@@ -168,6 +168,12 @@ export const companyNavigationGroups: CompanyNavigationGroup[] = [
         icon: Landmark,
         permissionKeys: ["tax.view", "tax.read", "tax.manage"],
       },
+      {
+        label: "Tax Payments",
+        segment: "tax/payments",
+        icon: CircleDollarSign,
+        permissionKeys: ["tax.view", "tax.read", "tax.manage"],
+      },
     ],
   },
   {

@@ -16,6 +16,7 @@ import { DocumentTotalsCard } from "@/components/documents/document-totals-card"
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { canShowFbr } from "@/features/compliance/utils/compliance-access";
+import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import {
   useBill,
   useDeleteBill,
@@ -177,6 +178,24 @@ export function BillDetailPage() {
             subtotal={bill.totals?.subtotal}
             taxTotal={bill.totals?.taxTotal}
             total={bill.totals?.total}
+            whtAmount={bill.whtEnabled ? bill.whtAmount ?? bill.totals?.whtAmount : undefined}
+            netSettlementAmount={
+              bill.whtEnabled
+                ? bill.netSettlementAmount ?? bill.totals?.netSettlementAmount
+                : undefined
+            }
+            netLabel={whtNetLabel(bill.whtHeldBy, "bill")}
+            whtAddsToTotal={whtSettlementAddsToCash(bill.whtHeldBy, "bill")}
+            whtHeldByHint={whtHeldByHint(
+              bill.whtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
+            whtHeldByLabel={whtHeldByLabel(
+              bill.whtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
           />
           <AmountSummaryCard amount={bill.amountPaid} currencyCode={documentCurrency} label="Amount paid" />
           <AmountSummaryCard amount={bill.amountDue} currencyCode={documentCurrency} label="Amount due" />

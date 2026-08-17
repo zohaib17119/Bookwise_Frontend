@@ -9,6 +9,10 @@ import type {
   TaxSettings,
   TaxSettingsPayload,
   TaxSummaryReportResult,
+  WhtSummaryReportResult,
+  TaxBalancesResult,
+  TaxPayment,
+  TaxPaymentPayload,
 } from "@/features/tax/types/tax.types";
 import type { ReportFilterParams } from "@/features/reports/types/report.types";
 
@@ -90,5 +94,27 @@ export async function getTaxDetailReport(companyId: string, params: ReportFilter
   const { data } = await apiClient.get<TaxDetailReportResult>(
     `/companies/${companyId}/reports/tax-detail${buildQuery(params)}`,
   );
+  return data;
+}
+
+export async function getWhtSummaryReport(companyId: string, params: ReportFilterParams) {
+  const { data } = await apiClient.get<WhtSummaryReportResult>(
+    `/companies/${companyId}/reports/wht-summary${buildQuery(params)}`,
+  );
+  return data;
+}
+
+export async function getTaxBalances(companyId: string) {
+  const { data } = await apiClient.get<TaxBalancesResult>(`/companies/${companyId}/tax-balances`);
+  return data;
+}
+
+export async function getTaxPayments(companyId: string) {
+  const { data } = await apiClient.get<TaxPayment[]>(`/companies/${companyId}/tax-payments`);
+  return extractListData(data);
+}
+
+export async function createTaxPayment(companyId: string, payload: TaxPaymentPayload) {
+  const { data } = await apiClient.post<TaxPayment>(`/companies/${companyId}/tax-payments`, payload);
   return data;
 }

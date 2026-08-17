@@ -6,6 +6,8 @@ import { useSearchParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
+import { defaultWhtHeldBy, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +33,7 @@ import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
+import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import {
   convertBasePriceToDocumentPrice,
@@ -83,6 +86,11 @@ function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["compa
     terms: "",
     discountType: undefined,
     discountValue: "",
+    whtEnabled: false,
+    whtType: "",
+    whtRate: "",
+    whtBase: "",
+    whtHeldBy: "COMPANY",
     lines: [
       {
         itemId: "",
@@ -185,6 +193,11 @@ export function BillFormPage({ mode }: BillFormPageProps) {
         bill.discountValue != null && bill.discountValue !== ""
           ? toOptionalDecimalString(bill.discountValue)
           : "",
+      whtEnabled: Boolean(bill.whtEnabled),
+      whtType: bill.whtType ?? "",
+      whtRate: bill.whtRate != null ? toOptionalDecimalString(bill.whtRate) : "",
+      whtBase: bill.whtBase ?? "",
+      whtHeldBy: bill.whtHeldBy ?? "COMPANY",
       lines:
         bill.lines?.map((line) => ({
           itemId: line.itemId ?? "",
@@ -222,6 +235,12 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const watchedIssueDate = form.watch("issueDate");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
+  const watchedWhtEnabled = form.watch("whtEnabled");
+  const watchedWhtRate = form.watch("whtRate");
+  const watchedWhtBase = form.watch("whtBase");
+  const watchedWhtHeldBy = form.watch("whtHeldBy");
+  const watchedDiscountType = form.watch("discountType");
+  const watchedDiscountValue = form.watch("discountValue");
 
   const getVendorPaymentTermsDays = (vendorId: string) => {
     const vendor = (vendorsQuery.data ?? []).find((row) => row.id === vendorId);
@@ -313,10 +332,51 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const exchangeRateString =
     typeof watchedExchangeRate === "string" ? watchedExchangeRate : String(watchedExchangeRate ?? "");
 
-  const previewTotals = useMemo(
-    () => getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview)),
-    [watchedLines],
-  );
+  const previewTotals = useMemo(() => {
+    const base = getDocumentPreviewTotals((watchedLines ?? []).map(toDocumentLinePreview));
+    const subtotal = Number(base.subtotal) || 0;
+    const discount = Number(base.discountTotal) || 0;
+    const tax = Number(base.taxTotal) || 0;
+    const total = Number(base.total) || 0;
+    // Document-level discount may not be in line preview — approximate from form when set
+    let headerDiscount = discount;
+    if (watchedDiscountType === "PERCENTAGE") {
+      headerDiscount = (subtotal * (Number(watchedDiscountValue) || 0)) / 100;
+    } else if (watchedDiscountType === "FIXED") {
+      headerDiscount = Number(watchedDiscountValue) || 0;
+    }
+    const adjustedTotal = subtotal - headerDiscount + tax;
+    const whtAmount = previewWhtAmount({
+      enabled: Boolean(watchedWhtEnabled),
+      rate: watchedWhtRate as string | number | null | undefined,
+      base: watchedWhtBase as string | null | undefined,
+      subtotal,
+      discount: headerDiscount,
+      tax,
+      total: adjustedTotal,
+    });
+    return {
+      ...base,
+      discountTotal: String(headerDiscount),
+      total: String(adjustedTotal),
+      whtAmount: String(whtAmount),
+      netSettlementAmount: String(
+        previewNetSettlement(
+          adjustedTotal,
+          whtAmount,
+          whtSettlementAddsToCash(watchedWhtHeldBy, "bill"),
+        ),
+      ),
+    };
+  }, [
+    watchedLines,
+    watchedWhtEnabled,
+    watchedWhtRate,
+    watchedWhtBase,
+    watchedWhtHeldBy,
+    watchedDiscountType,
+    watchedDiscountValue,
+  ]);
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
@@ -412,6 +472,21 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             discountValue: values.discountValue
               ? toOptionalDecimalString(values.discountValue)
               : undefined,
+            whtEnabled: Boolean(values.whtEnabled),
+            ...(values.whtEnabled
+              ? {
+                  whtType: values.whtType as "INCOME" | "SALES_TAX",
+                  whtRate: values.whtRate
+                    ? toOptionalDecimalString(values.whtRate)
+                    : undefined,
+                  whtBase: values.whtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
             lines: values.lines.map((line) => ({
               description: line.description,
               quantity: toDecimalString(line.quantity),
@@ -507,7 +582,40 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             taxTotal={previewTotals.taxTotal}
             title="Provisional totals"
             total={previewTotals.total}
+            whtAmount={watchedWhtEnabled ? previewTotals.whtAmount : undefined}
+            netSettlementAmount={
+              watchedWhtEnabled ? previewTotals.netSettlementAmount : undefined
+            }
+            netLabel={whtNetLabel(watchedWhtHeldBy, "bill")}
+            whtAddsToTotal={whtSettlementAddsToCash(watchedWhtHeldBy, "bill")}
           />
+          <div className="space-y-3 rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={Boolean(watchedWhtEnabled)}
+                onChange={(event) => {
+                  const enabled = event.target.checked;
+                  form.setValue("whtEnabled", enabled, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  if (enabled && !form.getValues("whtHeldBy")) {
+                    form.setValue("whtHeldBy", defaultWhtHeldBy("bill"), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    });
+                  }
+                }}
+              />
+              <span>Apply withholding tax</span>
+            </label>
+            <WhtSettingsFields
+              companyName={company?.name ?? company?.legalName}
+              documentKind="bill"
+              enabled={Boolean(watchedWhtEnabled)}
+              form={form}
+            />
+          </div>
           <Button className="w-full" isLoading={activeMutation.isPending} type="submit">
             {mode === "create" ? "Create bill" : "Save bill"}
           </Button>

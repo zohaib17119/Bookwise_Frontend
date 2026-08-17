@@ -80,6 +80,7 @@ import { TaxDetailPage } from "@/features/tax/pages/tax-detail-page";
 import { TaxRatesPage } from "@/features/tax/pages/tax-rates-page";
 import { TaxSettingsPage } from "@/features/tax/pages/tax-settings-page";
 import { TaxSummaryPage } from "@/features/tax/pages/tax-summary-page";
+import { TaxPaymentPage } from "@/features/tax/pages/tax-payment-page";
 import { VendorsPage } from "@/features/vendors/pages/vendors-page";
 import { ForbiddenPage } from "@/pages/forbidden-page";
 import { NotFoundPage } from "@/pages/not-found-page";
@@ -174,6 +175,7 @@ const router = createBrowserRouter([
                   { path: "tax/rates", element: <TaxRatesPage /> },
                   { path: "tax/codes", element: <TaxCodesPage /> },
                   { path: "tax/settings", element: <TaxSettingsPage /> },
+                  { path: "tax/payments", element: <TaxPaymentPage /> },
                   { path: "tax/reports/summary", element: <TaxSummaryPage /> },
                   { path: "tax/reports/detail", element: <TaxDetailPage /> },
                   { path: "banking", element: <Navigate replace to="accounts" relative="path" /> },

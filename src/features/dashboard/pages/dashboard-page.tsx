@@ -3,6 +3,7 @@ import {
   ArrowUpDown,
   CreditCard,
   DollarSign,
+  Landmark,
   Percent,
   Receipt,
   Users,
@@ -30,6 +31,7 @@ import {
   type DashboardPeriodPreset,
 } from "@/features/dashboard/types/dashboard.types";
 import { useLowStockCount } from "@/features/inventory/hooks/use-inventory";
+import { taxBalanceHint } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 
 export function DashboardPage() {
@@ -233,6 +235,83 @@ export function DashboardPage() {
           tone="red"
           value={formatCurrency(metrics?.accountsPayable ?? 0, displayCurrency)}
         />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold">Tax balances</h2>
+          <Button asChild size="sm" variant="secondary">
+            <Link to={`/app/company/${companyId}/tax/payments`}>Pay / collect tax</Link>
+          </Button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <DashboardKpiCard
+            badgeLabel="To pay"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("payable", "vat")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Sales tax / VAT payable"
+            tone="red"
+            value={formatCurrency(metrics?.taxBalances?.salesTaxPayable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="To collect"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("receivable", "vat")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Sales tax / VAT receivable"
+            tone="green"
+            value={formatCurrency(metrics?.taxBalances?.salesTaxReceivable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="To pay"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("payable", "salesTaxWht")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Sales tax WHT payable"
+            tone="red"
+            value={formatCurrency(metrics?.taxBalances?.salesTaxWhtPayable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="To collect"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("receivable", "salesTaxWht")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Sales tax WHT receivable"
+            tone="green"
+            value={formatCurrency(metrics?.taxBalances?.salesTaxWhtReceivable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="To pay"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("payable", "incomeWht")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Income WHT payable"
+            tone="red"
+            value={formatCurrency(metrics?.taxBalances?.incomeWhtPayable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="To collect"
+            changePercent={null}
+            footer="GL balance"
+            hint={taxBalanceHint("receivable", "incomeWht")}
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Income WHT receivable"
+            tone="green"
+            value={formatCurrency(metrics?.taxBalances?.incomeWhtReceivable ?? 0, displayCurrency)}
+          />
+        </div>
       </div>
 
       <EntityCountStrip counts={counts ?? {
