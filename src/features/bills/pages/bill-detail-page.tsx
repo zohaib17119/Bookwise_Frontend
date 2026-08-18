@@ -179,6 +179,7 @@ export function BillDetailPage() {
             taxTotal={bill.totals?.taxTotal}
             total={bill.totals?.total}
             whtAmount={bill.whtEnabled ? bill.whtAmount ?? bill.totals?.whtAmount : undefined}
+            whtSettledAmount={bill.whtEnabled ? bill.whtSettledAmount : undefined}
             netSettlementAmount={
               bill.whtEnabled
                 ? bill.netSettlementAmount ?? bill.totals?.netSettlementAmount

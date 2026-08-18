@@ -8,7 +8,8 @@ interface DocumentTotalsCardProps {
   discountTotal?: number | string | null;
   taxTotal?: number | string | null;
   total?: number | string | null;
-  whtAmount?: number | string | null;
+    whtAmount?: number | string | null;
+  whtSettledAmount?: number | string | null;
   netSettlementAmount?: number | string | null;
   netLabel?: string;
   whtHeldByLabel?: string;
@@ -25,6 +26,7 @@ export function DocumentTotalsCard({
   taxTotal,
   total,
   whtAmount,
+  whtSettledAmount,
   netSettlementAmount,
   netLabel = "Net settlement",
   whtHeldByLabel,
@@ -37,6 +39,15 @@ export function DocumentTotalsCard({
     whtAmount != null &&
     whtAmount !== "" &&
     Number(whtAmount) > 0;
+  const showWhtSettled =
+    showWht &&
+    whtSettledAmount != null &&
+    whtSettledAmount !== "" &&
+    Number(whtSettledAmount) >= 0;
+  const whtOutstanding =
+    showWhtSettled && showWht
+      ? Math.max(Number(whtAmount) - Number(whtSettledAmount), 0)
+      : null;
 
   return (
     <div className="ml-auto w-full max-w-sm rounded-2xl border border-border/70 bg-white p-5 shadow-sm">
@@ -75,6 +86,24 @@ export function DocumentTotalsCard({
                 {formatCurrency(whtAmount ?? 0, currency)}
               </dd>
             </div>
+            {showWhtSettled ? (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">WHT settled (GL)</dt>
+                  <dd className="text-right tabular-nums">
+                    {formatCurrency(whtSettledAmount ?? 0, currency)}
+                  </dd>
+                </div>
+                {whtOutstanding != null && whtOutstanding > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">WHT outstanding</dt>
+                    <dd className="text-right tabular-nums">
+                      {formatCurrency(whtOutstanding, currency)}
+                    </dd>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
             <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-3 font-semibold">
               <dt>{netLabel}</dt>
               <dd className="text-right tabular-nums">

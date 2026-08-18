@@ -314,6 +314,7 @@ export function InvoiceDetailPage() {
             taxTotal={invoice.totals?.taxTotal}
             total={invoice.totals?.total}
             whtAmount={invoice.whtEnabled ? invoice.whtAmount ?? invoice.totals?.whtAmount : undefined}
+            whtSettledAmount={invoice.whtEnabled ? invoice.whtSettledAmount : undefined}
             netSettlementAmount={
               invoice.whtEnabled
                 ? invoice.netSettlementAmount ?? invoice.totals?.netSettlementAmount
