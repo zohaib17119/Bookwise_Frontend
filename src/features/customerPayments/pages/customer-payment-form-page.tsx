@@ -17,7 +17,6 @@ import { AllocationSummaryCard } from "@/components/documents/allocation-summary
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import {
-  useAllocateCustomerPayment,
   useCreateCustomerPayment,
 } from "@/features/customerPayments/hooks/use-customer-payments";
 import {
@@ -40,7 +39,6 @@ export function CustomerPaymentFormPage() {
   const { company, permissions } = useActiveCompany();
   const customersQuery = useCustomerOptions(companyId);
   const createMutation = useCreateCustomerPayment(companyId);
-  const allocateMutation = useAllocateCustomerPayment(companyId);
   const canManage = canManageEntity(permissions, "customer_payments");
   const currencyCode = company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
   const form = useForm<CustomerPaymentFormInput, undefined, CustomerPaymentFormValues>({
@@ -132,15 +130,6 @@ export function CustomerPaymentFormPage() {
 
           setAllocationError(null);
 
-          const payment = await createMutation.mutateAsync({
-            customerId: values.customerId,
-            paymentDate: values.paymentDate,
-            paymentMethod: values.paymentMethod,
-            referenceNumber: values.referenceNumber || undefined,
-            amount: toMoneyDecimalString(values.amount),
-            notes: values.notes || undefined,
-          });
-
           const nonZeroAllocations = Object.entries(allocations)
             .filter(([, amount]) => parseMoney(amount) > 0)
             .map(([invoiceId, amount]) => ({
@@ -148,12 +137,15 @@ export function CustomerPaymentFormPage() {
               amount: toMoneyDecimalString(amount),
             }));
 
-          if (nonZeroAllocations.length) {
-            await allocateMutation.mutateAsync({
-              paymentId: payment.id,
-              payload: { allocations: nonZeroAllocations },
-            });
-          }
+          const payment = await createMutation.mutateAsync({
+            customerId: values.customerId,
+            paymentDate: values.paymentDate,
+            paymentMethod: values.paymentMethod,
+            referenceNumber: values.referenceNumber || undefined,
+            amount: toMoneyDecimalString(values.amount),
+            notes: values.notes || undefined,
+            ...(nonZeroAllocations.length ? { allocations: nonZeroAllocations } : {}),
+          });
 
           navigate(`/app/company/${companyId}/customer-payments/${payment.id}`);
         })}
@@ -167,7 +159,6 @@ export function CustomerPaymentFormPage() {
             />
           ) : null}
           {createMutation.error ? <Alert title={createMutation.error.message} variant="destructive" /> : null}
-          {allocateMutation.error ? <Alert title={allocateMutation.error.message} variant="destructive" /> : null}
           {allocationError ? <Alert title={allocationError} variant="destructive" /> : null}
 
           <FormSection title="Payment details">
@@ -239,7 +230,7 @@ export function CustomerPaymentFormPage() {
           </div>
           <Button
             className="w-full"
-            isLoading={createMutation.isPending || allocateMutation.isPending}
+            isLoading={createMutation.isPending}
             type="submit"
           >
             Record payment

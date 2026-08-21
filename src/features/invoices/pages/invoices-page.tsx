@@ -1,4 +1,4 @@
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,9 @@ import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
 import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
+import { TableColumnPicker } from "@/components/shared/table-column-picker";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
+import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
 import { canShowFbr, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
@@ -16,13 +18,37 @@ import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
-import { FieldHint } from "@/components/shared/field-hint";
-import { whtHeldByHint, whtHeldByLabel, whtTypeShortLabel } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
-import InvoiceEditorPage from "./invoice-editor-page";
+import {
+  useTableViewPreferences,
+  type TableViewColumnDef,
+} from "@/hooks/use-table-view-preferences";
+
+const INVOICE_VIEW_COLUMNS: TableViewColumnDef[] = [
+  { id: "number", label: "Invoice", defaultVisible: true },
+  { id: "customer", label: "Customer", defaultVisible: true },
+  { id: "issueDate", label: "Issue date", defaultVisible: true },
+  { id: "dueDate", label: "Due date", defaultVisible: false },
+  { id: "payment", label: "Payment", defaultVisible: true },
+  { id: "zatca", label: "ZATCA", defaultVisible: true },
+  { id: "fbrTaxReported", label: "FBR / Tax reported", defaultVisible: true },
+  { id: "amountExclusiveTax", label: "Amount exclusive tax", defaultVisible: false },
+  { id: "taxPercent", label: "Tax %", defaultVisible: false },
+  { id: "amountInclusiveTax", label: "Amount inclusive tax", defaultVisible: false },
+  { id: "incomeWhtPercent", label: "Income WHT %", defaultVisible: false },
+  { id: "incomeWhtAmount", label: "Income WHT amount", defaultVisible: false },
+  { id: "salesTaxWhtPercent", label: "Sales tax WHT %", defaultVisible: false },
+  { id: "salesTaxWhtAmount", label: "Sales tax WHT amount", defaultVisible: false },
+  { id: "amountInclusiveWht", label: "Amount including WHT", defaultVisible: false },
+  { id: "totalReceivable", label: "Total receivable", defaultVisible: false },
+  { id: "amountPaid", label: "Amount paid", defaultVisible: false },
+  { id: "total", label: "Total", defaultVisible: true },
+  { id: "amountDue", label: "Amount due", defaultVisible: true },
+];
 
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
+  const user = useAuthStore((state) => state.user);
   const showZatca = canUseZatcaReporting(company);
   const showFbr = canShowFbr(company);
   const [search, setSearch] = useState("");
@@ -43,6 +69,19 @@ export function InvoicesPage() {
   const canManage = canManageEntity(permissions, "invoices");
   const baseCurrency = getCompanyBaseCurrency(company);
 
+  const viewColumns = useMemo(() => {
+    let columns = INVOICE_VIEW_COLUMNS;
+    if (!showZatca) {
+      columns = columns.filter((column) => column.id !== "zatca");
+    }
+    if (!showFbr) {
+      columns = columns.filter((column) => column.id !== "fbrTaxReported");
+    }
+    return columns;
+  }, [showFbr, showZatca]);
+
+  const tableView = useTableViewPreferences("invoices", companyId, user?.id, viewColumns);
+
   if (!canView) {
     return (
       <ErrorState
@@ -52,8 +91,8 @@ export function InvoicesPage() {
     );
   }
 
-  const columns: DataTableColumn<Invoice>[] = [
-    {
+  const columnMap: Record<string, DataTableColumn<Invoice>> = {
+    number: {
       key: "number",
       header: "Invoice",
       render: (invoice) => (
@@ -70,11 +109,22 @@ export function InvoicesPage() {
         </div>
       ),
     },
-    { key: "customer", header: "Customer", render: (invoice) => invoice.customerName || "-" },
-    { key: "issueDate", header: "Issue Date", render: (invoice) => formatDate(invoice.issueDate) },
-    { key: "dueDate", header: "Due Date", render: (invoice) => formatDate(invoice.dueDate) },
-    { key: "status", header: "Status", render: (invoice) => <DocumentStatusBadge status={invoice.status} /> },
-    {
+    customer: {
+      key: "customer",
+      header: "Customer",
+      render: (invoice) => invoice.customerName || "-",
+    },
+    issueDate: {
+      key: "issueDate",
+      header: "Issue Date",
+      render: (invoice) => formatDate(invoice.issueDate),
+    },
+    dueDate: {
+      key: "dueDate",
+      header: "Due Date",
+      render: (invoice) => formatDate(invoice.dueDate),
+    },
+    payment: {
       key: "payment",
       header: "Payment",
       render: (invoice) => {
@@ -91,29 +141,118 @@ export function InvoicesPage() {
         return <span className="text-muted-foreground">—</span>;
       },
     },
-    ...(showZatca
-      ? [
-          {
-            key: "complianceStatus",
-            header: "ZATCA",
-            render: (invoice: Invoice) => (
-              <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
-            ),
-          } satisfies DataTableColumn<Invoice>,
-        ]
-      : []),
-    ...(showFbr
-      ? [
-          {
-            key: "fbrTaxReported",
-            header: "FBR / Tax reported",
-            render: (invoice: Invoice) => (
-              <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
-            ),
-          } satisfies DataTableColumn<Invoice>,
-        ]
-      : []),
-    {
+    zatca: {
+      key: "zatca",
+      header: "ZATCA",
+      render: (invoice) => (
+        <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
+      ),
+    },
+    fbrTaxReported: {
+      key: "fbrTaxReported",
+      header: "FBR / Tax reported",
+      render: (invoice) => (
+        <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
+      ),
+    },
+    amountExclusiveTax: {
+      key: "amountExclusiveTax",
+      header: "Amount exclusive tax",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.subtotal ?? invoice.totals?.subtotal ?? "0",
+          invoice.currencyCode ?? baseCurrency,
+        ),
+    },
+    taxPercent: {
+      key: "taxPercent",
+      header: "Tax %",
+      className: "text-right",
+      render: (invoice) => invoice.taxRateDisplay ?? "—",
+    },
+    amountInclusiveTax: {
+      key: "amountInclusiveTax",
+      header: "Amount inclusive tax",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.total ?? invoice.totals?.total ?? "0",
+          invoice.currencyCode ?? baseCurrency,
+        ),
+    },
+    incomeWhtPercent: {
+      key: "incomeWhtPercent",
+      header: "Income WHT %",
+      className: "text-right",
+      render: (invoice) =>
+        invoice.incomeWhtEnabled && invoice.incomeWhtRate != null
+          ? `${Number(invoice.incomeWhtRate)}%`
+          : "—",
+    },
+    incomeWhtAmount: {
+      key: "incomeWhtAmount",
+      header: "Income WHT amount",
+      className: "text-right",
+      render: (invoice) =>
+        invoice.incomeWhtEnabled
+          ? formatCurrency(invoice.incomeWhtAmount ?? "0", invoice.currencyCode ?? baseCurrency)
+          : "—",
+    },
+    salesTaxWhtPercent: {
+      key: "salesTaxWhtPercent",
+      header: "Sales tax WHT %",
+      className: "text-right",
+      render: (invoice) =>
+        invoice.salesTaxWhtEnabled && invoice.salesTaxWhtRate != null
+          ? `${Number(invoice.salesTaxWhtRate)}%`
+          : "—",
+    },
+    salesTaxWhtAmount: {
+      key: "salesTaxWhtAmount",
+      header: "Sales tax WHT amount",
+      className: "text-right",
+      render: (invoice) =>
+        invoice.salesTaxWhtEnabled
+          ? formatCurrency(invoice.salesTaxWhtAmount ?? "0", invoice.currencyCode ?? baseCurrency)
+          : "—",
+    },
+    amountInclusiveWht: {
+      key: "amountInclusiveWht",
+      header: "Amount including WHT",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.whtEnabled || invoice.incomeWhtEnabled || invoice.salesTaxWhtEnabled
+            ? (invoice.netSettlementAmount ??
+                invoice.totals?.netSettlementAmount ??
+                invoice.total ??
+                "0")
+            : (invoice.total ?? invoice.totals?.total ?? "0"),
+          invoice.currencyCode ?? baseCurrency,
+        ),
+    },
+    totalReceivable: {
+      key: "totalReceivable",
+      header: "Total receivable",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.netSettlementAmount ??
+            invoice.totals?.netSettlementAmount ??
+            invoice.total ??
+            "0",
+          invoice.currencyCode ?? baseCurrency,
+        ),
+    },
+    amountPaid: {
+      key: "amountPaid",
+      header: "Amount paid",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(invoice.amountPaid ?? "0", invoice.currencyCode ?? baseCurrency),
+    },
+    total: {
       key: "total",
       header: "Total",
       className: "text-right",
@@ -123,73 +262,20 @@ export function InvoicesPage() {
           invoice.currencyCode ?? baseCurrency,
         ),
     },
-    {
-      key: "wht",
-      header: "WHT",
-      className: "text-right",
-      render: (invoice) => {
-        const currency = invoice.currencyCode ?? baseCurrency;
-        if (!invoice.whtEnabled) return "—";
-        const rate = invoice.whtRate != null ? `@${Number(invoice.whtRate)}%` : "";
-        const type = whtTypeShortLabel(invoice.whtType);
-        const holder = whtHeldByLabel(invoice.whtHeldBy, "invoice", company?.name ?? company?.legalName);
-        const amount = formatCurrency(
-          invoice.whtAmount ?? invoice.totals?.whtAmount ?? "0",
-          currency,
-        );
-        return (
-          <div className="text-right">
-            <p className="tabular-nums">
-              {type} {rate}
-            </p>
-            <p className="inline-flex items-center justify-end gap-1 text-xs text-muted-foreground">
-              {holder}
-              <FieldHint
-                text={whtHeldByHint(
-                  invoice.whtHeldBy,
-                  "invoice",
-                  company?.name ?? company?.legalName,
-                )}
-              />
-            </p>
-            <p className="tabular-nums text-muted-foreground">{amount}</p>
-          </div>
-        );
-      },
-    },
-    {
-      key: "receivable",
-      header: "Receivable",
-      className: "text-right",
-      render: (invoice) =>
-        formatCurrency(
-          invoice.whtEnabled
-            ? (invoice.netSettlementAmount ??
-                invoice.totals?.netSettlementAmount ??
-                invoice.total ??
-                "0")
-            : (invoice.total ?? invoice.totals?.total ?? "0"),
-          invoice.currencyCode ?? baseCurrency,
-        ),
-    },
-    {
-      key: "amountPaid",
-      header: "Amount paid",
-      className: "text-right",
-      render: (invoice) =>
-        formatCurrency(invoice.amountPaid ?? "0", invoice.currencyCode ?? baseCurrency),
-    },
-    {
+    amountDue: {
       key: "amountDue",
       header: "Amount Due",
       className: "text-right",
       render: (invoice) =>
         formatCurrency(invoice.amountDue ?? "0", invoice.currencyCode ?? baseCurrency),
     },
-  ];
+  };
+
+  const columns = tableView.visibleColumnIds
+    .map((id) => columnMap[id])
+    .filter((column): column is DataTableColumn<Invoice> => Boolean(column));
 
   return (
-  
     <EntityListPage
       content={
         invoicesQuery.error ? (
@@ -223,12 +309,22 @@ export function InvoicesPage() {
       description="Issue invoices, track receivables, and prepare customer payment allocation."
       eyebrow="Sales documents"
       headerActions={
-        <Button asChild disabled={!canManage}>
-          <Link to={`/app/company/${companyId}/invoices/new`}>
-            <Plus className="mr-2 h-4 w-4" />
-            New invoice
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <TableColumnPicker
+            columns={viewColumns}
+            hidden={tableView.hidden}
+            onMove={tableView.moveColumn}
+            onReset={tableView.reset}
+            onToggle={tableView.toggleVisible}
+            order={tableView.order}
+          />
+          <Button asChild disabled={!canManage}>
+            <Link to={`/app/company/${companyId}/invoices/new`}>
+              <Plus className="mr-2 h-4 w-4" />
+              New invoice
+            </Link>
+          </Button>
+        </div>
       }
       title="Invoices"
       toolbar={
@@ -253,11 +349,13 @@ export function InvoicesPage() {
               value={status}
             >
               <option value="">All statuses</option>
-              {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map((option) => (
-                <option key={option} value={option}>
-                  {option.replace(/_/g, " ")}
-                </option>
-              ))}
+              {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map(
+                (option) => (
+                  <option key={option} value={option}>
+                    {option.replace(/_/g, " ")}
+                  </option>
+                ),
+              )}
             </Select>
           </FilterField>
           <FilterField className="sm:min-w-[220px]">
@@ -278,7 +376,6 @@ export function InvoicesPage() {
             </Select>
           </FilterField>
         </FilterBar>
-      
       }
     />
   );

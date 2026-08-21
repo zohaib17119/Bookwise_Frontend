@@ -48,7 +48,7 @@ export function ConfirmDeleteDialog({
             </div>
             <div>
               <h3 className="text-lg font-semibold">{title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{description}</p>
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">

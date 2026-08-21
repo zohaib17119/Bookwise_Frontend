@@ -314,14 +314,40 @@ export function InvoiceDetailPage() {
             taxTotal={invoice.totals?.taxTotal}
             total={invoice.totals?.total}
             whtAmount={invoice.whtEnabled ? invoice.whtAmount ?? invoice.totals?.whtAmount : undefined}
+            incomeWhtAmount={invoice.incomeWhtAmount ?? undefined}
+            salesTaxWhtAmount={invoice.salesTaxWhtAmount ?? undefined}
             whtSettledAmount={invoice.whtEnabled ? invoice.whtSettledAmount : undefined}
             netSettlementAmount={
               invoice.whtEnabled
                 ? invoice.netSettlementAmount ?? invoice.totals?.netSettlementAmount
                 : undefined
             }
-            netLabel={whtNetLabel(invoice.whtHeldBy, "invoice")}
-            whtAddsToTotal={whtSettlementAddsToCash(invoice.whtHeldBy, "invoice")}
+            netLabel={whtNetLabel(
+              invoice.incomeWhtHeldBy ?? invoice.salesTaxWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+            )}
+            whtAddsToTotal={whtSettlementAddsToCash(
+              invoice.incomeWhtHeldBy ?? invoice.salesTaxWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+            )}
+            incomeWhtAddsToTotal={whtSettlementAddsToCash(
+              invoice.incomeWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+            )}
+            salesTaxWhtAddsToTotal={whtSettlementAddsToCash(
+              invoice.salesTaxWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+            )}
+            incomeWhtHeldByLabel={whtHeldByLabel(
+              invoice.incomeWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
+            salesTaxWhtHeldByLabel={whtHeldByLabel(
+              invoice.salesTaxWhtHeldBy ?? invoice.whtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
             whtHeldByHint={whtHeldByHint(
               invoice.whtHeldBy,
               "invoice",
@@ -349,6 +375,7 @@ export function InvoiceDetailPage() {
                 ? "This finalizes the invoice: it posts revenue, marks it Issued, emails the customer, and queues ZATCA in the background. Email does not wait for ZATCA clearance."
                 : "This finalizes the invoice: it posts revenue to your ledger, marks it as Issued, and emails the customer. This cannot be undone."
         }
+        errorMessage={sendMutation.error?.message}
         isPending={sendMutation.isPending}
         onClose={() => {
           setSendOpen(false);
@@ -356,6 +383,7 @@ export function InvoiceDetailPage() {
         }}
         onConfirm={async () => {
           await sendMutation.mutateAsync(invoice.id);
+          sendMutation.reset();
           setSendOpen(false);
         }}
         open={sendOpen}

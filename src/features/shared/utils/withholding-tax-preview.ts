@@ -41,3 +41,17 @@ export function previewNetSettlement(total: number, whtAmount: number, addsToCas
   const rounded = Math.round((addsToCash ? total + whtAmount : total - whtAmount) * 100) / 100;
   return Math.max(rounded, 0);
 }
+
+/** Per-slot signed net for dual WHT preview when holders may differ. */
+export function previewDualNetSettlement(
+  total: number,
+  slots: Array<{ amount: number; addsToCash: boolean }>,
+): number {
+  let net = total;
+  for (const slot of slots) {
+    if (slot.amount <= 0) continue;
+    net = slot.addsToCash ? net + slot.amount : net - slot.amount;
+  }
+  return Math.max(Math.round(net * 100) / 100, 0);
+}
+

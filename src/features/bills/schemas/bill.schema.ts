@@ -10,37 +10,111 @@ const whtRateSchema = z.preprocess(
   z.string().optional().or(z.literal("")),
 );
 
+const whtBaseSchema = z
+  .enum(["SUBTOTAL", "TAXABLE", "TAX_AMOUNT", "TOTAL"])
+  .optional()
+  .or(z.literal(""));
+
+const whtHeldBySchema = z.enum(["COMPANY", "COUNTERPARTY"]).optional().or(z.literal(""));
+
+function refineDualWht(
+  payload: {
+    whtEnabled?: boolean;
+    whtHeldBy?: string;
+    incomeWhtEnabled?: boolean;
+    incomeWhtRate?: string;
+    incomeWhtBase?: string;
+    incomeWhtHeldBy?: string;
+    salesTaxWhtEnabled?: boolean;
+    salesTaxWhtRate?: string;
+    salesTaxWhtBase?: string;
+    salesTaxWhtHeldBy?: string;
+  },
+  ctx: z.RefinementCtx,
+) {
+  const incomeOn = Boolean(payload.incomeWhtEnabled);
+  const salesOn = Boolean(payload.salesTaxWhtEnabled);
+  const legacyOn = Boolean(payload.whtEnabled) && !incomeOn && !salesOn;
+  if (!(incomeOn || salesOn || legacyOn)) return;
+
+  if (legacyOn && !payload.whtHeldBy && !payload.incomeWhtHeldBy && !payload.salesTaxWhtHeldBy) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "WHT holder is required",
+      path: ["whtHeldBy"],
+    });
+  }
+  if (incomeOn) {
+    if (!payload.incomeWhtHeldBy && !payload.whtHeldBy) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Income WHT holder is required",
+        path: ["incomeWhtHeldBy"],
+      });
+    }
+    if (!payload.incomeWhtRate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Income WHT rate is required",
+        path: ["incomeWhtRate"],
+      });
+    }
+    if (!payload.incomeWhtBase) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Income WHT base is required",
+        path: ["incomeWhtBase"],
+      });
+    }
+  }
+  if (salesOn) {
+    if (!payload.salesTaxWhtHeldBy && !payload.whtHeldBy) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sales tax WHT holder is required",
+        path: ["salesTaxWhtHeldBy"],
+      });
+    }
+    if (!payload.salesTaxWhtRate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sales tax WHT rate is required",
+        path: ["salesTaxWhtRate"],
+      });
+    }
+    if (!payload.salesTaxWhtBase) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Sales tax WHT base is required",
+        path: ["salesTaxWhtBase"],
+      });
+    }
+  }
+}
+
 export const billSchema = documentBaseSchema
   .extend({
     vendorId: z.string().min(1, "Vendor is required"),
     billNumber: z.string().optional().or(z.literal("")),
     issueDate: z.string().optional().or(z.literal("")),
     dueDate: z.string().optional().or(z.literal("")),
+    whtHeldBy: whtHeldBySchema,
+    incomeWhtEnabled: z.boolean().optional(),
+    incomeWhtRate: whtRateSchema,
+    incomeWhtBase: whtBaseSchema,
+    incomeWhtHeldBy: whtHeldBySchema,
+    salesTaxWhtEnabled: z.boolean().optional(),
+    salesTaxWhtRate: whtRateSchema,
+    salesTaxWhtBase: whtBaseSchema,
+    salesTaxWhtHeldBy: whtHeldBySchema,
+    /** @deprecated legacy single-slot; prefer income/salesTax flags */
     whtEnabled: z.boolean().optional(),
     whtType: z.enum(["INCOME", "SALES_TAX"]).optional().or(z.literal("")),
     whtRate: whtRateSchema,
-    whtBase: z
-      .enum(["SUBTOTAL", "TAXABLE", "TAX_AMOUNT", "TOTAL"])
-      .optional()
-      .or(z.literal("")),
-    whtHeldBy: z.enum(["COMPANY", "COUNTERPARTY"]).optional().or(z.literal("")),
+    whtBase: whtBaseSchema,
     lines: z.array(lineItemSchema).min(1, "At least one line item is required"),
   })
-  .superRefine((payload, ctx) => {
-    if (!payload.whtEnabled) return;
-    if (!payload.whtType) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "WHT type is required", path: ["whtType"] });
-    }
-    if (!payload.whtRate) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "WHT rate is required", path: ["whtRate"] });
-    }
-    if (!payload.whtBase) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "WHT base is required", path: ["whtBase"] });
-    }
-    if (!payload.whtHeldBy) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "WHT holder is required", path: ["whtHeldBy"] });
-    }
-  });
+  .superRefine(refineDualWht);
 
 export type BillFormInput = z.input<typeof billSchema>;
 export type BillFormValues = z.output<typeof billSchema>;

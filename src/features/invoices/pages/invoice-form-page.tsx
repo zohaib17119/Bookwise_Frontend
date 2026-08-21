@@ -132,6 +132,40 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 : "",
             whtBase: invoiceQuery.data.whtBase ?? "",
             whtHeldBy: invoiceQuery.data.whtHeldBy ?? "COUNTERPARTY",
+            incomeWhtEnabled: Boolean(
+              invoiceQuery.data.incomeWhtEnabled ??
+                (invoiceQuery.data.whtEnabled && invoiceQuery.data.whtType === "INCOME"),
+            ),
+            incomeWhtRate:
+              invoiceQuery.data.incomeWhtRate != null
+                ? toOptionalDecimalString(invoiceQuery.data.incomeWhtRate)
+                : invoiceQuery.data.whtType === "INCOME" && invoiceQuery.data.whtRate != null
+                  ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                  : "",
+            incomeWhtBase:
+              invoiceQuery.data.incomeWhtBase ??
+              (invoiceQuery.data.whtType === "INCOME" ? invoiceQuery.data.whtBase ?? "" : ""),
+            incomeWhtHeldBy:
+              invoiceQuery.data.incomeWhtHeldBy ??
+              invoiceQuery.data.whtHeldBy ??
+              "COUNTERPARTY",
+            salesTaxWhtEnabled: Boolean(
+              invoiceQuery.data.salesTaxWhtEnabled ??
+                (invoiceQuery.data.whtEnabled && invoiceQuery.data.whtType === "SALES_TAX"),
+            ),
+            salesTaxWhtRate:
+              invoiceQuery.data.salesTaxWhtRate != null
+                ? toOptionalDecimalString(invoiceQuery.data.salesTaxWhtRate)
+                : invoiceQuery.data.whtType === "SALES_TAX" && invoiceQuery.data.whtRate != null
+                  ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                  : "",
+            salesTaxWhtBase:
+              invoiceQuery.data.salesTaxWhtBase ??
+              (invoiceQuery.data.whtType === "SALES_TAX" ? invoiceQuery.data.whtBase ?? "" : ""),
+            salesTaxWhtHeldBy:
+              invoiceQuery.data.salesTaxWhtHeldBy ??
+              invoiceQuery.data.whtHeldBy ??
+              "COUNTERPARTY",
             lines:
               invoiceQuery.data.lines?.map((line) => {
                 const taxCodeId =
@@ -184,6 +218,14 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             whtRate: "",
             whtBase: "",
             whtHeldBy: "COUNTERPARTY",
+            incomeWhtEnabled: false,
+            incomeWhtRate: "",
+            incomeWhtBase: "",
+            incomeWhtHeldBy: "COUNTERPARTY",
+            salesTaxWhtEnabled: false,
+            salesTaxWhtRate: "",
+            salesTaxWhtBase: "",
+            salesTaxWhtHeldBy: "COUNTERPARTY",
             lines: [
               {
                 itemId: "",
@@ -303,17 +345,42 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
               values.discountValue === undefined
                 ? undefined
                 : String(values.discountValue),
-            whtEnabled: Boolean(values.whtEnabled),
-            ...(values.whtEnabled
+            whtEnabled: Boolean(values.incomeWhtEnabled || values.salesTaxWhtEnabled),
+            incomeWhtEnabled: Boolean(values.incomeWhtEnabled),
+            salesTaxWhtEnabled: Boolean(values.salesTaxWhtEnabled),
+            ...(values.incomeWhtEnabled || values.salesTaxWhtEnabled
               ? {
-                  whtType: values.whtType as "INCOME" | "SALES_TAX",
-                  whtRate: values.whtRate ? String(values.whtRate) : undefined,
-                  whtBase: values.whtBase as
+                  whtHeldBy: (values.incomeWhtHeldBy ||
+                    values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.incomeWhtEnabled
+              ? {
+                  incomeWhtRate: values.incomeWhtRate
+                    ? toOptionalDecimalString(values.incomeWhtRate)
+                    : undefined,
+                  incomeWhtBase: values.incomeWhtBase as
                     | "SUBTOTAL"
                     | "TAXABLE"
                     | "TAX_AMOUNT"
                     | "TOTAL",
-                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                  incomeWhtHeldBy: (values.incomeWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.salesTaxWhtEnabled
+              ? {
+                  salesTaxWhtRate: values.salesTaxWhtRate
+                    ? toOptionalDecimalString(values.salesTaxWhtRate)
+                    : undefined,
+                  salesTaxWhtBase: values.salesTaxWhtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  salesTaxWhtHeldBy: (values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
                 }
               : {}),
             lines: values.lines.map((line: any) => ({
@@ -342,6 +409,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         isLoading={activeMutation.isPending}
         mode={mode}
         companyId={companyId ?? ""}
+        submitError={activeMutation.error}
       />
 
       <CustomerFormDrawer

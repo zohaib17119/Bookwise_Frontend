@@ -16,7 +16,6 @@ import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import {
-  useAllocateBillPayment,
   useCreateBillPayment,
 } from "@/features/billPayments/hooks/use-bill-payments";
 import {
@@ -41,7 +40,6 @@ export function BillPaymentFormPage() {
   const { company, permissions } = useActiveCompany();
   const vendorsQuery = useVendorOptions(companyId);
   const createMutation = useCreateBillPayment(companyId);
-  const allocateMutation = useAllocateBillPayment(companyId);
   const canManage = canManageEntity(permissions, "bill_payments");
   const currencyCode = company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
   const form = useForm<BillPaymentFormInput, undefined, BillPaymentFormValues>({
@@ -163,15 +161,6 @@ export function BillPaymentFormPage() {
 
           setAllocationError(null);
 
-          const payment = await createMutation.mutateAsync({
-            vendorId: values.vendorId,
-            paymentDate: values.paymentDate,
-            paymentMethod: values.paymentMethod,
-            referenceNumber: values.referenceNumber || undefined,
-            amount: toMoneyDecimalString(values.amount),
-            notes: values.notes || undefined,
-          });
-
           const nonZeroAllocations = Object.entries(allocations)
             .filter(([, amount]) => parseMoney(amount) > 0)
             .map(([billId, amount]) => ({
@@ -179,12 +168,15 @@ export function BillPaymentFormPage() {
               amount: toMoneyDecimalString(amount),
             }));
 
-          if (nonZeroAllocations.length) {
-            await allocateMutation.mutateAsync({
-              paymentId: payment.id,
-              payload: { allocations: nonZeroAllocations },
-            });
-          }
+          const payment = await createMutation.mutateAsync({
+            vendorId: values.vendorId,
+            paymentDate: values.paymentDate,
+            paymentMethod: values.paymentMethod,
+            referenceNumber: values.referenceNumber || undefined,
+            amount: toMoneyDecimalString(values.amount),
+            notes: values.notes || undefined,
+            ...(nonZeroAllocations.length ? { allocations: nonZeroAllocations } : {}),
+          });
 
           navigate(`/app/company/${companyId}/bill-payments/${payment.id}`);
         })}
@@ -198,7 +190,6 @@ export function BillPaymentFormPage() {
             />
           ) : null}
           {createMutation.error ? <Alert title={createMutation.error.message} variant="destructive" /> : null}
-          {allocateMutation.error ? <Alert title={allocateMutation.error.message} variant="destructive" /> : null}
           {allocationError ? <Alert title={allocationError} variant="destructive" /> : null}
 
           <FormSection title="Payment details">
@@ -268,7 +259,7 @@ export function BillPaymentFormPage() {
               {formatCurrency(toMoneyString(watchedAmount), currencyCode)}
             </p>
           </div>
-          <Button className="w-full" isLoading={createMutation.isPending || allocateMutation.isPending} type="submit">
+          <Button className="w-full" isLoading={createMutation.isPending} type="submit">
             Record bill payment
           </Button>
         </div>

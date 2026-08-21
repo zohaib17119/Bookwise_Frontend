@@ -4,6 +4,8 @@ import {
   createBillPayment,
   getBillPayment,
   getBillPayments,
+  unallocateBillPayment,
+  updateBillPayment,
 } from "@/features/billPayments/api/bill-payments.api";
 import type {
   BillPaymentAllocationPayload,
@@ -57,6 +59,26 @@ export function useAllocateBillPayment(companyId: string | undefined) {
       paymentId: string;
       payload: BillPaymentAllocationPayload;
     }) => allocateBillPayment(paymentId, payload),
+    onSettled: async () => {
+      if (companyId) await invalidateBillPaymentQueries(companyId);
+    },
+  });
+}
+
+export function useUnallocateBillPayment(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: ({ paymentId, billId }: { paymentId: string; billId: string }) =>
+      unallocateBillPayment(paymentId, billId),
+    onSettled: async () => {
+      if (companyId) await invalidateBillPaymentQueries(companyId);
+    },
+  });
+}
+
+export function useUpdateBillPayment(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: ({ paymentId, amount }: { paymentId: string; amount: string }) =>
+      updateBillPayment(companyId!, paymentId, { amount }),
     onSettled: async () => {
       if (companyId) await invalidateBillPaymentQueries(companyId);
     },

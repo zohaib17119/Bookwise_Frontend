@@ -39,6 +39,7 @@ export function DashboardPage() {
   const user = useAuthStore((state) => state.user);
   const [preset, setPreset] = useState<DashboardPeriodPreset>(30);
   const [lowStockAlertDismissed, setLowStockAlertDismissed] = useState(false);
+  const [shortageAlertDismissed, setShortageAlertDismissed] = useState(false);
 
   const periodParams = useMemo(() => getPeriodRangeFromPreset(preset), [preset]);
   const dashboardQuery = useCompanyDashboard(companyId, periodParams);
@@ -75,6 +76,8 @@ export function DashboardPage() {
   const displayCurrency = getCompanyBaseCurrency(company, dashboard?.currencyCode ?? currency);
   const lowStockCount = lowStockQuery.data ?? 0;
   const showLowStockAlert = lowStockCount > 0 && !lowStockAlertDismissed;
+  const shortageCount = dashboard?.inventoryShortages?.count ?? 0;
+  const showShortageAlert = shortageCount > 0 && !shortageAlertDismissed;
   const isLoading = dashboardQuery.isLoading;
 
   return (
@@ -89,6 +92,34 @@ export function DashboardPage() {
         toDate={dashboard?.period.toDate ?? periodParams.toDate ?? ""}
         userName={user?.fullName ?? user?.name}
       />
+
+      {showShortageAlert ? (
+        <div className="relative">
+          <Alert
+            description={`${formatNumber(shortageCount)} inventory shortage${shortageCount === 1 ? "" : "s"}: goods were sold after a purchase receive was voided and no remaining stock covered the sale. Add a purchase bill and receive stock to cover.`}
+            title="Sold without inventory"
+            variant="destructive"
+          />
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button asChild size="sm" variant="primary">
+              <Link to={`/app/company/${companyId}/bills/new`}>Buy stock / new bill</Link>
+            </Button>
+            <Button asChild size="sm" variant="secondary">
+              <Link to={`/app/company/${companyId}/inventory/stock-on-hand`}>View stock on hand</Link>
+            </Button>
+            <Button
+              aria-label="Dismiss inventory shortage alert"
+              className="ml-auto"
+              onClick={() => setShortageAlertDismissed(true)}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {showLowStockAlert ? (
         <div className="relative">

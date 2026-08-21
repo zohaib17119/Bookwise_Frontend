@@ -4,7 +4,6 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
@@ -20,13 +19,12 @@ import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
 import {
-  defaultWhtHeldBy,
   whtHeldByHint,
   whtHeldByLabel,
   whtNetLabel,
   whtSettlementAddsToCash,
 } from "@/features/shared/utils/wht-labels";
-import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
+import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
@@ -117,6 +115,40 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
                 : "",
             whtBase: estimateQuery.data.whtBase ?? "",
             whtHeldBy: estimateQuery.data.whtHeldBy ?? "COUNTERPARTY",
+            incomeWhtEnabled: Boolean(
+              estimateQuery.data.incomeWhtEnabled ??
+                (estimateQuery.data.whtEnabled && estimateQuery.data.whtType === "INCOME"),
+            ),
+            incomeWhtRate:
+              estimateQuery.data.incomeWhtRate != null
+                ? toOptionalDecimalString(estimateQuery.data.incomeWhtRate)
+                : estimateQuery.data.whtType === "INCOME" && estimateQuery.data.whtRate != null
+                  ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                  : "",
+            incomeWhtBase:
+              estimateQuery.data.incomeWhtBase ??
+              (estimateQuery.data.whtType === "INCOME" ? estimateQuery.data.whtBase ?? "" : ""),
+            incomeWhtHeldBy:
+              estimateQuery.data.incomeWhtHeldBy ??
+              estimateQuery.data.whtHeldBy ??
+              "COUNTERPARTY",
+            salesTaxWhtEnabled: Boolean(
+              estimateQuery.data.salesTaxWhtEnabled ??
+                (estimateQuery.data.whtEnabled && estimateQuery.data.whtType === "SALES_TAX"),
+            ),
+            salesTaxWhtRate:
+              estimateQuery.data.salesTaxWhtRate != null
+                ? toOptionalDecimalString(estimateQuery.data.salesTaxWhtRate)
+                : estimateQuery.data.whtType === "SALES_TAX" && estimateQuery.data.whtRate != null
+                  ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                  : "",
+            salesTaxWhtBase:
+              estimateQuery.data.salesTaxWhtBase ??
+              (estimateQuery.data.whtType === "SALES_TAX" ? estimateQuery.data.whtBase ?? "" : ""),
+            salesTaxWhtHeldBy:
+              estimateQuery.data.salesTaxWhtHeldBy ??
+              estimateQuery.data.whtHeldBy ??
+              "COUNTERPARTY",
             lines:
               estimateQuery.data.lines?.map((line) => {
                 const resolvedTaxCodeId =
@@ -155,6 +187,14 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             whtRate: "",
             whtBase: "",
             whtHeldBy: "COUNTERPARTY",
+            incomeWhtEnabled: false,
+            incomeWhtRate: "",
+            incomeWhtBase: "",
+            incomeWhtHeldBy: "COUNTERPARTY",
+            salesTaxWhtEnabled: false,
+            salesTaxWhtRate: "",
+            salesTaxWhtBase: "",
+            salesTaxWhtHeldBy: "COUNTERPARTY",
             lines: [
               {
                 itemId: "",
@@ -189,10 +229,16 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
   const watchedEstimateNumber = form.watch("estimateNumber");
   const watchedDiscountType = form.watch("discountType");
   const watchedDiscountValue = form.watch("discountValue");
-  const watchedWhtEnabled = form.watch("whtEnabled");
-  const watchedWhtRate = form.watch("whtRate");
-  const watchedWhtBase = form.watch("whtBase");
+  const watchedIncomeWhtEnabled = form.watch("incomeWhtEnabled");
+  const watchedIncomeWhtRate = form.watch("incomeWhtRate");
+  const watchedIncomeWhtBase = form.watch("incomeWhtBase");
+  const watchedIncomeWhtHeldBy = form.watch("incomeWhtHeldBy");
+  const watchedSalesTaxWhtEnabled = form.watch("salesTaxWhtEnabled");
+  const watchedSalesTaxWhtRate = form.watch("salesTaxWhtRate");
+  const watchedSalesTaxWhtBase = form.watch("salesTaxWhtBase");
+  const watchedSalesTaxWhtHeldBy = form.watch("salesTaxWhtHeldBy");
   const watchedWhtHeldBy = form.watch("whtHeldBy");
+  const watchedEitherWht = Boolean(watchedIncomeWhtEnabled || watchedSalesTaxWhtEnabled);
 
   useCounterpartyCurrencyDefault({
     form,
@@ -262,33 +308,61 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
       headerDiscount = Number(watchedDiscountValue) || 0;
     }
     const adjustedTotal = subtotal - headerDiscount + tax;
-    const whtAmount = previewWhtAmount({
-      enabled: Boolean(watchedWhtEnabled),
-      rate: watchedWhtRate as string | number | null | undefined,
-      base: watchedWhtBase as string | null | undefined,
+    const incomeWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedIncomeWhtEnabled),
+      rate: watchedIncomeWhtRate as string | number | null | undefined,
+      base: watchedIncomeWhtBase as string | null | undefined,
       subtotal,
       discount: headerDiscount,
       tax,
       total: adjustedTotal,
     });
+    const salesTaxWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedSalesTaxWhtEnabled),
+      rate: watchedSalesTaxWhtRate as string | number | null | undefined,
+      base: watchedSalesTaxWhtBase as string | null | undefined,
+      subtotal,
+      discount: headerDiscount,
+      tax,
+      total: adjustedTotal,
+    });
+    const whtAmount = incomeWhtAmount + salesTaxWhtAmount;
     return {
       ...base,
       discountTotal: headerDiscount,
       total: adjustedTotal,
+      incomeWhtAmount,
+      salesTaxWhtAmount,
       whtAmount,
-      netSettlementAmount: previewNetSettlement(
-        adjustedTotal,
-        whtAmount,
-        whtSettlementAddsToCash(watchedWhtHeldBy, "invoice"),
-      ),
+      netSettlementAmount: previewDualNetSettlement(adjustedTotal, [
+        {
+          amount: incomeWhtAmount,
+          addsToCash: whtSettlementAddsToCash(
+            watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+            "invoice",
+          ),
+        },
+        {
+          amount: salesTaxWhtAmount,
+          addsToCash: whtSettlementAddsToCash(
+            watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+            "invoice",
+          ),
+        },
+      ]),
     };
   }, [
     watchedLines,
     watchedDiscountType,
     watchedDiscountValue,
-    watchedWhtEnabled,
-    watchedWhtRate,
-    watchedWhtBase,
+    watchedIncomeWhtEnabled,
+    watchedIncomeWhtRate,
+    watchedIncomeWhtBase,
+    watchedIncomeWhtHeldBy,
+    watchedSalesTaxWhtEnabled,
+    watchedSalesTaxWhtRate,
+    watchedSalesTaxWhtBase,
+    watchedSalesTaxWhtHeldBy,
     watchedWhtHeldBy,
   ]);
 
@@ -344,17 +418,42 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
               values.discountValue === undefined || values.discountValue === null || values.discountValue === ""
                 ? undefined
                 : toOptionalDecimalString(values.discountValue),
-            whtEnabled: Boolean(values.whtEnabled),
-            ...(values.whtEnabled
+            whtEnabled: Boolean(values.incomeWhtEnabled || values.salesTaxWhtEnabled),
+            incomeWhtEnabled: Boolean(values.incomeWhtEnabled),
+            salesTaxWhtEnabled: Boolean(values.salesTaxWhtEnabled),
+            ...(values.incomeWhtEnabled || values.salesTaxWhtEnabled
               ? {
-                  whtType: values.whtType as "INCOME" | "SALES_TAX",
-                  whtRate: values.whtRate ? String(values.whtRate) : undefined,
-                  whtBase: values.whtBase as
+                  whtHeldBy: (values.incomeWhtHeldBy ||
+                    values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.incomeWhtEnabled
+              ? {
+                  incomeWhtRate: values.incomeWhtRate
+                    ? toOptionalDecimalString(values.incomeWhtRate)
+                    : undefined,
+                  incomeWhtBase: values.incomeWhtBase as
                     | "SUBTOTAL"
                     | "TAXABLE"
                     | "TAX_AMOUNT"
                     | "TOTAL",
-                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                  incomeWhtHeldBy: (values.incomeWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.salesTaxWhtEnabled
+              ? {
+                  salesTaxWhtRate: values.salesTaxWhtRate
+                    ? toOptionalDecimalString(values.salesTaxWhtRate)
+                    : undefined,
+                  salesTaxWhtBase: values.salesTaxWhtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  salesTaxWhtHeldBy: (values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
                 }
               : {}),
             lines: values.lines.map((line) => {
@@ -502,12 +601,38 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             taxTotal={previewTotals.taxTotal}
             title="Provisional totals"
             total={previewTotals.total}
-            whtAmount={watchedWhtEnabled ? previewTotals.whtAmount : undefined}
+            whtAmount={watchedEitherWht ? previewTotals.whtAmount : undefined}
+            incomeWhtAmount={watchedEitherWht ? previewTotals.incomeWhtAmount : undefined}
+            salesTaxWhtAmount={watchedEitherWht ? previewTotals.salesTaxWhtAmount : undefined}
             netSettlementAmount={
-              watchedWhtEnabled ? previewTotals.netSettlementAmount : undefined
+              watchedEitherWht ? previewTotals.netSettlementAmount : undefined
             }
-            netLabel={whtNetLabel(watchedWhtHeldBy, "invoice")}
-            whtAddsToTotal={whtSettlementAddsToCash(watchedWhtHeldBy, "invoice")}
+            netLabel={whtNetLabel(
+              watchedIncomeWhtHeldBy || watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+            )}
+            whtAddsToTotal={whtSettlementAddsToCash(
+              watchedIncomeWhtHeldBy || watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+            )}
+            incomeWhtAddsToTotal={whtSettlementAddsToCash(
+              watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+            )}
+            salesTaxWhtAddsToTotal={whtSettlementAddsToCash(
+              watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+            )}
+            incomeWhtHeldByLabel={whtHeldByLabel(
+              watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
+            salesTaxWhtHeldByLabel={whtHeldByLabel(
+              watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "invoice",
+              company?.name ?? company?.legalName,
+            )}
             whtHeldByHint={whtHeldByHint(
               watchedWhtHeldBy,
               "invoice",
@@ -520,29 +645,10 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             )}
           />
           <div className="space-y-3 rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={Boolean(watchedWhtEnabled)}
-                onChange={(event) => {
-                  const enabled = event.target.checked;
-                  form.setValue("whtEnabled", enabled, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  if (enabled && !form.getValues("whtHeldBy")) {
-                    form.setValue("whtHeldBy", defaultWhtHeldBy("invoice"), {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                  }
-                }}
-              />
-              <span>Apply withholding tax</span>
-            </label>
+            <p className="text-sm font-medium">Withholding tax</p>
             <WhtSettingsFields
               companyName={company?.name ?? company?.legalName}
               documentKind="invoice"
-              enabled={Boolean(watchedWhtEnabled)}
               form={form}
             />
           </div>

@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
-import { defaultWhtHeldBy, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
+import { whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,7 +33,7 @@ import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
-import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
+import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import {
   convertBasePriceToDocumentPrice,
@@ -91,6 +91,14 @@ function buildCreateDefaults(company: ReturnType<typeof useActiveCompany>["compa
     whtRate: "",
     whtBase: "",
     whtHeldBy: "COMPANY",
+    incomeWhtEnabled: false,
+    incomeWhtRate: "",
+    incomeWhtBase: "",
+    incomeWhtHeldBy: "COMPANY",
+    salesTaxWhtEnabled: false,
+    salesTaxWhtRate: "",
+    salesTaxWhtBase: "",
+    salesTaxWhtHeldBy: "COMPANY",
     lines: [
       {
         itemId: "",
@@ -198,6 +206,29 @@ export function BillFormPage({ mode }: BillFormPageProps) {
       whtRate: bill.whtRate != null ? toOptionalDecimalString(bill.whtRate) : "",
       whtBase: bill.whtBase ?? "",
       whtHeldBy: bill.whtHeldBy ?? "COMPANY",
+      incomeWhtEnabled: Boolean(bill.incomeWhtEnabled ?? (bill.whtEnabled && bill.whtType === "INCOME")),
+      incomeWhtRate:
+        bill.incomeWhtRate != null
+          ? toOptionalDecimalString(bill.incomeWhtRate)
+          : bill.whtType === "INCOME" && bill.whtRate != null
+            ? toOptionalDecimalString(bill.whtRate)
+            : "",
+      incomeWhtBase: bill.incomeWhtBase ?? (bill.whtType === "INCOME" ? bill.whtBase ?? "" : ""),
+      incomeWhtHeldBy:
+        bill.incomeWhtHeldBy ?? bill.whtHeldBy ?? "COMPANY",
+      salesTaxWhtEnabled: Boolean(
+        bill.salesTaxWhtEnabled ?? (bill.whtEnabled && bill.whtType === "SALES_TAX"),
+      ),
+      salesTaxWhtRate:
+        bill.salesTaxWhtRate != null
+          ? toOptionalDecimalString(bill.salesTaxWhtRate)
+          : bill.whtType === "SALES_TAX" && bill.whtRate != null
+            ? toOptionalDecimalString(bill.whtRate)
+            : "",
+      salesTaxWhtBase:
+        bill.salesTaxWhtBase ?? (bill.whtType === "SALES_TAX" ? bill.whtBase ?? "" : ""),
+      salesTaxWhtHeldBy:
+        bill.salesTaxWhtHeldBy ?? bill.whtHeldBy ?? "COMPANY",
       lines:
         bill.lines?.map((line) => ({
           itemId: line.itemId ?? "",
@@ -235,12 +266,18 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const watchedIssueDate = form.watch("issueDate");
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
-  const watchedWhtEnabled = form.watch("whtEnabled");
-  const watchedWhtRate = form.watch("whtRate");
-  const watchedWhtBase = form.watch("whtBase");
+  const watchedIncomeWhtEnabled = form.watch("incomeWhtEnabled");
+  const watchedIncomeWhtRate = form.watch("incomeWhtRate");
+  const watchedIncomeWhtBase = form.watch("incomeWhtBase");
+  const watchedIncomeWhtHeldBy = form.watch("incomeWhtHeldBy");
+  const watchedSalesTaxWhtEnabled = form.watch("salesTaxWhtEnabled");
+  const watchedSalesTaxWhtRate = form.watch("salesTaxWhtRate");
+  const watchedSalesTaxWhtBase = form.watch("salesTaxWhtBase");
+  const watchedSalesTaxWhtHeldBy = form.watch("salesTaxWhtHeldBy");
   const watchedWhtHeldBy = form.watch("whtHeldBy");
   const watchedDiscountType = form.watch("discountType");
   const watchedDiscountValue = form.watch("discountValue");
+  const watchedEitherWht = Boolean(watchedIncomeWhtEnabled || watchedSalesTaxWhtEnabled);
 
   const getVendorPaymentTermsDays = (vendorId: string) => {
     const vendor = (vendorsQuery.data ?? []).find((row) => row.id === vendorId);
@@ -346,33 +383,61 @@ export function BillFormPage({ mode }: BillFormPageProps) {
       headerDiscount = Number(watchedDiscountValue) || 0;
     }
     const adjustedTotal = subtotal - headerDiscount + tax;
-    const whtAmount = previewWhtAmount({
-      enabled: Boolean(watchedWhtEnabled),
-      rate: watchedWhtRate as string | number | null | undefined,
-      base: watchedWhtBase as string | null | undefined,
+    const incomeWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedIncomeWhtEnabled),
+      rate: watchedIncomeWhtRate as string | number | null | undefined,
+      base: watchedIncomeWhtBase as string | null | undefined,
       subtotal,
       discount: headerDiscount,
       tax,
       total: adjustedTotal,
     });
+    const salesTaxWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedSalesTaxWhtEnabled),
+      rate: watchedSalesTaxWhtRate as string | number | null | undefined,
+      base: watchedSalesTaxWhtBase as string | null | undefined,
+      subtotal,
+      discount: headerDiscount,
+      tax,
+      total: adjustedTotal,
+    });
+    const whtAmount = incomeWhtAmount + salesTaxWhtAmount;
     return {
       ...base,
       discountTotal: String(headerDiscount),
       total: String(adjustedTotal),
+      incomeWhtAmount: String(incomeWhtAmount),
+      salesTaxWhtAmount: String(salesTaxWhtAmount),
       whtAmount: String(whtAmount),
       netSettlementAmount: String(
-        previewNetSettlement(
-          adjustedTotal,
-          whtAmount,
-          whtSettlementAddsToCash(watchedWhtHeldBy, "bill"),
-        ),
+        previewDualNetSettlement(adjustedTotal, [
+          {
+            amount: incomeWhtAmount,
+            addsToCash: whtSettlementAddsToCash(
+              watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            ),
+          },
+          {
+            amount: salesTaxWhtAmount,
+            addsToCash: whtSettlementAddsToCash(
+              watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            ),
+          },
+        ]),
       ),
     };
   }, [
     watchedLines,
-    watchedWhtEnabled,
-    watchedWhtRate,
-    watchedWhtBase,
+    watchedIncomeWhtEnabled,
+    watchedIncomeWhtRate,
+    watchedIncomeWhtBase,
+    watchedIncomeWhtHeldBy,
+    watchedSalesTaxWhtEnabled,
+    watchedSalesTaxWhtRate,
+    watchedSalesTaxWhtBase,
+    watchedSalesTaxWhtHeldBy,
     watchedWhtHeldBy,
     watchedDiscountType,
     watchedDiscountValue,
@@ -472,19 +537,42 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             discountValue: values.discountValue
               ? toOptionalDecimalString(values.discountValue)
               : undefined,
-            whtEnabled: Boolean(values.whtEnabled),
-            ...(values.whtEnabled
+            whtEnabled: Boolean(values.incomeWhtEnabled || values.salesTaxWhtEnabled),
+            incomeWhtEnabled: Boolean(values.incomeWhtEnabled),
+            salesTaxWhtEnabled: Boolean(values.salesTaxWhtEnabled),
+            ...(values.incomeWhtEnabled || values.salesTaxWhtEnabled
               ? {
-                  whtType: values.whtType as "INCOME" | "SALES_TAX",
-                  whtRate: values.whtRate
-                    ? toOptionalDecimalString(values.whtRate)
+                  whtHeldBy: (values.incomeWhtHeldBy ||
+                    values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.incomeWhtEnabled
+              ? {
+                  incomeWhtRate: values.incomeWhtRate
+                    ? toOptionalDecimalString(values.incomeWhtRate)
                     : undefined,
-                  whtBase: values.whtBase as
+                  incomeWhtBase: values.incomeWhtBase as
                     | "SUBTOTAL"
                     | "TAXABLE"
                     | "TAX_AMOUNT"
                     | "TOTAL",
-                  whtHeldBy: values.whtHeldBy as "COMPANY" | "COUNTERPARTY",
+                  incomeWhtHeldBy: (values.incomeWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
+                }
+              : {}),
+            ...(values.salesTaxWhtEnabled
+              ? {
+                  salesTaxWhtRate: values.salesTaxWhtRate
+                    ? toOptionalDecimalString(values.salesTaxWhtRate)
+                    : undefined,
+                  salesTaxWhtBase: values.salesTaxWhtBase as
+                    | "SUBTOTAL"
+                    | "TAXABLE"
+                    | "TAX_AMOUNT"
+                    | "TOTAL",
+                  salesTaxWhtHeldBy: (values.salesTaxWhtHeldBy ||
+                    values.whtHeldBy) as "COMPANY" | "COUNTERPARTY",
                 }
               : {}),
             lines: values.lines.map((line) => ({
@@ -582,37 +670,44 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             taxTotal={previewTotals.taxTotal}
             title="Provisional totals"
             total={previewTotals.total}
-            whtAmount={watchedWhtEnabled ? previewTotals.whtAmount : undefined}
+            whtAmount={watchedEitherWht ? previewTotals.whtAmount : undefined}
+            incomeWhtAmount={watchedEitherWht ? previewTotals.incomeWhtAmount : undefined}
+            salesTaxWhtAmount={watchedEitherWht ? previewTotals.salesTaxWhtAmount : undefined}
             netSettlementAmount={
-              watchedWhtEnabled ? previewTotals.netSettlementAmount : undefined
+              watchedEitherWht ? previewTotals.netSettlementAmount : undefined
             }
-            netLabel={whtNetLabel(watchedWhtHeldBy, "bill")}
-            whtAddsToTotal={whtSettlementAddsToCash(watchedWhtHeldBy, "bill")}
+            netLabel={whtNetLabel(
+              watchedIncomeWhtHeldBy || watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            )}
+            whtAddsToTotal={whtSettlementAddsToCash(
+              watchedIncomeWhtHeldBy || watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            )}
+            incomeWhtAddsToTotal={whtSettlementAddsToCash(
+              watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            )}
+            salesTaxWhtAddsToTotal={whtSettlementAddsToCash(
+              watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+            )}
+            incomeWhtHeldByLabel={whtHeldByLabel(
+              watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
+            salesTaxWhtHeldByLabel={whtHeldByLabel(
+              watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
           />
           <div className="space-y-3 rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={Boolean(watchedWhtEnabled)}
-                onChange={(event) => {
-                  const enabled = event.target.checked;
-                  form.setValue("whtEnabled", enabled, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  if (enabled && !form.getValues("whtHeldBy")) {
-                    form.setValue("whtHeldBy", defaultWhtHeldBy("bill"), {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                  }
-                }}
-              />
-              <span>Apply withholding tax</span>
-            </label>
+            <p className="text-sm font-medium">Withholding tax</p>
             <WhtSettingsFields
               companyName={company?.name ?? company?.legalName}
               documentKind="bill"
-              enabled={Boolean(watchedWhtEnabled)}
               form={form}
             />
           </div>
@@ -767,7 +862,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
-            hsCode: values.hsCode,
+            hsCodeCategoryId: values.hsCodeCategoryId || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

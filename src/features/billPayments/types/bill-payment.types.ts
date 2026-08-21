@@ -47,6 +47,10 @@ export interface BillPaymentPayload {
   exchangeRate?: string;
   amount: string;
   notes?: string;
+  allocations?: Array<{
+    billId: string;
+    amount: string;
+  }>;
 }
 
 export interface BillPaymentAllocationPayload {

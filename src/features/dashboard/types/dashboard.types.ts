@@ -82,6 +82,20 @@ export interface DashboardOverview {
     accountsPayable: DashboardSparklinePoint[];
   };
   counts: DashboardSummarySet;
+  inventoryShortages?: {
+    count: number;
+    totalQuantity: string | number;
+    items: Array<{
+      id: string;
+      itemId: string;
+      itemName: string;
+      itemCode?: string | null;
+      quantity: string | number;
+      unitCostAtSale: string | number;
+      notes?: string | null;
+      createdAt?: string;
+    }>;
+  };
 }
 
 export interface DashboardQueryParams {

@@ -8,13 +8,19 @@ interface DocumentTotalsCardProps {
   discountTotal?: number | string | null;
   taxTotal?: number | string | null;
   total?: number | string | null;
-    whtAmount?: number | string | null;
+  whtAmount?: number | string | null;
+  incomeWhtAmount?: number | string | null;
+  salesTaxWhtAmount?: number | string | null;
   whtSettledAmount?: number | string | null;
   netSettlementAmount?: number | string | null;
   netLabel?: string;
   whtHeldByLabel?: string;
   whtHeldByHint?: string;
+  incomeWhtHeldByLabel?: string;
+  salesTaxWhtHeldByLabel?: string;
   whtAddsToTotal?: boolean;
+  incomeWhtAddsToTotal?: boolean;
+  salesTaxWhtAddsToTotal?: boolean;
   title?: string;
 }
 
@@ -26,19 +32,30 @@ export function DocumentTotalsCard({
   taxTotal,
   total,
   whtAmount,
+  incomeWhtAmount,
+  salesTaxWhtAmount,
   whtSettledAmount,
   netSettlementAmount,
   netLabel = "Net settlement",
   whtHeldByLabel,
   whtHeldByHint,
+  incomeWhtHeldByLabel,
+  salesTaxWhtHeldByLabel,
   whtAddsToTotal = false,
+  incomeWhtAddsToTotal,
+  salesTaxWhtAddsToTotal,
   title = "Totals",
 }: DocumentTotalsCardProps) {
   const currency = currencyCode ?? fallbackCurrency ?? "USD";
-  const showWht =
-    whtAmount != null &&
-    whtAmount !== "" &&
-    Number(whtAmount) > 0;
+  const incomeAmt = Number(incomeWhtAmount ?? 0);
+  const salesAmt = Number(salesTaxWhtAmount ?? 0);
+  const combinedFromSlots = incomeAmt + salesAmt;
+  const effectiveWht =
+    combinedFromSlots > 0 ? combinedFromSlots : Number(whtAmount ?? 0);
+  const showWht = effectiveWht > 0;
+  const showDual = incomeAmt > 0 || salesAmt > 0;
+  const incomeAdds = incomeWhtAddsToTotal ?? whtAddsToTotal;
+  const salesAdds = salesTaxWhtAddsToTotal ?? whtAddsToTotal;
   const showWhtSettled =
     showWht &&
     whtSettledAmount != null &&
@@ -46,7 +63,7 @@ export function DocumentTotalsCard({
     Number(whtSettledAmount) >= 0;
   const whtOutstanding =
     showWhtSettled && showWht
-      ? Math.max(Number(whtAmount) - Number(whtSettledAmount), 0)
+      ? Math.max(effectiveWht - Number(whtSettledAmount), 0)
       : null;
 
   return (
@@ -71,21 +88,63 @@ export function DocumentTotalsCard({
         </div>
         {showWht ? (
           <>
-            <div className="flex items-center justify-between gap-4">
-              <dt className="inline-flex items-center gap-1 text-muted-foreground">
-                Withholding tax
-                {whtHeldByLabel ? (
-                  <>
-                    <span className="text-xs">({whtHeldByLabel})</span>
-                    {whtHeldByHint ? <FieldHint text={whtHeldByHint} /> : null}
-                  </>
+            {showDual ? (
+              <>
+                {incomeAmt > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">
+                      Income tax WHT
+                      {incomeWhtHeldByLabel ? (
+                        <span className="ml-1 text-xs">({incomeWhtHeldByLabel})</span>
+                      ) : null}
+                    </dt>
+                    <dd className="text-right tabular-nums">
+                      {incomeAdds ? "+" : "-"}
+                      {formatCurrency(incomeAmt, currency)}
+                    </dd>
+                  </div>
                 ) : null}
-              </dt>
-              <dd className="text-right tabular-nums">
-                {whtAddsToTotal ? "+" : "-"}
-                {formatCurrency(whtAmount ?? 0, currency)}
-              </dd>
-            </div>
+                {salesAmt > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">
+                      Sales tax WHT
+                      {salesTaxWhtHeldByLabel ? (
+                        <span className="ml-1 text-xs">({salesTaxWhtHeldByLabel})</span>
+                      ) : null}
+                    </dt>
+                    <dd className="text-right tabular-nums">
+                      {salesAdds ? "+" : "-"}
+                      {formatCurrency(salesAmt, currency)}
+                    </dd>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <dt className="inline-flex items-center gap-1 text-muted-foreground">
+                  Withholding tax
+                  {whtHeldByLabel ? (
+                    <>
+                      <span className="text-xs">({whtHeldByLabel})</span>
+                      {whtHeldByHint ? <FieldHint text={whtHeldByHint} /> : null}
+                    </>
+                  ) : null}
+                </dt>
+                <dd className="text-right tabular-nums">
+                  {whtAddsToTotal ? "+" : "-"}
+                  {formatCurrency(effectiveWht, currency)}
+                </dd>
+              </div>
+            )}
+            {showDual && !incomeWhtHeldByLabel && !salesTaxWhtHeldByLabel && whtHeldByLabel ? (
+              <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                <dt className="inline-flex items-center gap-1">
+                  Holder
+                  {whtHeldByHint ? <FieldHint text={whtHeldByHint} /> : null}
+                </dt>
+                <dd>{whtHeldByLabel}</dd>
+              </div>
+            ) : null}
             {showWhtSettled ? (
               <>
                 <div className="flex items-center justify-between gap-4">

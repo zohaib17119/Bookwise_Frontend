@@ -83,21 +83,32 @@ export function JournalsPage() {
       render: (entry) => <JournalStatusBadge status={entry.status} />,
     },
     {
-      key: "totals",
-      header: "Debit / Credit",
+      key: "debit",
+      header: "Debit",
+      className: "text-right",
       render: (entry) => {
         const debitTotal = (entry.lines ?? []).reduce(
           (sum, line) => sum + parseMoney(line.debitAmount),
           0,
         );
+        return (
+          <div className="text-right tabular-nums text-sm">
+            {formatCurrency(debitTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
+          </div>
+        );
+      },
+    },
+    {
+      key: "credit",
+      header: "Credit",
+      className: "text-right",
+      render: (entry) => {
         const creditTotal = (entry.lines ?? []).reduce(
           (sum, line) => sum + parseMoney(line.creditAmount),
           0,
         );
-
         return (
-          <div className="text-sm">
-            {formatCurrency(debitTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")} /{" "}
+          <div className="text-right tabular-nums text-sm">
             {formatCurrency(creditTotal, company?.baseCurrencyCode ?? company?.currencyCode ?? "USD")}
           </div>
         );

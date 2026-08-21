@@ -52,6 +52,34 @@ function serializeBillPayload(payload: BillPayload): BillPayload {
         : undefined,
       whtBase: payload.whtEnabled ? payload.whtBase || undefined : undefined,
       whtHeldBy: payload.whtEnabled ? payload.whtHeldBy || undefined : undefined,
+      incomeWhtEnabled:
+        payload.incomeWhtEnabled === true
+          ? true
+          : payload.incomeWhtEnabled === false
+            ? false
+            : undefined,
+      incomeWhtRate: payload.incomeWhtEnabled && payload.incomeWhtRate
+        ? toOptionalDecimalString(payload.incomeWhtRate)
+        : undefined,
+      incomeWhtBase: payload.incomeWhtEnabled ? payload.incomeWhtBase || undefined : undefined,
+      incomeWhtHeldBy: payload.incomeWhtEnabled
+        ? payload.incomeWhtHeldBy || payload.whtHeldBy || undefined
+        : undefined,
+      salesTaxWhtEnabled:
+        payload.salesTaxWhtEnabled === true
+          ? true
+          : payload.salesTaxWhtEnabled === false
+            ? false
+            : undefined,
+      salesTaxWhtRate: payload.salesTaxWhtEnabled && payload.salesTaxWhtRate
+        ? toOptionalDecimalString(payload.salesTaxWhtRate)
+        : undefined,
+      salesTaxWhtBase: payload.salesTaxWhtEnabled
+        ? payload.salesTaxWhtBase || undefined
+        : undefined,
+      salesTaxWhtHeldBy: payload.salesTaxWhtEnabled
+        ? payload.salesTaxWhtHeldBy || payload.whtHeldBy || undefined
+        : undefined,
     }),
     lines: payload.lines.map(serializeBillLine),
   };

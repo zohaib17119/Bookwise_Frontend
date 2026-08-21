@@ -1,5 +1,6 @@
 import { AlertTriangle, Send } from "lucide-react";
 import type { ReactNode } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useSubmitLock } from "@/hooks/use-submit-lock";
 import { cn } from "@/lib/utils/cn";
@@ -14,6 +15,7 @@ interface ConfirmDialogProps {
   cancelLabel?: string;
   tone?: ConfirmTone;
   isPending?: boolean;
+  errorMessage?: string | null;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
 }
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancel",
   tone = "default",
   isPending = false,
+  errorMessage = null,
   onClose,
   onConfirm,
 }: ConfirmDialogProps) {
@@ -61,9 +64,14 @@ export function ConfirmDialog({
             >
               {isDestructive ? <AlertTriangle className="h-5 w-5" /> : <Send className="h-5 w-5" />}
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <h3 className="text-lg font-semibold">{title}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+              <div className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{description}</div>
+              {errorMessage ? (
+                <div className="mt-3">
+                  <Alert title={errorMessage} variant="destructive" />
+                </div>
+              ) : null}
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">

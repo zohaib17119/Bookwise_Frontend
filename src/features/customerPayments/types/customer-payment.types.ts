@@ -48,6 +48,10 @@ export interface CustomerPaymentPayload {
   exchangeRate?: string;
   amount: string;
   notes?: string;
+  allocations?: Array<{
+    invoiceId: string;
+    amount: string;
+  }>;
 }
 
 export interface CustomerPaymentAllocationPayload {

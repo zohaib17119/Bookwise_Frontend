@@ -66,6 +66,9 @@ export interface Bill {
     | null;
   paymentStatus?: BillPaymentStatus | null;
   total?: string | null;
+  subtotal?: string | null;
+  taxAmount?: string | null;
+  taxRateDisplay?: string | null;
   amountPaid?: number | null;
   amountDue?: number | null;
   whtEnabled?: boolean | null;
@@ -77,6 +80,20 @@ export interface Bill {
   whtAmountBase?: string | null;
   netSettlementAmount?: string | null;
   whtSettledAmount?: string | null;
+  incomeWhtEnabled?: boolean | null;
+  incomeWhtRate?: string | null;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  incomeWhtAmount?: string | null;
+  incomeWhtAmountBase?: string | null;
+  incomeWhtSettledAmount?: string | null;
+  salesTaxWhtEnabled?: boolean | null;
+  salesTaxWhtRate?: string | null;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  salesTaxWhtAmount?: string | null;
+  salesTaxWhtAmountBase?: string | null;
+  salesTaxWhtSettledAmount?: string | null;
   lines: BillLine[];
   totals?: DocumentTotals | null;
 }
@@ -102,5 +119,13 @@ export interface BillPayload {
   whtRate?: string;
   whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
   whtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  incomeWhtEnabled?: boolean;
+  incomeWhtRate?: string;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  salesTaxWhtEnabled?: boolean;
+  salesTaxWhtRate?: string;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: BillLine[];
 }

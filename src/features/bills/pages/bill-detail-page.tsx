@@ -27,6 +27,43 @@ import {
 } from "@/features/bills/hooks/use-bills";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { formatDate } from "@/lib/utils/format";
+import { parseMoney } from "@/lib/utils/money";
+
+function buildBillVoidWarning(bill: {
+  amountPaid?: string | number | null;
+  whtEnabled?: boolean | null;
+  whtSettledAmount?: string | number | null;
+  goodsStatus?: string | null;
+  lines?: Array<{ quantityReceived?: string | null }>;
+}) {
+  const lines: string[] = [
+    "This will reverse:",
+    "• Accounts payable / bill journals (and hide balancing reversals from tax KPIs)",
+  ];
+
+  const receivedQty = (bill.lines ?? []).reduce(
+    (sum, line) => sum + Number(line.quantityReceived ?? 0),
+    0,
+  );
+  if (receivedQty > 0 || bill.goodsStatus === "RECEIVED" || bill.goodsStatus === "PARTIALLY_RECEIVED") {
+    lines.push(
+      "• Goods receipt stock/batches (sold qty moves to other FIFO layers when possible; otherwise a sold-without-inventory warning is recorded)",
+    );
+  }
+
+  if (bill.whtEnabled && parseMoney(bill.whtSettledAmount ?? 0) > 0) {
+    lines.push("• Withholding tax settlement journals for this bill’s payment allocations");
+  }
+
+  if (parseMoney(bill.amountPaid ?? 0) > 0) {
+    lines.push(
+      "• This bill’s payment allocation only (cash stays paid; leftover becomes unapplied on the payment; other bills on the same payment stay allocated)",
+    );
+  }
+
+  lines.push("The bill-payment bank journal is not reversed.");
+  return lines.join("\n");
+}
 
 export function BillDetailPage() {
   const navigate = useNavigate();
@@ -179,14 +216,40 @@ export function BillDetailPage() {
             taxTotal={bill.totals?.taxTotal}
             total={bill.totals?.total}
             whtAmount={bill.whtEnabled ? bill.whtAmount ?? bill.totals?.whtAmount : undefined}
+            incomeWhtAmount={bill.incomeWhtAmount ?? undefined}
+            salesTaxWhtAmount={bill.salesTaxWhtAmount ?? undefined}
             whtSettledAmount={bill.whtEnabled ? bill.whtSettledAmount : undefined}
             netSettlementAmount={
               bill.whtEnabled
                 ? bill.netSettlementAmount ?? bill.totals?.netSettlementAmount
                 : undefined
             }
-            netLabel={whtNetLabel(bill.whtHeldBy, "bill")}
-            whtAddsToTotal={whtSettlementAddsToCash(bill.whtHeldBy, "bill")}
+            netLabel={whtNetLabel(
+              bill.incomeWhtHeldBy ?? bill.salesTaxWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+            )}
+            whtAddsToTotal={whtSettlementAddsToCash(
+              bill.incomeWhtHeldBy ?? bill.salesTaxWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+            )}
+            incomeWhtAddsToTotal={whtSettlementAddsToCash(
+              bill.incomeWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+            )}
+            salesTaxWhtAddsToTotal={whtSettlementAddsToCash(
+              bill.salesTaxWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+            )}
+            incomeWhtHeldByLabel={whtHeldByLabel(
+              bill.incomeWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
+            salesTaxWhtHeldByLabel={whtHeldByLabel(
+              bill.salesTaxWhtHeldBy ?? bill.whtHeldBy,
+              "bill",
+              company?.name ?? company?.legalName,
+            )}
             whtHeldByHint={whtHeldByHint(
               bill.whtHeldBy,
               "bill",
@@ -206,6 +269,7 @@ export function BillDetailPage() {
       <ConfirmDialog
         confirmLabel="Issue bill"
         description="Posts accounts payable (and purchases clearing for inventory lines). Stock quantity increases only when you Receive goods."
+        errorMessage={issueMutation.error?.message}
         isPending={issueMutation.isPending}
         onClose={() => {
           setIssueOpen(false);
@@ -213,6 +277,7 @@ export function BillDetailPage() {
         }}
         onConfirm={async () => {
           await issueMutation.mutateAsync(bill.id);
+          issueMutation.reset();
           setIssueOpen(false);
         }}
         open={issueOpen}
@@ -222,6 +287,7 @@ export function BillDetailPage() {
       <ConfirmDialog
         confirmLabel="Receive goods"
         description="Creates inventory batches and stock quantity for outstanding inventory lines, and reclasses Purchases Clearing to Inventory Asset."
+        errorMessage={receiveMutation.error?.message}
         isPending={receiveMutation.isPending}
         onClose={() => {
           setReceiveOpen(false);
@@ -229,6 +295,7 @@ export function BillDetailPage() {
         }}
         onConfirm={async () => {
           await receiveMutation.mutateAsync({ billId: bill.id });
+          receiveMutation.reset();
           setReceiveOpen(false);
         }}
         open={receiveOpen}
@@ -237,7 +304,8 @@ export function BillDetailPage() {
 
       <ConfirmDialog
         confirmLabel="Void bill"
-        description="Reverses goods receipt (if any) and the bill journal. Payments must be unallocated first. Cannot void if received stock was already sold."
+        description={buildBillVoidWarning(bill)}
+        errorMessage={voidMutation.error?.message}
         isPending={voidMutation.isPending}
         onClose={() => {
           setVoidOpen(false);
@@ -245,17 +313,19 @@ export function BillDetailPage() {
         }}
         onConfirm={async () => {
           await voidMutation.mutateAsync(bill.id);
+          voidMutation.reset();
           setVoidOpen(false);
         }}
         open={voidOpen}
         title="Void this bill?"
+        tone="destructive"
       />
 
       <ConfirmDeleteDialog
         description={
           bill.status === "DRAFT"
             ? "This will cancel the draft bill."
-            : "Issued bills are voided (journals and stock reversed when possible)."
+            : buildBillVoidWarning(bill)
         }
         isPending={deleteMutation.isPending}
         onClose={() => {

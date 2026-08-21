@@ -24,6 +24,7 @@ import {
   useUpdateItem,
 } from "@/features/items/hooks/use-items";
 import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import { ItemsModuleNav } from "@/features/items/components/items-module-nav";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
@@ -225,6 +226,8 @@ export function ItemsPage() {
         }
         title="Items & Services"
         toolbar={
+          <div className="space-y-3">
+            <ItemsModuleNav />
           <FilterBar>
             <SearchInput
               onChange={(value) => {
@@ -278,6 +281,7 @@ export function ItemsPage() {
               Track quantity
             </label>
           </FilterBar>
+          </div>
         }
       />
 
@@ -301,7 +305,7 @@ export function ItemsPage() {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
-            hsCode: values.hsCode,
+            hsCodeCategoryId: values.hsCodeCategoryId || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

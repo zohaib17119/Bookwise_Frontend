@@ -42,6 +42,18 @@ export interface Estimate {
   whtAmount?: string | null;
   whtAmountBase?: string | null;
   netSettlementAmount?: string | null;
+  incomeWhtEnabled?: boolean | null;
+  incomeWhtRate?: string | null;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  incomeWhtAmount?: string | null;
+  incomeWhtAmountBase?: string | null;
+  salesTaxWhtEnabled?: boolean | null;
+  salesTaxWhtRate?: string | null;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  salesTaxWhtAmount?: string | null;
+  salesTaxWhtAmountBase?: string | null;
   lines: EstimateLine[];
   totals?: DocumentTotals | null;
 }
@@ -75,5 +87,13 @@ export interface EstimatePayload {
   whtRate?: string;
   whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
   whtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  incomeWhtEnabled?: boolean;
+  incomeWhtRate?: string;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  salesTaxWhtEnabled?: boolean;
+  salesTaxWhtRate?: string;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: EstimateLine[];
 }

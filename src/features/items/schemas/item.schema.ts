@@ -11,7 +11,7 @@ export const itemSchema = z.object({
   sku: optionalString,
   barcode: optionalString,
   unitName: optionalString,
-  hsCode: z.string().min(1, "HS code is required"),
+  hsCodeCategoryId: optionalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,
   incomeAccountId: optionalString,

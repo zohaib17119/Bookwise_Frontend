@@ -82,3 +82,22 @@ export async function allocateBillPayment(
   );
   return data;
 }
+
+export async function unallocateBillPayment(paymentId: string, billId: string) {
+  const { data } = await apiClient.post<BillPayment>(`/bill-payments/${paymentId}/unallocate`, {
+    billId,
+  });
+  return data;
+}
+
+export async function updateBillPayment(
+  companyId: string,
+  paymentId: string,
+  payload: { amount: string },
+) {
+  const { data } = await apiClient.patch<BillPayment>(
+    `/companies/${companyId}/bill-payments/${paymentId}`,
+    { amount: serializeMoneyField(payload.amount) },
+  );
+  return data;
+}

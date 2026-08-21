@@ -75,6 +75,9 @@ export interface Invoice {
   qrPayload?: string | null;
   complianceLastError?: string | null;
   total?: string | null;
+  subtotal?: string | null;
+  taxAmount?: string | null;
+  taxRateDisplay?: string | null;
   amountPaid?: string | null;
   amountDue?: string | null;
   whtEnabled?: boolean | null;
@@ -86,6 +89,20 @@ export interface Invoice {
   whtAmountBase?: string | null;
   netSettlementAmount?: string | null;
   whtSettledAmount?: string | null;
+  incomeWhtEnabled?: boolean | null;
+  incomeWhtRate?: string | null;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  incomeWhtAmount?: string | null;
+  incomeWhtAmountBase?: string | null;
+  incomeWhtSettledAmount?: string | null;
+  salesTaxWhtEnabled?: boolean | null;
+  salesTaxWhtRate?: string | null;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY" | null;
+  salesTaxWhtAmount?: string | null;
+  salesTaxWhtAmountBase?: string | null;
+  salesTaxWhtSettledAmount?: string | null;
   lines: InvoiceLine[];
   totals?: DocumentTotals | null;
 }
@@ -120,5 +137,13 @@ export interface InvoicePayload {
   whtRate?: string;
   whtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
   whtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  incomeWhtEnabled?: boolean;
+  incomeWhtRate?: string;
+  incomeWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  incomeWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
+  salesTaxWhtEnabled?: boolean;
+  salesTaxWhtRate?: string;
+  salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL";
+  salesTaxWhtHeldBy?: "COMPANY" | "COUNTERPARTY";
   lines: InvoiceLine[];
 }

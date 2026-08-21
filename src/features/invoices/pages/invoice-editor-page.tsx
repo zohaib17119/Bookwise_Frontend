@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useCallback, useRef } from "react";
+import { useEffect, useMemo, useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { Controller, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Alert } from "@/components/ui/alert";
 import { WhtSettingsFields } from "@/features/shared/components/wht-settings-fields";
-import { defaultWhtHeldBy, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
+import { whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
@@ -13,8 +14,10 @@ import { DocumentCurrencyFields } from "@/components/documents/document-currency
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
-import { previewNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
+import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
+import { exclToIncl, inclToExcl } from "@/features/shared/utils/document-calculations";
+import { toDecimalString } from "@/features/shared/utils/decimal-string";
 
 const DOCUMENT_TERMS_DAYS = [0, 15, 30, 45, 60, 90] as const;
 
@@ -37,6 +40,7 @@ export default function InvoiceEditorPage({
   mode,
   companyId,
   onCreateCustomer,
+  submitError,
 }: {
   company: any;
   form: any;
@@ -49,6 +53,7 @@ export default function InvoiceEditorPage({
   mode: "create" | "edit";
   companyId: string;
   onCreateCustomer?: () => void;
+  submitError?: { message: string } | null;
 }) {
   const watchedCustomerId = form.watch("customerId");
   const watchedCurrencyCode = form.watch("currencyCode");
@@ -58,12 +63,30 @@ export default function InvoiceEditorPage({
   const watchedIssueDate = form.watch("issueDate");
   const watchedDiscountType = form.watch("discountType");
   const watchedDiscountValue = form.watch("discountValue");
-  const watchedWhtEnabled = form.watch("whtEnabled");
-  const watchedWhtType = form.watch("whtType");
-  const watchedWhtRate = form.watch("whtRate");
-  const watchedWhtBase = form.watch("whtBase");
+  const watchedIncomeWhtEnabled = form.watch("incomeWhtEnabled");
+  const watchedIncomeWhtRate = form.watch("incomeWhtRate");
+  const watchedIncomeWhtBase = form.watch("incomeWhtBase");
+  const watchedIncomeWhtHeldBy = form.watch("incomeWhtHeldBy");
+  const watchedSalesTaxWhtEnabled = form.watch("salesTaxWhtEnabled");
+  const watchedSalesTaxWhtRate = form.watch("salesTaxWhtRate");
+  const watchedSalesTaxWhtBase = form.watch("salesTaxWhtBase");
+  const watchedSalesTaxWhtHeldBy = form.watch("salesTaxWhtHeldBy");
   const watchedWhtHeldBy = form.watch("whtHeldBy");
+  const watchedEitherWht = Boolean(watchedIncomeWhtEnabled || watchedSalesTaxWhtEnabled);
   const setLineValueOptions = { shouldDirty: true, shouldValidate: true } as const;
+  const [editingUnitInclLineIndex, setEditingUnitInclLineIndex] = useState<number | null>(null);
+  const [unitInclDraftByLine, setUnitInclDraftByLine] = useState<Record<number, string>>({});
+
+  const handleUnitInclusiveChange = useCallback(
+    (index: number, rawValue: string, taxPercent: number) => {
+      setUnitInclDraftByLine((current) => ({ ...current, [index]: rawValue }));
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed) || rawValue.trim() === "") return;
+      const unitEx = inclToExcl(parsed, taxPercent);
+      form.setValue(`lines.${index}.unitPrice`, toDecimalString(unitEx), setLineValueOptions);
+    },
+    [form],
+  );
 
   // Get item details by ID
   const getItemById = useCallback((itemId: string) => {
@@ -150,26 +173,49 @@ export default function InvoiceEditorPage({
     }
 
     const total = subtotal - discountAmount + totalTax;
-    const whtAmount = previewWhtAmount({
-      enabled: Boolean(watchedWhtEnabled),
-      rate: watchedWhtRate,
-      base: watchedWhtBase,
+    const incomeWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedIncomeWhtEnabled),
+      rate: watchedIncomeWhtRate,
+      base: watchedIncomeWhtBase,
       subtotal,
       discount: discountAmount,
       tax: totalTax,
       total,
     });
-    const netSettlement = previewNetSettlement(
+    const salesTaxWhtAmount = previewWhtAmount({
+      enabled: Boolean(watchedSalesTaxWhtEnabled),
+      rate: watchedSalesTaxWhtRate,
+      base: watchedSalesTaxWhtBase,
+      subtotal,
+      discount: discountAmount,
+      tax: totalTax,
       total,
-      whtAmount,
-      whtSettlementAddsToCash(watchedWhtHeldBy, "invoice"),
-    );
+    });
+    const whtAmount = incomeWhtAmount + salesTaxWhtAmount;
+    const netSettlement = previewDualNetSettlement(total, [
+      {
+        amount: incomeWhtAmount,
+        addsToCash: whtSettlementAddsToCash(
+          watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+          "invoice",
+        ),
+      },
+      {
+        amount: salesTaxWhtAmount,
+        addsToCash: whtSettlementAddsToCash(
+          watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+          "invoice",
+        ),
+      },
+    ]);
 
     return {
       subtotal: formatMoneyAmount(subtotal),
       discount: formatMoneyAmount(discountAmount),
       tax: formatMoneyAmount(totalTax),
       total: formatMoneyAmount(total),
+      incomeWhtAmount: formatMoneyAmount(incomeWhtAmount),
+      salesTaxWhtAmount: formatMoneyAmount(salesTaxWhtAmount),
       whtAmount: formatMoneyAmount(whtAmount),
       netSettlement: formatMoneyAmount(netSettlement),
     };
@@ -177,9 +223,14 @@ export default function InvoiceEditorPage({
     watchedLines,
     watchedDiscountType,
     watchedDiscountValue,
-    watchedWhtEnabled,
-    watchedWhtRate,
-    watchedWhtBase,
+    watchedIncomeWhtEnabled,
+    watchedIncomeWhtRate,
+    watchedIncomeWhtBase,
+    watchedIncomeWhtHeldBy,
+    watchedSalesTaxWhtEnabled,
+    watchedSalesTaxWhtRate,
+    watchedSalesTaxWhtBase,
+    watchedSalesTaxWhtHeldBy,
     watchedWhtHeldBy,
     getTaxRateFromCode,
   ]);
@@ -496,19 +547,26 @@ export default function InvoiceEditorPage({
                 <th className="border p-2">Product / Service</th>
                 <th className="border p-2">Description</th>
                 <th className="border p-2 w-24">Qty</th>
-                <th className="border p-2 w-32">Rate</th>
+                <th className="border p-2 w-32">Rate (ex-tax)</th>
+                <th className="border p-2 w-32">Rate (incl. tax)</th>
                 <th className="border p-2 w-32">Tax</th>
-                <th className="border p-2 w-32">Amount</th>
+                <th className="border p-2 w-28 text-right">Line (ex-tax)</th>
+                <th className="border p-2 w-28 text-right">Line (incl. tax)</th>
                 <th className="border p-2 w-16"></th>
               </tr>
             </thead>
 
             <tbody>
               {watchedLines.map((line: any, index: number) => {
-                const lineTaxRate = line.taxRateId ? getTaxRateFromCode(line.taxRateId) : Number(line.taxRate || 0);
-                const lineAmount = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
-                const lineTaxAmount = lineAmount * (lineTaxRate / 100);
-                
+                const lineTaxRate = line.taxRateId
+                  ? getTaxRateFromCode(line.taxRateId)
+                  : Number(line.taxRate || 0);
+                const unitEx = Number(line.unitPrice) || 0;
+                const unitIncl = exclToIncl(unitEx, lineTaxRate);
+                const qty = Number(line.quantity) || 0;
+                const lineExAmount = qty * unitEx;
+                const lineInclAmount = exclToIncl(lineExAmount, lineTaxRate);
+
                 return (
                 <tr key={index}>
                   <td className="border p-2 text-center">{index + 1}</td>
@@ -558,6 +616,42 @@ export default function InvoiceEditorPage({
                   </td>
 
                   <td className="border p-2">
+                    <Input
+                      type="number"
+                      className="w-full"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      onBlur={() => {
+                        setEditingUnitInclLineIndex(null);
+                        setUnitInclDraftByLine((current) => {
+                          const next = { ...current };
+                          delete next[index];
+                          return next;
+                        });
+                      }}
+                      onChange={(event) =>
+                        handleUnitInclusiveChange(index, event.target.value, lineTaxRate)
+                      }
+                      onFocus={() => {
+                        setEditingUnitInclLineIndex(index);
+                        setUnitInclDraftByLine((current) => ({
+                          ...current,
+                          [index]: String(Number(unitIncl.toFixed(4))),
+                        }));
+                      }}
+                      value={
+                        editingUnitInclLineIndex === index &&
+                        unitInclDraftByLine[index] !== undefined
+                          ? unitInclDraftByLine[index]
+                          : unitIncl
+                            ? String(Number(unitIncl.toFixed(4)))
+                            : ""
+                      }
+                    />
+                  </td>
+
+                  <td className="border p-2">
                     <Select
                       {...form.register(`lines.${index}.taxRateId`)}
                       className="w-full"
@@ -572,7 +666,11 @@ export default function InvoiceEditorPage({
                   </td>
 
                   <td className="border p-2 text-right font-medium">
-                    {formatCurrency(formatMoneyAmount(lineAmount + lineTaxAmount), currency)}
+                    {formatCurrency(formatMoneyAmount(lineExAmount), currency)}
+                  </td>
+
+                  <td className="border p-2 text-right font-medium">
+                    {formatCurrency(formatMoneyAmount(lineInclAmount), currency)}
                   </td>
 
                   <td className="border p-2">
@@ -699,29 +797,10 @@ export default function InvoiceEditorPage({
               </div>
 
               <div className="space-y-3 border-t pt-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={Boolean(watchedWhtEnabled)}
-                    onChange={(event) => {
-                      const enabled = event.target.checked;
-                      form.setValue("whtEnabled", enabled, {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      });
-                      if (enabled && !form.getValues("whtHeldBy")) {
-                        form.setValue("whtHeldBy", defaultWhtHeldBy("invoice"), {
-                          shouldDirty: true,
-                          shouldValidate: true,
-                        });
-                      }
-                    }}
-                  />
-                  <span>Apply withholding tax</span>
-                </label>
+                <p className="text-sm font-medium">Withholding tax</p>
                 <WhtSettingsFields
                   companyName={company?.name ?? company?.legalName}
                   documentKind="invoice"
-                  enabled={Boolean(watchedWhtEnabled)}
                   form={form}
                 />
               </div>
@@ -730,17 +809,61 @@ export default function InvoiceEditorPage({
                 <span>Invoice Total</span>
                 <span>{formatCurrency(totals.total, currency)}</span>
               </div>
-              {watchedWhtEnabled ? (
+              {watchedEitherWht ? (
                 <>
-                  <div className="flex justify-between">
-                    <span>Withholding tax</span>
-                    <span>
-                      {whtSettlementAddsToCash(watchedWhtHeldBy, "invoice") ? "+" : "-"}
-                      {formatCurrency(totals.whtAmount, currency)}
-                    </span>
-                  </div>
+                  {Number(totals.incomeWhtAmount) > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Income tax WHT</span>
+                      <span>
+                        {whtSettlementAddsToCash(
+                          watchedIncomeWhtHeldBy || watchedWhtHeldBy,
+                          "invoice",
+                        )
+                          ? "+"
+                          : "-"}
+                        {formatCurrency(totals.incomeWhtAmount, currency)}
+                      </span>
+                    </div>
+                  ) : null}
+                  {Number(totals.salesTaxWhtAmount) > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Sales tax WHT</span>
+                      <span>
+                        {whtSettlementAddsToCash(
+                          watchedSalesTaxWhtHeldBy || watchedWhtHeldBy,
+                          "invoice",
+                        )
+                          ? "+"
+                          : "-"}
+                        {formatCurrency(totals.salesTaxWhtAmount, currency)}
+                      </span>
+                    </div>
+                  ) : null}
+                  {Number(totals.incomeWhtAmount) <= 0 && Number(totals.salesTaxWhtAmount) <= 0 ? (
+                    <div className="flex justify-between">
+                      <span>Withholding tax</span>
+                      <span>
+                        {whtSettlementAddsToCash(
+                          watchedIncomeWhtHeldBy ||
+                            watchedSalesTaxWhtHeldBy ||
+                            watchedWhtHeldBy,
+                          "invoice",
+                        )
+                          ? "+"
+                          : "-"}
+                        {formatCurrency(totals.whtAmount, currency)}
+                      </span>
+                    </div>
+                  ) : null}
                   <div className="flex justify-between font-semibold">
-                    <span>{whtNetLabel(watchedWhtHeldBy, "invoice")}</span>
+                    <span>
+                      {whtNetLabel(
+                        watchedIncomeWhtHeldBy ||
+                          watchedSalesTaxWhtHeldBy ||
+                          watchedWhtHeldBy,
+                        "invoice",
+                      )}
+                    </span>
                     <span>{formatCurrency(totals.netSettlement, currency)}</span>
                   </div>
                 </>
@@ -750,7 +873,11 @@ export default function InvoiceEditorPage({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-between border-t p-4">
+        <div className="space-y-3 border-t p-4">
+          {submitError?.message ? (
+            <Alert title={submitError.message} variant="destructive" />
+          ) : null}
+          <div className="flex justify-between">
           <div className="flex gap-2">
             <Button variant="secondary" size="sm">
               Print / Download
@@ -777,6 +904,7 @@ export default function InvoiceEditorPage({
             >
               {isLoading ? "Saving..." : mode === "create" ? "Review & Send" : "Save Changes"}
             </Button>
+          </div>
           </div>
         </div>
       </div>

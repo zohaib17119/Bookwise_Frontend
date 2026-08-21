@@ -19,3 +19,15 @@ export async function createHsCodeCategory(companyId: string, payload: HsCodeCat
   );
   return data;
 }
+
+export async function updateHsCodeCategory(
+  companyId: string,
+  hsCodeCategoryId: string,
+  payload: Partial<HsCodeCategoryPayload>,
+) {
+  const { data } = await apiClient.patch<HsCodeCategory>(
+    `/companies/${companyId}/hs-code-categories/${hsCodeCategoryId}`,
+    payload,
+  );
+  return data;
+}

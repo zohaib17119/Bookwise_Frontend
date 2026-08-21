@@ -95,7 +95,7 @@ export function ItemFormDrawer({
       sku: "",
       barcode: "",
       unitName: "ea",
-      hsCode: "",
+      hsCodeCategoryId: "",
       salesPrice: "0",
       purchaseCost: "0",
       incomeAccountId: "",
@@ -114,7 +114,7 @@ export function ItemFormDrawer({
   const itemType = form.watch("type");
   const trackQuantity = form.watch("trackQuantity");
   const taxRateId = form.watch("taxRateId");
-  const selectedHsCode = form.watch("hsCode");
+  const selectedHsCodeCategoryId = form.watch("hsCodeCategoryId");
   const selectedUnit = form.watch("unitName");
   const hasAccountOverrides = Boolean(
     item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
@@ -130,7 +130,7 @@ export function ItemFormDrawer({
       sku: item?.sku ?? "",
       barcode: item?.barcode ?? "",
       unitName: item?.unitName ?? "ea",
-      hsCode: item?.hsCode ?? "",
+      hsCodeCategoryId: item?.hsCodeCategoryId ?? "",
       salesPrice: item?.salesPrice ?? "0",
       purchaseCost: item?.purchaseCost ?? "0",
       incomeAccountId: item?.incomeAccountId ?? "",
@@ -180,7 +180,7 @@ export function ItemFormDrawer({
       setHsModalError(null);
       return;
     }
-    form.setValue("hsCode", value, { shouldValidate: true });
+    form.setValue("hsCodeCategoryId", value, { shouldValidate: true });
   };
 
   const handleUnitSelect = (value: string) => {
@@ -202,7 +202,7 @@ export function ItemFormDrawer({
     setHsModalError(null);
     try {
       const created = await createHsCodeMutation.mutateAsync({ code, categoryName });
-      form.setValue("hsCode", created.code, { shouldValidate: true });
+      form.setValue("hsCodeCategoryId", created.id, { shouldValidate: true });
       setHsModalOpen(false);
       setNewHsCode("");
       setNewCategoryName("");
@@ -273,18 +273,23 @@ export function ItemFormDrawer({
                 <Input {...form.register("name")} placeholder="Paper cup" />
               </FormField>
               <FormField
-                error={form.formState.errors.hsCode?.message}
-                helperText="Select an existing HS category or add a new one."
+                error={form.formState.errors.hsCodeCategoryId?.message}
+                helperText="Optional. Select an existing HS category or add a new one."
                 label="Item code / HS code"
               >
-                <Select onChange={(event) => handleHsCodeSelect(event.target.value)} value={selectedHsCode || ""}>
-                  <option value="">Select HS code</option>
-                  {selectedHsCode &&
-                  !hsCodeCategories.some((category) => category.code === selectedHsCode) ? (
-                    <option value={selectedHsCode}>{selectedHsCode}</option>
+                <Select
+                  onChange={(event) => handleHsCodeSelect(event.target.value)}
+                  value={selectedHsCodeCategoryId || ""}
+                >
+                  <option value="">No HS code</option>
+                  {selectedHsCodeCategoryId &&
+                  !hsCodeCategories.some((category) => category.id === selectedHsCodeCategoryId) ? (
+                    <option value={selectedHsCodeCategoryId}>
+                      {item?.hsCode ?? selectedHsCodeCategoryId}
+                    </option>
                   ) : null}
                   {hsCodeCategories.map((category) => (
-                    <option key={category.id} value={category.code}>
+                    <option key={category.id} value={category.id}>
                       {`${category.code}(${category.categoryName})`}
                     </option>
                   ))}
