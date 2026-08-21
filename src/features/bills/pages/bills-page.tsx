@@ -156,7 +156,7 @@ export function BillsPage() {
       header: "Tax amount",
       className: "text-right",
       render: (bill) =>
-        formatCurrency(bill.taxAmount ?? bill.totals?.taxAmount ?? "0", bill.currencyCode ?? baseCurrency),
+        formatCurrency(bill.taxAmount ?? bill.totals?.taxTotal ?? "0", bill.currencyCode ?? baseCurrency),
     },
     amountInclusiveTax: {
       key: "amountInclusiveTax",

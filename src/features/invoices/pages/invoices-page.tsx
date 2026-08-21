@@ -178,7 +178,7 @@ export function InvoicesPage() {
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
-          invoice.taxAmount ?? invoice.totals?.taxAmount ?? "0",
+          invoice.taxAmount ?? invoice.totals?.taxTotal ?? "0",
           invoice.currencyCode ?? baseCurrency,
         ),
     },
