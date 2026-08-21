@@ -34,6 +34,7 @@ const INVOICE_VIEW_COLUMNS: TableViewColumnDef[] = [
   { id: "fbrTaxReported", label: "FBR / Tax reported", defaultVisible: true },
   { id: "amountExclusiveTax", label: "Amount exclusive tax", defaultVisible: false },
   { id: "taxPercent", label: "Tax %", defaultVisible: false },
+  { id: "taxAmount", label: "Tax amount", defaultVisible: true },
   { id: "amountInclusiveTax", label: "Amount inclusive tax", defaultVisible: false },
   { id: "incomeWhtPercent", label: "Income WHT %", defaultVisible: false },
   { id: "incomeWhtAmount", label: "Income WHT amount", defaultVisible: false },
@@ -170,6 +171,16 @@ export function InvoicesPage() {
       header: "Tax %",
       className: "text-right",
       render: (invoice) => invoice.taxRateDisplay ?? "—",
+    },
+    taxAmount: {
+      key: "taxAmount",
+      header: "Tax amount",
+      className: "text-right",
+      render: (invoice) =>
+        formatCurrency(
+          invoice.taxAmount ?? invoice.totals?.taxAmount ?? "0",
+          invoice.currencyCode ?? baseCurrency,
+        ),
     },
     amountInclusiveTax: {
       key: "amountInclusiveTax",

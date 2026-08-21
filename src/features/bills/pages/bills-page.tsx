@@ -34,6 +34,7 @@ const BILL_VIEW_COLUMNS: TableViewColumnDef[] = [
   { id: "fbrTaxReported", label: "FBR / Tax reported", defaultVisible: true },
   { id: "amountExclusiveTax", label: "Amount exclusive tax", defaultVisible: false },
   { id: "taxPercent", label: "Tax %", defaultVisible: false },
+  { id: "taxAmount", label: "Tax amount", defaultVisible: true },
   { id: "amountInclusiveTax", label: "Amount inclusive tax", defaultVisible: false },
   { id: "incomeWhtPercent", label: "Income WHT %", defaultVisible: false },
   { id: "incomeWhtAmount", label: "Income WHT amount", defaultVisible: false },
@@ -149,6 +150,13 @@ export function BillsPage() {
       header: "Tax %",
       className: "text-right",
       render: (bill) => bill.taxRateDisplay ?? "—",
+    },
+    taxAmount: {
+      key: "taxAmount",
+      header: "Tax amount",
+      className: "text-right",
+      render: (bill) =>
+        formatCurrency(bill.taxAmount ?? bill.totals?.taxAmount ?? "0", bill.currencyCode ?? baseCurrency),
     },
     amountInclusiveTax: {
       key: "amountInclusiveTax",
