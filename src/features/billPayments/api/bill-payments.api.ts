@@ -30,6 +30,14 @@ function serializeBillPaymentPayload(payload: BillPaymentPayload): BillPaymentPa
       exchangeRate: payload.exchangeRate || undefined,
       notes: payload.notes || undefined,
     }),
+    ...(payload.allocations?.length
+      ? {
+          allocations: payload.allocations.map((allocation) => ({
+            billId: allocation.billId,
+            amount: serializeMoneyField(allocation.amount),
+          })),
+        }
+      : {}),
   };
 }
 
