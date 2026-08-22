@@ -90,3 +90,15 @@ export async function allocateCustomerPayment(
   );
   return data;
 }
+
+export async function updateCustomerPayment(
+  companyId: string,
+  paymentId: string,
+  payload: { amount: string },
+) {
+  const { data } = await apiClient.patch<CustomerPayment>(
+    `/companies/${companyId}/customer-payments/${paymentId}`,
+    { amount: serializeMoneyField(payload.amount) },
+  );
+  return data;
+}

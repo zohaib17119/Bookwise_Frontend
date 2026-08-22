@@ -252,9 +252,9 @@ export function BillPaymentDetailPage() {
           <div>
             <h3 className="text-sm font-semibold">Reduce payment amount</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              You can lower the payment down to the already-allocated total (
-              {formatCurrency(allocatedTotal, currency)}). A reversing bank slice is posted for the
-              reduction.
+              Lower the payment down to the allocated total (
+              {formatCurrency(allocatedTotal, currency)}) or to zero when nothing is allocated
+              (e.g. duplicate payment mistake). A reversing bank slice is posted for the reduction.
             </p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <div className="min-w-[160px]">
@@ -275,8 +275,12 @@ export function BillPaymentDetailPage() {
                 isLoading={updateMutation.isPending}
                 onClick={async () => {
                   const next = parseMoney(amountValue);
-                  if (!(next > 0)) {
-                    setAmountError("Amount must be greater than zero");
+                  if (next < 0 || (next === 0 && allocatedTotal > 0)) {
+                    setAmountError(
+                      allocatedTotal > 0
+                        ? "Unallocate all bills before zeroing this payment"
+                        : "Amount cannot be negative",
+                    );
                     return;
                   }
                   if (next > parseMoney(payment.amount)) {

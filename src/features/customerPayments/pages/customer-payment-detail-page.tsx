@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageContainer } from "@/components/shared/page-container";
 import { AllocationEditor } from "@/components/documents/allocation-editor";
@@ -12,6 +13,7 @@ import { useActiveCompany } from "@/features/companies/hooks/use-active-company"
 import {
   useAllocateCustomerPayment,
   useCustomerPayment,
+  useUpdateCustomerPayment,
 } from "@/features/customerPayments/hooks/use-customer-payments";
 import type { CustomerPaymentAllocation } from "@/features/customerPayments/types/customer-payment.types";
 import { useOpenInvoicesByCustomer } from "@/features/invoices/hooks/use-invoices";
@@ -40,13 +42,25 @@ export function CustomerPaymentDetailPage() {
   const { permissions } = useActiveCompany();
   const paymentQuery = useCustomerPayment(companyId, paymentId ?? null);
   const allocateMutation = useAllocateCustomerPayment(companyId);
+  const updateMutation = useUpdateCustomerPayment(companyId);
   const canView = canViewEntity(permissions, "customer_payments");
   const canManage = canManageEntity(permissions, "customer_payments");
   const [applyAllocations, setApplyAllocations] = useState<Record<string, number>>({});
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState<string | null>(null);
+  const [amountError, setAmountError] = useState<string | null>(null);
 
   const payment = paymentQuery.data;
   const openInvoicesQuery = useOpenInvoicesByCustomer(companyId, payment?.customerId);
+
+  const allocatedTotal = useMemo(
+    () =>
+      (payment?.allocations ?? []).reduce(
+        (sum, row) => sum + parseMoney((row as CustomerPaymentAllocation).amount ?? 0),
+        0,
+      ),
+    [payment?.allocations],
+  );
 
   const applyDocuments = useMemo(
     () =>
@@ -114,6 +128,7 @@ export function CustomerPaymentDetailPage() {
   const currency = payment.currencyCode ?? "USD";
   const unapplied = parseMoney(payment.unappliedAmount);
   const hasUnapplied = unapplied > 0;
+  const amountValue = editAmount ?? toMoneyString(payment.amount);
 
   return (
     <PageContainer className="space-y-6">
@@ -234,6 +249,69 @@ export function CustomerPaymentDetailPage() {
               ) : null}
             </div>
           ) : null}
+
+          <div>
+            <h3 className="text-sm font-semibold">Reduce payment amount</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Lower the payment down to the allocated total (
+              {formatCurrency(allocatedTotal, currency)}) or to zero when nothing is allocated
+              (e.g. duplicate payment mistake). A reversing bank slice is posted for the reduction.
+            </p>
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <div className="min-w-[160px]">
+                <label className="mb-1 block text-xs text-muted-foreground" htmlFor="payment-amount">
+                  New amount
+                </label>
+                <Input
+                  id="payment-amount"
+                  onChange={(event) => {
+                    setEditAmount(event.target.value);
+                    setAmountError(null);
+                  }}
+                  value={amountValue}
+                />
+              </div>
+              <Button
+                disabled={updateMutation.isPending}
+                isLoading={updateMutation.isPending}
+                onClick={async () => {
+                  const next = parseMoney(amountValue);
+                  if (next < 0 || (next === 0 && allocatedTotal > 0)) {
+                    setAmountError(
+                      allocatedTotal > 0
+                        ? "Unallocate all invoices before zeroing this payment"
+                        : "Amount cannot be negative",
+                    );
+                    return;
+                  }
+                  if (next > parseMoney(payment.amount)) {
+                    setAmountError("Amount can only be reduced");
+                    return;
+                  }
+                  if (next < allocatedTotal) {
+                    setAmountError(
+                      `Cannot go below allocated total (${formatCurrency(allocatedTotal, currency)})`,
+                    );
+                    return;
+                  }
+                  await updateMutation.mutateAsync({
+                    paymentId: payment.id,
+                    amount: toMoneyString(next),
+                  });
+                  setEditAmount(null);
+                  setAmountError(null);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                Save amount
+              </Button>
+            </div>
+            {amountError ? <p className="mt-2 text-sm text-destructive">{amountError}</p> : null}
+            {updateMutation.error ? (
+              <p className="mt-2 text-sm text-destructive">{updateMutation.error.message}</p>
+            ) : null}
+          </div>
         </div>
       ) : null}
     </PageContainer>

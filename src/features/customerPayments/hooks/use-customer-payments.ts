@@ -4,6 +4,7 @@ import {
   createCustomerPayment,
   getCustomerPayment,
   getCustomerPayments,
+  updateCustomerPayment,
 } from "@/features/customerPayments/api/customer-payments.api";
 import type {
   CustomerPaymentAllocationPayload,
@@ -60,6 +61,16 @@ export function useAllocateCustomerPayment(companyId: string | undefined) {
       paymentId: string;
       payload: CustomerPaymentAllocationPayload;
     }) => allocateCustomerPayment(paymentId, payload),
+    onSettled: async () => {
+      if (companyId) await invalidateCustomerPaymentQueries(companyId);
+    },
+  });
+}
+
+export function useUpdateCustomerPayment(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: ({ paymentId, amount }: { paymentId: string; amount: string }) =>
+      updateCustomerPayment(companyId!, paymentId, { amount }),
     onSettled: async () => {
       if (companyId) await invalidateCustomerPaymentQueries(companyId);
     },
