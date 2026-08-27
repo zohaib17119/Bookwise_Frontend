@@ -337,7 +337,7 @@ export function InvoicesPage() {
     },
     taxActions: {
       key: "taxActions",
-      header: "Tax",
+      header: "Tax Actions",
       render: (invoice) => {
         const status = String(invoice.status ?? "");
         const issued = !["DRAFT", "VOID", "CANCELLED"].includes(status);
