@@ -87,6 +87,8 @@ export interface Bill {
   incomeWhtAmount?: string | null;
   incomeWhtAmountBase?: string | null;
   incomeWhtSettledAmount?: string | null;
+  salesTaxAuthoritySettledAmount?: string | null;
+  incomeWhtAuthoritySettledAmount?: string | null;
   salesTaxWhtEnabled?: boolean | null;
   salesTaxWhtRate?: string | null;
   salesTaxWhtBase?: "SUBTOTAL" | "TAXABLE" | "TAX_AMOUNT" | "TOTAL" | null;

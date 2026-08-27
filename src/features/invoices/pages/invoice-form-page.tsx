@@ -5,8 +5,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageContainer } from "@/components/shared/page-container";
+import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { getCompanyBaseCurrency, resolveDocumentExchangeRate } from "@/features/companies/utils/company-currency";
+import {
+  convertBasePriceToDocumentPrice,
+  getCompanyBaseCurrency,
+  resolveDocumentExchangeRate,
+} from "@/features/companies/utils/company-currency";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
 import {
   useCreateCustomer,
@@ -24,7 +29,11 @@ import {
   type InvoiceFormInput,
   type InvoiceFormValues,
 } from "@/features/invoices/schemas/invoice.schema";
-import { useItemOptions } from "@/features/items/hooks/use-items";
+import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
+import { useCreateItem, useItemOptions } from "@/features/items/hooks/use-items";
+import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import type { ItemFormValues } from "@/features/items/schemas/item.schema";
+import type { Item } from "@/features/items/types/item.types";
 import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schema";
@@ -32,6 +41,7 @@ import type { DiscountType } from "@/features/shared/types/documents";
 import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
+import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import { queryClient } from "@/lib/query/query-client";
 import InvoiceEditorPage from "./invoice-editor-page";
 
@@ -72,12 +82,21 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   const itemsQuery = useItemOptions(companyId);
   const taxCodesQuery = useTaxCodes(companyId);
   const taxRatesQuery = useTaxRates(companyId);
+  const accountsQuery = useAccountOptions(companyId);
+  const vendorsQuery = useVendorOptions(companyId);
+  const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
   const invoiceQuery = useInvoice(companyId, mode === "edit" ? invoiceId ?? null : null);
   const createMutation = useCreateInvoice(companyId);
   const updateMutation = useUpdateInvoice(companyId, invoiceId ?? null);
   const nextNumberQuery = useNextInvoiceNumber(companyId, mode === "create");
   const createCustomerMutation = useCreateCustomer(companyId);
+  const createItemMutation = useCreateItem(companyId);
   const [customerDrawerOpen, setCustomerDrawerOpen] = useState(false);
+  const [itemDrawerOpen, setItemDrawerOpen] = useState(false);
+  const [itemCreateLineIndex, setItemCreateLineIndex] = useState<number | null>(null);
+  const [itemCreateDefaultType, setItemCreateDefaultType] = useState<"inventory" | "service">(
+    "inventory",
+  );
   const canManage = canManageEntity(permissions, "invoices");
 
   const taxCodeIdByCode = useMemo(() => {
@@ -279,6 +298,22 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
 
   const activeMutation = mode === "create" ? createMutation : updateMutation;
 
+  const applyItemToLine = (lineIndex: number, item: Item) => {
+    const lineOpts = { shouldDirty: true, shouldValidate: true } as const;
+    const basePrice = Number(item.salesPrice ?? "0");
+    const price = convertBasePriceToDocumentPrice(
+      basePrice,
+      form.getValues("exchangeRate") || undefined,
+      form.getValues("currencyCode") || getCompanyBaseCurrency(company),
+      getCompanyBaseCurrency(company),
+    );
+    form.setValue(`lines.${lineIndex}.itemId`, item.id, lineOpts);
+    form.setValue(`lines.${lineIndex}.itemName`, item.name || "", lineOpts);
+    form.setValue(`lines.${lineIndex}.description`, item.description || item.name, lineOpts);
+    form.setValue(`lines.${lineIndex}.unitPrice`, toDecimalString(price), lineOpts);
+    form.setValue(`lines.${lineIndex}.taxRateId`, item.taxRateId ?? "", lineOpts);
+  };
+
   if (!canManage) {
     return (
       <Alert
@@ -318,6 +353,12 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         onCreateCustomer={() => {
           createCustomerMutation.reset();
           setCustomerDrawerOpen(true);
+        }}
+        onCreateItemForLine={(lineIndex, type) => {
+          createItemMutation.reset();
+          setItemCreateLineIndex(lineIndex);
+          setItemCreateDefaultType(type);
+          setItemDrawerOpen(true);
         }}
         onSubmit={async (values) => {
           const payload = {
@@ -473,6 +514,51 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           setCustomerDrawerOpen(false);
         }}
         open={customerDrawerOpen}
+      />
+
+      <ItemFormDrawer
+        accounts={accountsQuery.data ?? []}
+        baseCurrencyCode={getCompanyBaseCurrency(company)}
+        defaultType={itemCreateDefaultType}
+        error={createItemMutation.error}
+        hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
+        isPending={createItemMutation.isPending}
+        mode="create"
+        onClose={() => {
+          setItemDrawerOpen(false);
+          setItemCreateLineIndex(null);
+          createItemMutation.reset();
+        }}
+        onSubmit={async (values: ItemFormValues) => {
+          const item = await createItemMutation.mutateAsync({
+            ...values,
+            itemCode: values.itemCode || undefined,
+            description: values.description || undefined,
+            sku: values.sku || undefined,
+            barcode: values.barcode?.trim() || null,
+            unitName: values.unitName || "ea",
+            hsCodeCategoryId: values.hsCodeCategoryId || null,
+            salesPrice: values.salesPrice || "0",
+            purchaseCost: values.purchaseCost || "0",
+            incomeAccountId: values.incomeAccountId || undefined,
+            expenseAccountId: values.expenseAccountId || undefined,
+            assetAccountId: values.assetAccountId || undefined,
+            preferredVendorId: values.preferredVendorId || undefined,
+            taxRateId: values.taxRateId,
+            taxable: values.taxable || Boolean(values.taxRateId),
+            reorderLevel: values.reorderLevel || undefined,
+            quantityOnHand: values.quantityOnHand || undefined,
+          });
+          await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "items"] });
+          if (itemCreateLineIndex != null) {
+            applyItemToLine(itemCreateLineIndex, item);
+          }
+          setItemDrawerOpen(false);
+          setItemCreateLineIndex(null);
+        }}
+        open={itemDrawerOpen}
+        taxRates={taxRatesQuery.data ?? []}
+        vendors={vendorsQuery.data ?? []}
       />
     </>
   );

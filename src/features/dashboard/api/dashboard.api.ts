@@ -81,10 +81,12 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
       taxBalances: {
         salesTaxPayable: parseNumber(taxBalances.salesTaxPayable),
         salesTaxReceivable: parseNumber(taxBalances.salesTaxReceivable),
+        salesTaxCarryForward: parseNumber(taxBalances.salesTaxCarryForward),
         salesTaxWhtPayable: parseNumber(taxBalances.salesTaxWhtPayable),
         salesTaxWhtReceivable: parseNumber(taxBalances.salesTaxWhtReceivable),
         incomeWhtPayable: parseNumber(taxBalances.incomeWhtPayable),
         incomeWhtReceivable: parseNumber(taxBalances.incomeWhtReceivable),
+        incomeWhtClaimed: parseNumber(taxBalances.incomeWhtClaimed),
       },
       previous: {
         totalRevenue: parseNumber(previous.totalRevenue),

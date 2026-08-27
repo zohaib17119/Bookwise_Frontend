@@ -22,10 +22,12 @@ export interface DashboardMetrics extends DashboardMetricsSnapshot {
   taxBalances?: {
     salesTaxPayable: number | string;
     salesTaxReceivable: number | string;
+    salesTaxCarryForward?: number | string;
     salesTaxWhtPayable: number | string;
     salesTaxWhtReceivable: number | string;
     incomeWhtPayable: number | string;
     incomeWhtReceivable: number | string;
+    incomeWhtClaimed?: number | string;
   };
   previous: DashboardMetricsSnapshot;
   changePercent: {

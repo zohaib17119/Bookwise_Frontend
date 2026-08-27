@@ -36,10 +36,14 @@ import { cn } from "@/lib/utils/cn";
 const ADD_NEW_HS_CODE = "__add_new_hs_code__";
 const ADD_NEW_UNIT = "__add_new_unit__";
 
+type ItemCreateType = "inventory" | "non_inventory" | "service";
+
 interface ItemFormDrawerProps {
   open: boolean;
   mode: "create" | "edit";
   item?: Item | null;
+  /** Used when mode is create and no item is provided. */
+  defaultType?: ItemCreateType;
   baseCurrencyCode?: string;
   accounts: Account[];
   vendors: Vendor[];
@@ -55,6 +59,7 @@ export function ItemFormDrawer({
   open,
   mode,
   item,
+  defaultType = "inventory",
   baseCurrencyCode = "USD",
   accounts,
   vendors,
@@ -122,11 +127,13 @@ export function ItemFormDrawer({
 
   useEffect(() => {
     if (!open) return;
+    const createType = mode === "create" ? defaultType : "inventory";
+    const resolvedType = item?.type ?? createType;
     form.reset({
       itemCode: item?.itemCode ?? "",
       name: item?.name ?? "",
       description: item?.description ?? "",
-      type: item?.type ?? "inventory",
+      type: resolvedType,
       sku: item?.sku ?? "",
       barcode: item?.barcode ?? "",
       unitName: item?.unitName ?? "ea",
@@ -139,7 +146,7 @@ export function ItemFormDrawer({
       preferredVendorId: item?.preferredVendorId ?? "",
       taxable: item?.taxable ?? true,
       taxRateId: item?.taxRateId ?? "",
-      trackQuantity: item?.trackQuantity ?? true,
+      trackQuantity: item?.trackQuantity ?? resolvedType !== "service",
       quantityOnHand: item?.quantityOnHand ?? undefined,
       reorderLevel: item?.reorderLevel ?? undefined,
       isActive: item?.isActive ?? true,
@@ -148,7 +155,7 @@ export function ItemFormDrawer({
     setUnitModalOpen(false);
     setHsModalError(null);
     setUnitModalError(null);
-  }, [form, item, open]);
+  }, [defaultType, form, item, mode, open]);
 
   useEffect(() => {
     if (!open || mode !== "create" || !nextSkuQuery.data) return;

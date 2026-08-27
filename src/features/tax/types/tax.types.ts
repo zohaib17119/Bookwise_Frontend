@@ -55,12 +55,16 @@ export interface TaxCodePayload {
 export interface TaxSettings {
   salesTaxPayableAccountId?: string | null;
   purchaseTaxRecoverableAccountId?: string | null;
+  salesTaxCarryForwardAccountId?: string | null;
+  salesTaxCarryForwardMaxPercent?: string | null;
   [key: string]: unknown;
 }
 
 export interface TaxSettingsPayload {
   salesTaxPayableAccountId?: string | null;
   purchaseTaxRecoverableAccountId?: string | null;
+  salesTaxCarryForwardAccountId?: string | null;
+  salesTaxCarryForwardMaxPercent?: string | null;
   [key: string]: unknown;
 }
 
@@ -145,15 +149,18 @@ export interface TaxAccountBalanceDetail {
 export interface TaxBalancesResult {
   salesTaxPayable: string;
   salesTaxReceivable: string;
+  salesTaxCarryForward: string;
   salesTaxWhtPayable: string;
   salesTaxWhtReceivable: string;
   incomeWhtPayable: string;
   incomeWhtReceivable: string;
+  incomeWhtClaimed: string;
   detail: TaxAccountBalanceDetail[];
 }
 
 export type TaxPaymentDirection = "PAY" | "COLLECT";
 export type TaxPaymentBucket = "VAT" | "SALES_TAX_WHT" | "INCOME_WHT";
+export type TaxPaymentFundingSource = "CASH" | "CARRY_FORWARD" | "SPLIT";
 
 export interface TaxPayment {
   id: string;
@@ -161,9 +168,14 @@ export interface TaxPayment {
   direction: TaxPaymentDirection;
   bucket: TaxPaymentBucket;
   taxAccountId: string;
-  bankAccountId: string;
+  bankAccountId?: string | null;
+  fundingSource?: TaxPaymentFundingSource;
   amount: string;
   amountBase: string;
+  carryForwardAmount?: string;
+  cashAmount?: string;
+  invoiceId?: string | null;
+  billId?: string | null;
   paymentDate: string;
   memo?: string | null;
   journalEntryId?: string | null;
@@ -176,6 +188,16 @@ export interface TaxPaymentPayload {
   accountId?: string;
   amount: string;
   paymentDate: string;
-  bankAccountId: string;
+  bankAccountId?: string;
+  fundingSource?: TaxPaymentFundingSource;
   memo?: string;
+}
+
+export interface AuthorityTaxSettleResult {
+  payment: TaxPayment;
+  settledAmount: string;
+  carryForwardAmount?: string;
+  cashAmount?: string;
+  salesTaxCarryForwardMaxPercent?: string;
+  action?: "PAY" | "CLAIM";
 }

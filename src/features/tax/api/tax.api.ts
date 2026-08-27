@@ -118,3 +118,55 @@ export async function createTaxPayment(companyId: string, payload: TaxPaymentPay
   const { data } = await apiClient.post<TaxPayment>(`/companies/${companyId}/tax-payments`, payload);
   return data;
 }
+
+export async function payInvoiceSalesTax(
+  companyId: string,
+  invoiceId: string,
+  payload: {
+    paymentDate: string;
+    bankAccountId?: string;
+    carryForwardMaxPercent?: string;
+  },
+) {
+  const { data } = await apiClient.post(
+    `/companies/${companyId}/invoices/${invoiceId}/authority-tax/sales-tax-pay`,
+    payload,
+  );
+  return data;
+}
+
+export async function settleInvoiceIncomeWht(
+  companyId: string,
+  invoiceId: string,
+  payload: { paymentDate: string; bankAccountId?: string },
+) {
+  const { data } = await apiClient.post(
+    `/companies/${companyId}/invoices/${invoiceId}/authority-tax/income-wht`,
+    payload,
+  );
+  return data;
+}
+
+export async function claimBillPurchaseTax(
+  companyId: string,
+  billId: string,
+  payload: { paymentDate: string },
+) {
+  const { data } = await apiClient.post(
+    `/companies/${companyId}/bills/${billId}/authority-tax/purchase-tax-claim`,
+    payload,
+  );
+  return data;
+}
+
+export async function settleBillIncomeWht(
+  companyId: string,
+  billId: string,
+  payload: { paymentDate: string; bankAccountId?: string },
+) {
+  const { data } = await apiClient.post(
+    `/companies/${companyId}/bills/${billId}/authority-tax/income-wht`,
+    payload,
+  );
+  return data;
+}

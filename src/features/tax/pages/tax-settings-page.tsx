@@ -2,7 +2,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AccountSelect } from "@/components/accounting/account-select";
+import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
@@ -29,14 +31,22 @@ export function TaxSettingsPage() {
   const form = useForm<TaxSettingsFormInput, undefined, TaxSettingsFormValues>({
     resolver: zodResolver(taxSettingsSchema),
     values: {
-      salesTaxPayableAccountId: (settingsQuery.data?.salesTaxPayableAccountId as string | undefined) ?? "",
+      salesTaxPayableAccountId:
+        (settingsQuery.data?.salesTaxPayableAccountId as string | undefined) ?? "",
       purchaseTaxRecoverableAccountId:
         (settingsQuery.data?.purchaseTaxRecoverableAccountId as string | undefined) ?? "",
+      salesTaxCarryForwardMaxPercent:
+        (settingsQuery.data?.salesTaxCarryForwardMaxPercent as string | undefined) ?? "",
     },
   });
 
   if (!canView) {
-    return <ErrorState title="Tax access restricted" description="Your current company membership does not include tax visibility." />;
+    return (
+      <ErrorState
+        title="Tax access restricted"
+        description="Your current company membership does not include tax visibility."
+      />
+    );
   }
 
   return (
@@ -61,10 +71,13 @@ export function TaxSettingsPage() {
           await upsertMutation.mutateAsync({
             salesTaxPayableAccountId: values.salesTaxPayableAccountId || null,
             purchaseTaxRecoverableAccountId: values.purchaseTaxRecoverableAccountId || null,
+            salesTaxCarryForwardMaxPercent: values.salesTaxCarryForwardMaxPercent || null,
           });
         })}
       >
-        {upsertMutation.error ? <Alert title={upsertMutation.error.message} variant="destructive" /> : null}
+        {upsertMutation.error ? (
+          <Alert title={upsertMutation.error.message} variant="destructive" />
+        ) : null}
         <FormSection title="Tax accounts">
           <div className="grid gap-4 md:grid-cols-2">
             <AccountSelect
@@ -80,6 +93,23 @@ export function TaxSettingsPage() {
               value={form.watch("purchaseTaxRecoverableAccountId") ?? ""}
             />
           </div>
+        </FormSection>
+        <FormSection title="Invoice sales tax payment">
+          <FormField label="Max % from sales tax carry forward">
+            <Input
+              disabled={!canManage}
+              max={100}
+              min={0}
+              placeholder="e.g. 90"
+              step="0.01"
+              type="number"
+              {...form.register("salesTaxCarryForwardMaxPercent")}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              When marking an invoice sales tax paid, up to this percent is taken from carry
+              forward (limited by available CF balance); the rest comes from cash/bank.
+            </p>
+          </FormField>
         </FormSection>
         <Button disabled={!canManage} isLoading={upsertMutation.isPending} type="submit">
           Save tax settings

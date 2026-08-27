@@ -13,6 +13,10 @@ import {
   getTaxBalances,
   getTaxPayments,
   createTaxPayment,
+  payInvoiceSalesTax,
+  settleInvoiceIncomeWht,
+  claimBillPurchaseTax,
+  settleBillIncomeWht,
   updateTaxCode,
   updateTaxRate,
   upsertTaxSettings,
@@ -172,6 +176,72 @@ export function useCreateTaxPayment(companyId: string | undefined) {
         queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-payments"] }),
         queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] }),
       ]);
+    },
+  });
+}
+
+async function invalidateAuthorityTax(companyId: string) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-balances"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-payments"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "tax-settings"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "invoices"] }),
+    queryClient.invalidateQueries({ queryKey: ["companies", companyId, "bills"] }),
+  ]);
+}
+
+export function usePayInvoiceSalesTax(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (args: {
+      invoiceId: string;
+      paymentDate: string;
+      bankAccountId?: string;
+      carryForwardMaxPercent?: string;
+    }) =>
+      payInvoiceSalesTax(companyId!, args.invoiceId, {
+        paymentDate: args.paymentDate,
+        bankAccountId: args.bankAccountId,
+        carryForwardMaxPercent: args.carryForwardMaxPercent,
+      }),
+    onSuccess: async () => {
+      if (companyId) await invalidateAuthorityTax(companyId);
+    },
+  });
+}
+
+export function useSettleInvoiceIncomeWht(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (args: { invoiceId: string; paymentDate: string; bankAccountId?: string }) =>
+      settleInvoiceIncomeWht(companyId!, args.invoiceId, {
+        paymentDate: args.paymentDate,
+        bankAccountId: args.bankAccountId,
+      }),
+    onSuccess: async () => {
+      if (companyId) await invalidateAuthorityTax(companyId);
+    },
+  });
+}
+
+export function useClaimBillPurchaseTax(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (args: { billId: string; paymentDate: string }) =>
+      claimBillPurchaseTax(companyId!, args.billId, { paymentDate: args.paymentDate }),
+    onSuccess: async () => {
+      if (companyId) await invalidateAuthorityTax(companyId);
+    },
+  });
+}
+
+export function useSettleBillIncomeWht(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (args: { billId: string; paymentDate: string; bankAccountId?: string }) =>
+      settleBillIncomeWht(companyId!, args.billId, {
+        paymentDate: args.paymentDate,
+        bankAccountId: args.bankAccountId,
+      }),
+    onSuccess: async () => {
+      if (companyId) await invalidateAuthorityTax(companyId);
     },
   });
 }

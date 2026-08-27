@@ -10,6 +10,7 @@ import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { TableColumnPicker } from "@/components/shared/table-column-picker";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
+import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
@@ -17,6 +18,14 @@ import { canShowFbr } from "@/features/compliance/utils/compliance-access";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
 import type { Bill } from "@/features/bills/types/bill.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import {
+  AuthorityTaxDialog,
+  type AuthorityTaxDialogKind,
+} from "@/features/tax/components/authority-tax-dialog";
+import {
+  useClaimBillPurchaseTax,
+  useSettleBillIncomeWht,
+} from "@/features/tax/hooks/use-tax";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { useBillsPaginated } from "@/features/bills/hooks/use-bills";
 import {
@@ -45,7 +54,13 @@ const BILL_VIEW_COLUMNS: TableViewColumnDef[] = [
   { id: "amountPaid", label: "Amount paid", defaultVisible: false },
   { id: "total", label: "Total", defaultVisible: true },
   { id: "amountDue", label: "Amount due", defaultVisible: true },
+  { id: "taxActions", label: "Tax actions", defaultVisible: true },
 ];
+
+function moneyNum(value?: string | null) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export function BillsPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -57,6 +72,9 @@ export function BillsPage() {
   const [limit, setLimit] = useState(25);
   const deferredSearch = useDeferredValue(search);
   const vendorsQuery = useVendorOptions(companyId);
+  const accountsQuery = useAccountOptions(companyId);
+  const claimPurchaseTaxMutation = useClaimBillPurchaseTax(companyId);
+  const settleIncomeWhtMutation = useSettleBillIncomeWht(companyId);
   const billsQuery = useBillsPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     status: status || undefined,
@@ -66,16 +84,31 @@ export function BillsPage() {
   });
   const canView = canViewEntity(permissions, "bills");
   const canManage = canManageEntity(permissions, "bills");
+  const canManageTax = canManageEntity(permissions, "tax");
   const baseCurrency = getCompanyBaseCurrency(company);
   const showFbr = canShowFbr(company);
+  const [dialogKind, setDialogKind] = useState<AuthorityTaxDialogKind | null>(null);
+  const [dialogBill, setDialogBill] = useState<Bill | null>(null);
 
-  const viewColumns = useMemo(
+  const bankAccounts = useMemo(
     () =>
-      showFbr
-        ? BILL_VIEW_COLUMNS
-        : BILL_VIEW_COLUMNS.filter((column) => column.id !== "fbrTaxReported"),
-    [showFbr],
+      (accountsQuery.data ?? []).filter(
+        (account) =>
+          account.type === "BANK" ||
+          (account.type === "ASSET" && (account.subtype ?? "").toLowerCase() === "cash"),
+      ),
+    [accountsQuery.data],
   );
+
+  const viewColumns = useMemo(() => {
+    let columns = showFbr
+      ? BILL_VIEW_COLUMNS
+      : BILL_VIEW_COLUMNS.filter((column) => column.id !== "fbrTaxReported");
+    if (!canManageTax) {
+      columns = columns.filter((column) => column.id !== "taxActions");
+    }
+    return columns;
+  }, [canManageTax, showFbr]);
 
   const tableView = useTableViewPreferences("bills", companyId, user?.id, viewColumns);
 
@@ -247,6 +280,58 @@ export function BillsPage() {
       render: (bill) =>
         formatCurrency(bill.amountDue ?? "0", bill.currencyCode ?? baseCurrency),
     },
+    taxActions: {
+      key: "taxActions",
+      header: "Tax",
+      render: (bill) => {
+        const status = String(bill.status ?? "");
+        const issued = !["DRAFT", "VOID", "CANCELLED"].includes(status);
+        const purchaseTaxOutstanding = Math.max(
+          0,
+          moneyNum(bill.taxAmount) - moneyNum(bill.salesTaxAuthoritySettledAmount),
+        );
+        const incomeWhtOutstanding = Math.max(
+          0,
+          moneyNum(bill.incomeWhtAmount) - moneyNum(bill.incomeWhtAuthoritySettledAmount),
+        );
+        const heldBy = bill.incomeWhtHeldBy ?? "COMPANY";
+        if (!issued || (!purchaseTaxOutstanding && !incomeWhtOutstanding)) {
+          return <span className="text-xs text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            {purchaseTaxOutstanding > 0 ? (
+              <Button
+                onClick={() => {
+                  setDialogBill(bill);
+                  setDialogKind("bill-purchase-tax");
+                  claimPurchaseTaxMutation.reset();
+                }}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Claim purchase tax
+              </Button>
+            ) : null}
+            {incomeWhtOutstanding > 0 ? (
+              <Button
+                onClick={() => {
+                  setDialogBill(bill);
+                  setDialogKind("bill-income-wht");
+                  settleIncomeWhtMutation.reset();
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {heldBy === "COMPANY" ? "Pay income WHT" : "Claim income WHT"}
+              </Button>
+            ) : null}
+          </div>
+        );
+      },
+    },
   };
 
   const columns = tableView.visibleColumnIds
@@ -254,6 +339,7 @@ export function BillsPage() {
     .filter((column): column is DataTableColumn<Bill> => Boolean(column));
 
   return (
+    <>
     <EntityListPage
       content={
         billsQuery.error ? (
@@ -356,5 +442,73 @@ export function BillsPage() {
         </FilterBar>
       }
     />
+    <AuthorityTaxDialog
+      amount={
+        dialogKind === "bill-purchase-tax"
+          ? Math.max(
+              0,
+              moneyNum(dialogBill?.taxAmount) - moneyNum(dialogBill?.salesTaxAuthoritySettledAmount),
+            )
+          : Math.max(
+              0,
+              moneyNum(dialogBill?.incomeWhtAmount) -
+                moneyNum(dialogBill?.incomeWhtAuthoritySettledAmount),
+            )
+      }
+      amountLabel={
+        dialogKind === "bill-purchase-tax" ? "Purchase tax to claim" : "Income WHT to settle"
+      }
+      bankAccounts={bankAccounts}
+      currency={dialogBill?.currencyCode ?? baseCurrency}
+      description={
+        dialogKind === "bill-purchase-tax"
+          ? "Moves purchase tax recoverable into sales tax carry forward (no cash)."
+          : dialogBill?.incomeWhtHeldBy === "COUNTERPARTY"
+            ? "Moves income WHT receivable into Income WHT Claimed (no cash)."
+            : "Pays company-held income WHT from cash/bank."
+      }
+      errorMessage={
+        (dialogKind === "bill-purchase-tax"
+          ? claimPurchaseTaxMutation.error?.message
+          : settleIncomeWhtMutation.error?.message) ?? null
+      }
+      isPending={claimPurchaseTaxMutation.isPending || settleIncomeWhtMutation.isPending}
+      kind={dialogKind}
+      needsBank={
+        dialogKind === "bill-income-wht" && (dialogBill?.incomeWhtHeldBy ?? "COMPANY") === "COMPANY"
+      }
+      needsPercent={false}
+      onClose={() => {
+        setDialogKind(null);
+        setDialogBill(null);
+      }}
+      onConfirm={async (values) => {
+        if (!dialogBill || !dialogKind) return;
+        if (dialogKind === "bill-purchase-tax") {
+          await claimPurchaseTaxMutation.mutateAsync({
+            billId: dialogBill.id,
+            paymentDate: values.paymentDate,
+          });
+        } else {
+          await settleIncomeWhtMutation.mutateAsync({
+            billId: dialogBill.id,
+            paymentDate: values.paymentDate,
+            bankAccountId: values.bankAccountId,
+          });
+        }
+        setDialogKind(null);
+        setDialogBill(null);
+      }}
+      open={Boolean(dialogKind && dialogBill)}
+      savedPercent={null}
+      title={
+        dialogKind === "bill-purchase-tax"
+          ? `Claim purchase tax — ${dialogBill?.billNumber ?? ""}`
+          : (dialogBill?.incomeWhtHeldBy ?? "COMPANY") === "COMPANY"
+            ? `Pay income WHT — ${dialogBill?.billNumber ?? ""}`
+            : `Claim income WHT — ${dialogBill?.billNumber ?? ""}`
+      }
+    />
+    </>
   );
 }

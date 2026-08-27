@@ -10,6 +10,7 @@ import { whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wh
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
+import { ItemSelect } from "@/components/documents/item-select";
 import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
@@ -40,6 +41,7 @@ export default function InvoiceEditorPage({
   mode,
   companyId,
   onCreateCustomer,
+  onCreateItemForLine,
   submitError,
 }: {
   company: any;
@@ -53,6 +55,7 @@ export default function InvoiceEditorPage({
   mode: "create" | "edit";
   companyId: string;
   onCreateCustomer?: () => void;
+  onCreateItemForLine?: (lineIndex: number, type: "inventory" | "service") => void;
   submitError?: { message: string } | null;
 }) {
   const watchedCustomerId = form.watch("customerId");
@@ -109,16 +112,6 @@ export default function InvoiceEditorPage({
 
   // Handle item selection - auto-populate rate, description, and tax
   const handleItemChange = (index: number, itemId: string) => {
-    if (itemId === "__service__") {
-      // Manual service entry - clear itemId but allow manual rate entry
-      form.setValue(`lines.${index}.itemId`, "", setLineValueOptions);
-      form.setValue(`lines.${index}.description`, "", setLineValueOptions);
-      form.setValue(`lines.${index}.unitPrice`, "", setLineValueOptions);
-      form.setValue(`lines.${index}.taxRateId`, "", setLineValueOptions);
-      form.setValue(`lines.${index}.itemName`, "", setLineValueOptions);
-      return;
-    }
-    
     const item = getItemById(itemId);
     
     if (item) {
@@ -572,19 +565,34 @@ export default function InvoiceEditorPage({
                   <td className="border p-2 text-center">{index + 1}</td>
 
                   <td className="border p-2">
-                    <Select
-                      value={line.itemId}
-                      onChange={(e) => handleItemChange(index, e.target.value)}
-                      className="w-full"
-                    >
-                      <option value="">Select Item</option>
-                      {(itemsQuery?.data ?? []).map((item: any) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name} {item.salesPrice ? ` - ${formatCurrency(documentItemPrice(item.salesPrice), currency)}` : ""}
-                        </option>
-                      ))}
-                      <option value="__service__">+ Add Service (Manual)</option>
-                    </Select>
+                    <ItemSelect
+                      createActions={
+                        onCreateItemForLine
+                          ? [
+                              {
+                                id: "item",
+                                label: "Create new item…",
+                                onSelect: () => onCreateItemForLine(index, "inventory"),
+                              },
+                              {
+                                id: "service",
+                                label: "Create new service…",
+                                onSelect: () => onCreateItemForLine(index, "service"),
+                              },
+                            ]
+                          : undefined
+                      }
+                      onChange={(next) => handleItemChange(index, next)}
+                      options={(itemsQuery?.data ?? []).map((item: any) => ({
+                        id: item.id,
+                        label: item.name,
+                        secondary: item.salesPrice
+                          ? formatCurrency(documentItemPrice(item.salesPrice), currency)
+                          : undefined,
+                      }))}
+                      placeholder="Select Item"
+                      value={line.itemId || ""}
+                    />
                   </td>
 
                   <td className="border p-2">

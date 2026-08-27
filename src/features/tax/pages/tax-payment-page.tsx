@@ -28,9 +28,10 @@ import type {
   TaxPayment,
   TaxPaymentBucket,
   TaxPaymentDirection,
+  TaxPaymentFundingSource,
 } from "@/features/tax/types/tax.types";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
-import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
+import { toMoneyDecimalString } from "@/features/shared/utils/decimal-string";
 
 const ROLE_LABEL: Record<string, string> = {
   VAT_PAYABLE: "VAT / Sales tax payable",
@@ -61,6 +62,7 @@ export function TaxPaymentPage() {
   const [direction, setDirection] = useState<TaxPaymentDirection>("PAY");
   const [accountId, setAccountId] = useState("");
   const [bankAccountId, setBankAccountId] = useState("");
+  const [fundingSource, setFundingSource] = useState<TaxPaymentFundingSource>("CASH");
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [memo, setMemo] = useState("");
@@ -68,7 +70,9 @@ export function TaxPaymentPage() {
   const bankAccounts = useMemo(
     () =>
       (accountsQuery.data ?? []).filter(
-        (account) => account.type === "BANK" || account.type === "ASSET",
+        (account) =>
+          account.type === "BANK" ||
+          (account.type === "ASSET" && (account.subtype ?? "").toLowerCase() === "cash"),
       ),
     [accountsQuery.data],
   );
@@ -81,6 +85,16 @@ export function TaxPaymentPage() {
   }, [balancesQuery.data?.detail, direction]);
 
   const selectedDetail = selectableDetails.find((row) => row.accountId === accountId);
+  const selectedBucket = selectedDetail ? bucketForRole(selectedDetail.role) : null;
+  const isVatCollect = selectedBucket === "VAT" && direction === "COLLECT";
+  const isVatPay = selectedBucket === "VAT" && direction === "PAY";
+  const effectiveFunding: TaxPaymentFundingSource = isVatCollect
+    ? "CARRY_FORWARD"
+    : isVatPay
+      ? fundingSource
+      : "CASH";
+  const needsBankAccount = effectiveFunding === "CASH";
+  const carryForwardBalance = balancesQuery.data?.salesTaxCarryForward ?? "0";
 
   const historyColumns: DataTableColumn<TaxPayment>[] = [
     {
@@ -91,7 +105,11 @@ export function TaxPaymentPage() {
     {
       key: "direction",
       header: "Type",
-      render: (row) => (row.direction === "PAY" ? "Paid" : "Collected"),
+      render: (row) => {
+        if (row.bucket === "VAT" && row.direction === "COLLECT") return "To carry forward";
+        if (row.fundingSource === "CARRY_FORWARD") return "Paid (carry forward)";
+        return row.direction === "PAY" ? "Paid" : "Collected";
+      },
     },
     {
       key: "bucket",
@@ -161,7 +179,7 @@ export function TaxPaymentPage() {
     <PageContainer
       header={
         <PageHeader
-          description="Pay tax authority liabilities or collect tax receivables. Posting clears the matching GL balance."
+          description="Pay tax authority liabilities or move VAT recoverable into carry forward. Cash/bank settles WHT and optional VAT payments."
           eyebrow="Tax"
           title="Tax payments"
         />
@@ -190,6 +208,15 @@ export function TaxPaymentPage() {
           </p>
           <p className="mt-2 text-xl font-semibold tabular-nums">
             {formatCurrency(totals?.salesTaxReceivable ?? 0, currency)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            Sales tax carry forward
+            <FieldHint text="VAT recoverable moved here when collected. Apply against sales tax payable instead of cash." />
+          </p>
+          <p className="mt-2 text-xl font-semibold tabular-nums">
+            {formatCurrency(totals?.salesTaxCarryForward ?? 0, currency)}
           </p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
@@ -228,6 +255,15 @@ export function TaxPaymentPage() {
             {formatCurrency(totals?.incomeWhtReceivable ?? 0, currency)}
           </p>
         </div>
+        <div className="rounded-2xl border border-border/70 bg-white p-4 shadow-sm">
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            Income WHT claimed
+            <FieldHint text="Customer-held income WHT claimed from the authority (moved out of receivable)." />
+          </p>
+          <p className="mt-2 text-xl font-semibold tabular-nums">
+            {formatCurrency(totals?.incomeWhtClaimed ?? 0, currency)}
+          </p>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -256,7 +292,15 @@ export function TaxPaymentPage() {
         </div>
 
         <div className="space-y-4">
-          <FormSection title={direction === "PAY" ? "Pay tax" : "Collect tax receivable"}>
+          <FormSection
+            title={
+              isVatCollect
+                ? "Move to carry forward"
+                : direction === "PAY"
+                  ? "Pay tax"
+                  : "Collect tax receivable"
+            }
+          >
             {!canManage ? (
               <Alert
                 title="Tax manage permission required"
@@ -274,6 +318,7 @@ export function TaxPaymentPage() {
                   onChange={(event) => {
                     setDirection(event.target.value as TaxPaymentDirection);
                     setAccountId("");
+                    setFundingSource("CASH");
                   }}
                   value={direction}
                 >
@@ -284,7 +329,10 @@ export function TaxPaymentPage() {
               <FormField label="Tax balance">
                 <Select
                   disabled={!canManage}
-                  onChange={(event) => setAccountId(event.target.value)}
+                  onChange={(event) => {
+                    setAccountId(event.target.value);
+                    setFundingSource("CASH");
+                  }}
                   value={accountId}
                 >
                   <option value="">Select balance</option>
@@ -296,20 +344,43 @@ export function TaxPaymentPage() {
                   ))}
                 </Select>
               </FormField>
-              <FormField label="Bank / cash account">
-                <Select
-                  disabled={!canManage}
-                  onChange={(event) => setBankAccountId(event.target.value)}
-                  value={bankAccountId}
-                >
-                  <option value="">Select account</option>
-                  {bankAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.code} · {account.name}
+              {isVatCollect ? (
+                <p className="text-sm text-muted-foreground md:col-span-2">
+                  Moves VAT recoverable into sales tax carry forward. Cash balance does not change.
+                </p>
+              ) : null}
+              {isVatPay ? (
+                <FormField label="Pay from">
+                  <Select
+                    disabled={!canManage}
+                    onChange={(event) =>
+                      setFundingSource(event.target.value as TaxPaymentFundingSource)
+                    }
+                    value={fundingSource}
+                  >
+                    <option value="CASH">Cash / bank</option>
+                    <option value="CARRY_FORWARD">
+                      Carry forward ({formatCurrency(carryForwardBalance, currency)})
                     </option>
-                  ))}
-                </Select>
-              </FormField>
+                  </Select>
+                </FormField>
+              ) : null}
+              {needsBankAccount ? (
+                <FormField label="Bank / cash account">
+                  <Select
+                    disabled={!canManage}
+                    onChange={(event) => setBankAccountId(event.target.value)}
+                    value={bankAccountId}
+                  >
+                    <option value="">Select account</option>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.code} · {account.name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+              ) : null}
               <FormField label="Amount">
                 <Input
                   disabled={!canManage}
@@ -344,15 +415,15 @@ export function TaxPaymentPage() {
               disabled={!canManage || createMutation.isPending}
               isLoading={createMutation.isPending}
               onClick={async () => {
-                if (!accountId || !bankAccountId || !selectedDetail) return;
-                const bucket = bucketForRole(selectedDetail.role);
-                if (!bucket) return;
+                if (!accountId || !selectedDetail || !selectedBucket) return;
+                if (needsBankAccount && !bankAccountId) return;
                 await createMutation.mutateAsync({
                   direction,
-                  bucket,
+                  bucket: selectedBucket,
                   accountId,
-                  bankAccountId,
-                  amount: toOptionalDecimalString(amount) || amount,
+                  ...(needsBankAccount ? { bankAccountId } : {}),
+                  fundingSource: effectiveFunding,
+                  amount: toMoneyDecimalString(amount) || amount,
                   paymentDate,
                   memo: memo || undefined,
                 });
@@ -361,7 +432,13 @@ export function TaxPaymentPage() {
               }}
               type="button"
             >
-              {direction === "PAY" ? "Mark as paid" : "Mark as collected"}
+              {isVatCollect
+                ? "Move to carry forward"
+                : effectiveFunding === "CARRY_FORWARD"
+                  ? "Pay from carry forward"
+                  : direction === "PAY"
+                    ? "Mark as paid"
+                    : "Mark as collected"}
             </Button>
           </FormSection>
         </div>

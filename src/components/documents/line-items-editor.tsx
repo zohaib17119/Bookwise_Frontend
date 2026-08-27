@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ItemSelect } from "@/components/documents/item-select";
 import { formatCurrency } from "@/lib/utils/format";
 import {
   exclToIncl,
@@ -26,8 +27,6 @@ import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/comp
 import type { DiscountType } from "@/features/shared/types/documents";
 import { toDecimalString, toNumber } from "@/features/shared/utils/decimal-string";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
-
-const CREATE_ITEM_SENTINEL = "__create_item__";
 
 interface ItemOption {
   id: string;
@@ -123,6 +122,19 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
     const rest = itemOptions.filter((item) => item.preferredVendorId !== preferredVendorId);
     return [...preferred, ...rest];
   }, [itemOptions, preferredVendorId]);
+
+  const itemSelectOptions = useMemo(
+    () =>
+      sortedItemOptions.map((item) => ({
+        id: item.id,
+        label: item.name,
+        secondary:
+          preferredVendorId && item.preferredVendorId === preferredVendorId
+            ? "preferred"
+            : undefined,
+      })),
+    [sortedItemOptions, preferredVendorId],
+  );
 
   const watchedLines = (useWatch({
     control,
@@ -362,34 +374,21 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       control={control}
                       name={`${name}.${index}.itemId` as never}
                       render={({ field: inputField }) => (
-                        <Select
-                          className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            if (next === CREATE_ITEM_SENTINEL) {
-                              onCreateItemForLine?.(index);
-                              return;
-                            }
+                        <ItemSelect
+                          createLabel={createItemLabel}
+                          onChange={(next) => {
                             inputField.onChange(next);
                             handleItemChange(index, next);
                           }}
-                          value={
-                            (inputField.value as string | undefined) ?? ""
+                          onCreateNew={
+                            onCreateItemForLine
+                              ? () => onCreateItemForLine(index)
+                              : undefined
                           }
-                        >
-                          <option value="">Select item...</option>
-                          {sortedItemOptions.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name}
-                              {preferredVendorId && item.preferredVendorId === preferredVendorId
-                                ? " (preferred)"
-                                : ""}
-                            </option>
-                          ))}
-                          {onCreateItemForLine ? (
-                            <option value={CREATE_ITEM_SENTINEL}>{createItemLabel}</option>
-                          ) : null}
-                        </Select>
+                          options={itemSelectOptions}
+                          placeholder="Select item..."
+                          value={(inputField.value as string | undefined) ?? ""}
+                        />
                       )}
                     />
                   </td>
@@ -403,7 +402,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         <div className="space-y-1">
                           <Input
                             {...inputField}
-                            className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 rounded-lg border border-border bg-white text-sm transition-all focus:border-primary"
                             placeholder="Enter description"
                             value={(inputField.value as string) ?? ""}
                           />
@@ -425,7 +424,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       render={({ field: inputField }) => (
                         <div className="space-y-1">
                           <Input
-                            className="h-9 rounded-lg border-transparent bg-transparent text-center text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 rounded-lg border border-border bg-white text-center text-sm transition-all focus:border-primary"
                             min="0"
                             onBlur={inputField.onBlur}
                             onChange={(e) => {
@@ -461,7 +460,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       render={({ field: inputField }) => (
                         <div className="space-y-0.5">
                           <Input
-                            className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 rounded-lg border border-border bg-white text-right text-sm transition-all focus:border-primary"
                             min="0"
                             onBlur={inputField.onBlur}
                             onChange={(e) => {
@@ -489,7 +488,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                     <td className="px-3 py-2.5">
                       <div className="space-y-0.5">
                         <Input
-                          className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                          className="h-9 rounded-lg border border-border bg-white text-right text-sm transition-all focus:border-primary"
                           min="0"
                           onBlur={() => {
                             setEditingUnitInclLineId(null);
@@ -537,7 +536,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         }
                         render={({ field: inputField }) => (
                           <Select
-                            className="h-9 w-[70px] rounded-lg border-transparent bg-transparent text-xs transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 w-[70px] rounded-lg border border-border bg-white text-xs transition-all focus:border-primary"
                             onChange={(event) =>
                               inputField.onChange(event.target.value)
                             }
@@ -562,7 +561,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         }
                         render={({ field: inputField }) => (
                           <Input
-                            className="h-9 w-[60px] rounded-lg border-transparent bg-transparent text-right text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 w-[60px] rounded-lg border border-border bg-white text-right text-sm transition-all focus:border-primary"
                             min="0"
                             onBlur={inputField.onBlur}
                             onChange={(e) => {
@@ -593,7 +592,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                         }
                         render={({ field: inputField }) => (
                           <Select
-                            className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                            className="h-9 rounded-lg border border-border bg-white text-sm transition-all focus:border-primary"
                             onChange={(event) =>
                               inputField.onChange(event.target.value)
                             }
@@ -623,7 +622,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       name={`${name}.${index}.taxCodeId` as never}
                       render={({ field: inputField }) => (
                         <Select
-                          className="h-9 rounded-lg border-transparent bg-transparent text-sm transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                          className="h-9 rounded-lg border border-border bg-white text-sm transition-all focus:border-primary"
                           onChange={(event) => {
                             inputField.onChange(event.target.value);
                             handleTaxCodeChange(index, event.target.value);
@@ -666,7 +665,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
                       </span>
                     ) : (
                       <Input
-                        className="h-9 rounded-lg border-transparent bg-transparent text-right text-sm font-semibold transition-all focus:border-primary focus:bg-white hover:bg-secondary/60"
+                        className="h-9 rounded-lg border border-border bg-white text-right text-sm font-semibold transition-all focus:border-primary"
                         min="0"
                         onBlur={() => {
                           setEditingInclLineId(null);

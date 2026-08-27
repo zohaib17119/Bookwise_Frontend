@@ -299,6 +299,17 @@ export function DashboardPage() {
             value={formatCurrency(metrics?.taxBalances?.salesTaxReceivable ?? 0, displayCurrency)}
           />
           <DashboardKpiCard
+            badgeLabel="Credit"
+            changePercent={null}
+            footer="GL balance"
+            hint="FBR / authority sales tax credit held as carry forward after collecting VAT receivable. Use it when paying sales tax payable."
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Sales tax carry forward"
+            tone="blue"
+            value={formatCurrency(metrics?.taxBalances?.salesTaxCarryForward ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
             badgeLabel="To pay"
             changePercent={null}
             footer="GL balance"
@@ -341,6 +352,17 @@ export function DashboardPage() {
             title="Income WHT receivable"
             tone="green"
             value={formatCurrency(metrics?.taxBalances?.incomeWhtReceivable ?? 0, displayCurrency)}
+          />
+          <DashboardKpiCard
+            badgeLabel="Claimed"
+            changePercent={null}
+            footer="GL balance"
+            hint="Customer-held income WHT moved from receivable when claimed from the authority."
+            icon={Landmark}
+            isLoading={isLoading}
+            title="Income WHT claimed"
+            tone="blue"
+            value={formatCurrency(metrics?.taxBalances?.incomeWhtClaimed ?? 0, displayCurrency)}
           />
         </div>
       </div>

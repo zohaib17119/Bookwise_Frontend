@@ -10,6 +10,7 @@ import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
 import { TableColumnPicker } from "@/components/shared/table-column-picker";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
+import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
@@ -18,6 +19,16 @@ import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
+import {
+  AuthorityTaxDialog,
+  type AuthorityTaxDialogKind,
+} from "@/features/tax/components/authority-tax-dialog";
+import {
+  usePayInvoiceSalesTax,
+  useSettleInvoiceIncomeWht,
+  useTaxBalances,
+  useTaxSettings,
+} from "@/features/tax/hooks/use-tax";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import {
   useTableViewPreferences,
@@ -45,7 +56,13 @@ const INVOICE_VIEW_COLUMNS: TableViewColumnDef[] = [
   { id: "amountPaid", label: "Amount paid", defaultVisible: false },
   { id: "total", label: "Total", defaultVisible: true },
   { id: "amountDue", label: "Amount due", defaultVisible: true },
+  { id: "taxActions", label: "Tax actions", defaultVisible: true },
 ];
+
+function moneyNum(value?: string | null) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -59,6 +76,11 @@ export function InvoicesPage() {
   const [limit, setLimit] = useState(25);
   const deferredSearch = useDeferredValue(search);
   const customersQuery = useCustomerOptions(companyId);
+  const accountsQuery = useAccountOptions(companyId);
+  const taxSettingsQuery = useTaxSettings(companyId);
+  const taxBalancesQuery = useTaxBalances(companyId);
+  const paySalesTaxMutation = usePayInvoiceSalesTax(companyId);
+  const settleIncomeWhtMutation = useSettleInvoiceIncomeWht(companyId);
   const invoicesQuery = useInvoicesPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     status: status || undefined,
@@ -68,7 +90,25 @@ export function InvoicesPage() {
   });
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
+  const canManageTax = canManageEntity(permissions, "tax");
   const baseCurrency = getCompanyBaseCurrency(company);
+
+  const [dialogKind, setDialogKind] = useState<AuthorityTaxDialogKind | null>(null);
+  const [dialogInvoice, setDialogInvoice] = useState<Invoice | null>(null);
+
+  const bankAccounts = useMemo(
+    () =>
+      (accountsQuery.data ?? []).filter(
+        (account) =>
+          account.type === "BANK" ||
+          (account.type === "ASSET" && (account.subtype ?? "").toLowerCase() === "cash"),
+      ),
+    [accountsQuery.data],
+  );
+
+  const savedCfPercent =
+    (taxSettingsQuery.data?.salesTaxCarryForwardMaxPercent as string | null | undefined) ?? null;
+  const cfBalance = moneyNum(taxBalancesQuery.data?.salesTaxCarryForward);
 
   const viewColumns = useMemo(() => {
     let columns = INVOICE_VIEW_COLUMNS;
@@ -78,8 +118,11 @@ export function InvoicesPage() {
     if (!showFbr) {
       columns = columns.filter((column) => column.id !== "fbrTaxReported");
     }
+    if (!canManageTax) {
+      columns = columns.filter((column) => column.id !== "taxActions");
+    }
     return columns;
-  }, [showFbr, showZatca]);
+  }, [canManageTax, showFbr, showZatca]);
 
   const tableView = useTableViewPreferences("invoices", companyId, user?.id, viewColumns);
 
@@ -91,6 +134,18 @@ export function InvoicesPage() {
       />
     );
   }
+
+  const openSalesTax = (invoice: Invoice) => {
+    setDialogInvoice(invoice);
+    setDialogKind("invoice-sales-tax");
+    paySalesTaxMutation.reset();
+  };
+
+  const openIncomeWht = (invoice: Invoice) => {
+    setDialogInvoice(invoice);
+    setDialogKind("invoice-income-wht");
+    settleIncomeWhtMutation.reset();
+  };
 
   const columnMap: Record<string, DataTableColumn<Invoice>> = {
     number: {
@@ -127,7 +182,7 @@ export function InvoicesPage() {
     },
     payment: {
       key: "payment",
-      header: "Payment",
+      header: "Payment Status",
       render: (invoice) => {
         const status = invoice.status ?? "";
         if (status === "PAID") return <DocumentStatusBadge status="PAID" />;
@@ -139,7 +194,7 @@ export function InvoicesPage() {
             </span>
           );
         }
-        return <span className="text-muted-foreground">—</span>;
+        return <span className="text-muted-foreground"><DocumentStatusBadge status={"DRAFT"} /></span>;
       },
     },
     zatca: {
@@ -280,6 +335,50 @@ export function InvoicesPage() {
       render: (invoice) =>
         formatCurrency(invoice.amountDue ?? "0", invoice.currencyCode ?? baseCurrency),
     },
+    taxActions: {
+      key: "taxActions",
+      header: "Tax",
+      render: (invoice) => {
+        const status = String(invoice.status ?? "");
+        const issued = !["DRAFT", "VOID", "CANCELLED"].includes(status);
+        const salesTaxOutstanding = Math.max(
+          0,
+          moneyNum(invoice.taxAmount) - moneyNum(invoice.salesTaxAuthoritySettledAmount),
+        );
+        const incomeWhtOutstanding = Math.max(
+          0,
+          moneyNum(invoice.incomeWhtAmount) - moneyNum(invoice.incomeWhtAuthoritySettledAmount),
+        );
+        const heldBy = invoice.incomeWhtHeldBy ?? "COUNTERPARTY";
+        if (!issued || (!salesTaxOutstanding && !incomeWhtOutstanding)) {
+          return <span className="text-xs text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="flex flex-col gap-1">
+            {salesTaxOutstanding > 0 ? (
+              <Button
+                onClick={() => openSalesTax(invoice)}
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Mark sales tax paid
+              </Button>
+            ) : null}
+            {incomeWhtOutstanding > 0 ? (
+              <Button
+                onClick={() => openIncomeWht(invoice)}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                {heldBy === "COMPANY" ? "Pay income WHT" : "Claim income WHT"}
+              </Button>
+            ) : null}
+          </div>
+        );
+      },
+    },
   };
 
   const columns = tableView.visibleColumnIds
@@ -287,6 +386,7 @@ export function InvoicesPage() {
     .filter((column): column is DataTableColumn<Invoice> => Boolean(column));
 
   return (
+    <>
     <EntityListPage
       content={
         invoicesQuery.error ? (
@@ -389,5 +489,77 @@ export function InvoicesPage() {
         </FilterBar>
       }
     />
+    <AuthorityTaxDialog
+      amount={
+        dialogKind === "invoice-sales-tax"
+          ? Math.max(
+              0,
+              moneyNum(dialogInvoice?.taxAmount) -
+                moneyNum(dialogInvoice?.salesTaxAuthoritySettledAmount),
+            )
+          : Math.max(
+              0,
+              moneyNum(dialogInvoice?.incomeWhtAmount) -
+                moneyNum(dialogInvoice?.incomeWhtAuthoritySettledAmount),
+            )
+      }
+      amountLabel={
+        dialogKind === "invoice-sales-tax" ? "Sales tax to pay" : "Income WHT to settle"
+      }
+      bankAccounts={bankAccounts}
+      carryForwardBalance={cfBalance}
+      currency={dialogInvoice?.currencyCode ?? baseCurrency}
+      description={
+        dialogKind === "invoice-sales-tax"
+          ? "Pays this invoice’s sales tax using carry forward (up to your max %) then cash/bank."
+          : dialogInvoice?.incomeWhtHeldBy === "COMPANY"
+            ? "Pays company-held income WHT from cash/bank."
+            : "Moves customer-held income WHT receivable into Income WHT Claimed (no cash)."
+      }
+      errorMessage={
+        (dialogKind === "invoice-sales-tax"
+          ? paySalesTaxMutation.error?.message
+          : settleIncomeWhtMutation.error?.message) ?? null
+      }
+      isPending={paySalesTaxMutation.isPending || settleIncomeWhtMutation.isPending}
+      kind={dialogKind}
+      needsBank={
+        dialogKind === "invoice-sales-tax" || dialogInvoice?.incomeWhtHeldBy === "COMPANY"
+      }
+      needsPercent={dialogKind === "invoice-sales-tax" && savedCfPercent == null}
+      onClose={() => {
+        setDialogKind(null);
+        setDialogInvoice(null);
+      }}
+      onConfirm={async (values) => {
+        if (!dialogInvoice || !dialogKind) return;
+        if (dialogKind === "invoice-sales-tax") {
+          await paySalesTaxMutation.mutateAsync({
+            invoiceId: dialogInvoice.id,
+            paymentDate: values.paymentDate,
+            bankAccountId: values.bankAccountId,
+            carryForwardMaxPercent: values.carryForwardMaxPercent,
+          });
+        } else {
+          await settleIncomeWhtMutation.mutateAsync({
+            invoiceId: dialogInvoice.id,
+            paymentDate: values.paymentDate,
+            bankAccountId: values.bankAccountId,
+          });
+        }
+        setDialogKind(null);
+        setDialogInvoice(null);
+      }}
+      open={Boolean(dialogKind && dialogInvoice)}
+      savedPercent={savedCfPercent}
+      title={
+        dialogKind === "invoice-sales-tax"
+          ? `Mark sales tax paid — ${dialogInvoice?.invoiceNumber ?? ""}`
+          : dialogInvoice?.incomeWhtHeldBy === "COMPANY"
+            ? `Pay income WHT — ${dialogInvoice?.invoiceNumber ?? ""}`
+            : `Claim income WHT — ${dialogInvoice?.invoiceNumber ?? ""}`
+      }
+    />
+    </>
   );
 }
