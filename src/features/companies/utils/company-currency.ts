@@ -51,7 +51,7 @@ export function exchangeRateTableToDocumentRate(tableRate: string | number): str
  */
 export function convertBasePriceToDocumentPrice(
   basePrice: number,
-  exchangeRate: string | number | undefined,
+  exchangeRate: string | number | undefined | {},
   documentCurrency: string,
   baseCurrency: string,
 ): number {
