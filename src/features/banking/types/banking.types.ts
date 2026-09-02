@@ -4,6 +4,7 @@ export interface BankAccount {
   id: string;
   linkedAccountId: string;
   linkedAccountName?: string | null;
+  linkedAccountCode?: string | null;
   name: string;
   accountNumberMasked?: string | null;
   bankName?: string | null;

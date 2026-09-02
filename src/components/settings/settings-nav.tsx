@@ -6,6 +6,7 @@ import { canShowZatcaSettings } from "@/features/compliance/utils/compliance-acc
 const baseSettingsItems = [
   { segment: "company", label: "Company" },
   { segment: "accounting", label: "Accounting" },
+  { segment: "opening-balances", label: "Opening balances" },
   { segment: "tax", label: "Tax" },
   { segment: "invoice-template", label: "Invoice template" },
   { segment: "estimate-template", label: "Estimate / quotation template" },

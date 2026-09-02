@@ -165,11 +165,24 @@ export function CompanyCreatePage() {
               <span className="text-emerald-600">✓</span>
               Company profile saved{logo ? " (logo uploaded)" : ""}
             </li>
+            <li className="flex items-center gap-2">
+              <span className="text-muted-foreground">•</span>
+              Opening cash and bank balances can be entered now, or later in Settings
+            </li>
           </ul>
 
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              onClick={() =>
+                navigate(`/app/company/${createdCompany.id}/settings/opening-balances`)
+              }
+              type="button"
+              variant="secondary"
+            >
+              Enter opening balances
+            </Button>
             <Button onClick={() => navigate(`/app/company/${createdCompany.id}/dashboard`)} type="button">
-              Continue to dashboard
+              Skip — continue to dashboard
             </Button>
           </div>
         </div>

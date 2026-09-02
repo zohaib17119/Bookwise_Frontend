@@ -29,6 +29,7 @@ function serializeCustomerPaymentPayload(payload: CustomerPaymentPayload): Custo
       currencyCode: payload.currencyCode || undefined,
       exchangeRate: payload.exchangeRate || undefined,
       notes: payload.notes || undefined,
+      paymentAccountId: payload.paymentAccountId || undefined,
     }),
     ...(payload.allocations?.length
       ? {

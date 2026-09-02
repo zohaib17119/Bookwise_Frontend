@@ -93,6 +93,7 @@ export const allocationLineSchema = z.object({
 export const paymentBaseSchema = z.object({
   paymentDate: requiredPaymentDateSchema,
   paymentMethod: z.string().trim().min(1, "Payment method is required").max(80),
+  paymentAccountId: optionalString,
   referenceNumber: optionalString,
   amount: requiredPaymentAmountSchema,
   notes: optionalString,

@@ -12,6 +12,7 @@ interface BalanceSparklineCardProps {
   icon: LucideIcon;
   tone?: "green" | "blue" | "red";
   isLoading?: boolean;
+  onClick?: () => void;
 }
 
 const toneStyles = {
@@ -40,6 +41,7 @@ export function BalanceSparklineCard({
   icon: Icon,
   tone = "blue",
   isLoading,
+  onClick,
 }: BalanceSparklineCardProps) {
   const styles = toneStyles[tone];
 
@@ -52,7 +54,22 @@ export function BalanceSparklineCard({
   }
 
   return (
-    <div className="surface p-4">
+    <div
+      className={cn("surface p-4", onClick && "cursor-pointer hover:ring-1 hover:ring-primary/30")}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
       <div className="grid grid-cols-[1fr_120px] items-center gap-4">
         <div>
           <div className="flex items-center gap-3">

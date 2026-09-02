@@ -28,6 +28,7 @@ export interface Account {
   currencyCode?: string | null;
   isActive: boolean;
   isSystemGenerated?: boolean;
+  includeInDashboardCash?: boolean;
 }
 
 export interface AccountListParams extends BaseEntityListParams {
@@ -46,4 +47,5 @@ export interface AccountPayload {
   parentAccountId?: string | null;
   currencyCode?: string;
   isActive: boolean;
+  includeInDashboardCash?: boolean;
 }

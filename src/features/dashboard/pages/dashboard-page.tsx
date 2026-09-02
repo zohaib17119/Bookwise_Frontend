@@ -25,7 +25,10 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { usePatchAccount } from "@/features/accounts/hooks/use-accounts";
+import { CashAccountsPanel } from "@/features/dashboard/components/cash-accounts-panel";
 import { useCompanyDashboard } from "@/features/dashboard/hooks/use-dashboard";
+import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import {
   getPeriodRangeFromPreset,
   type DashboardPeriodPreset,
@@ -35,11 +38,14 @@ import { taxBalanceHint } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
 
 export function DashboardPage() {
-  const { companyId, company, currency } = useActiveCompany();
+  const { companyId, company, currency, permissions } = useActiveCompany();
   const user = useAuthStore((state) => state.user);
   const [preset, setPreset] = useState<DashboardPeriodPreset>(30);
   const [lowStockAlertDismissed, setLowStockAlertDismissed] = useState(false);
   const [shortageAlertDismissed, setShortageAlertDismissed] = useState(false);
+  const [cashPanelOpen, setCashPanelOpen] = useState(false);
+  const patchAccount = usePatchAccount(companyId);
+  const canManageAccounts = canManageEntity(permissions, "accounts");
 
   const periodParams = useMemo(() => getPeriodRangeFromPreset(preset), [preset]);
   const dashboardQuery = useCompanyDashboard(companyId, periodParams);
@@ -243,7 +249,8 @@ export function DashboardPage() {
           data={dashboard?.sparklines.cashBalance ?? []}
           icon={Wallet}
           isLoading={isLoading}
-          subtitle="Available cash position"
+          onClick={() => setCashPanelOpen((open) => !open)}
+          subtitle="Click to include or exclude cash and bank accounts"
           title="Cash Balance"
           tone="green"
           value={formatCurrency(metrics?.cashBalance ?? 0, displayCurrency)}
@@ -267,6 +274,34 @@ export function DashboardPage() {
           value={formatCurrency(metrics?.accountsPayable ?? 0, displayCurrency)}
         />
       </div>
+
+      {cashPanelOpen ? (
+        <CashAccountsPanel
+          accounts={dashboard?.cashAccounts ?? []}
+          canManage={canManageAccounts}
+          currency={displayCurrency}
+          isPending={patchAccount.isPending}
+          onClose={() => setCashPanelOpen(false)}
+          onIncludeAll={() => {
+            void Promise.all(
+              (dashboard?.cashAccounts ?? [])
+                .filter((account) => !account.included)
+                .map((account) =>
+                  patchAccount.mutateAsync({
+                    accountId: account.id,
+                    payload: { includeInDashboardCash: true },
+                  }),
+                ),
+            );
+          }}
+          onToggle={(accountId, included) => {
+            patchAccount.mutate({
+              accountId,
+              payload: { includeInDashboardCash: included },
+            });
+          }}
+        />
+      ) : null}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

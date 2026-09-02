@@ -29,6 +29,7 @@ export interface AccountingSettings {
   accountHierarchyEnabled?: boolean;
   allowManualJournalEntries?: boolean;
   lockDate?: string | null;
+  expenseUpdateNotesRequired?: boolean;
 }
 
 export interface CompanySettingsPayload extends Partial<CompanySettings> {}
@@ -42,4 +43,5 @@ export interface AccountingSettingsPayload {
   accountHierarchyEnabled?: boolean;
   allowManualJournalEntries?: boolean;
   lockDate?: string | null;
+  expenseUpdateNotesRequired?: boolean;
 }

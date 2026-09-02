@@ -17,6 +17,7 @@ export const accountingSettingsSchema = z.object({
   accountHierarchyEnabled: z.boolean(),
   allowManualJournalEntries: z.boolean(),
   lockDate: optionalString,
+  expenseUpdateNotesRequired: z.boolean(),
 });
 
 export type AccountingSettingsFormInput = z.input<typeof accountingSettingsSchema>;

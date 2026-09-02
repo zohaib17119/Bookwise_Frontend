@@ -8,9 +8,11 @@ import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { AccountSelect } from "@/components/accounting/account-select";
+import { PaymentDefaultCheckboxes } from "@/features/accounts/components/payment-default-checkboxes";
 import { bankAccountSchema, type BankAccountFormInput, type BankAccountFormValues } from "@/features/banking/schemas/bank-account.schema";
 import type { BankAccount } from "@/features/banking/types/banking.types";
 import type { Account } from "@/features/accounts/types/account.types";
+import type { PaymentDefaultFlags } from "@/features/accounts/components/payment-default-checkboxes";
 
 interface BankAccountFormDrawerProps {
   open: boolean;
@@ -21,6 +23,7 @@ interface BankAccountFormDrawerProps {
   error?: Error | null;
   onClose: () => void;
   onSubmit: (values: BankAccountFormValues) => Promise<void>;
+  paymentDefaults?: PaymentDefaultFlags;
 }
 
 export function BankAccountFormDrawer({
@@ -32,6 +35,7 @@ export function BankAccountFormDrawer({
   error,
   onClose,
   onSubmit,
+  paymentDefaults,
 }: BankAccountFormDrawerProps) {
   const form = useForm<BankAccountFormInput, undefined, BankAccountFormValues>({
     resolver: zodResolver(bankAccountSchema),
@@ -46,6 +50,9 @@ export function BankAccountFormDrawer({
       openingBalanceDate: bankAccount?.openingBalanceDate ?? "",
       isPrimary: bankAccount?.isPrimary ?? false,
       isActive: bankAccount?.isActive ?? true,
+      defaultForExpense: paymentDefaults?.defaultForExpense ?? false,
+      defaultForReceive: paymentDefaults?.defaultForReceive ?? false,
+      defaultForVendorPay: paymentDefaults?.defaultForVendorPay ?? false,
     },
   });
 
@@ -113,6 +120,18 @@ export function BankAccountFormDrawer({
             />
             Active
           </label>
+          <PaymentDefaultCheckboxes
+            value={{
+              defaultForExpense: Boolean(form.watch("defaultForExpense")),
+              defaultForReceive: Boolean(form.watch("defaultForReceive")),
+              defaultForVendorPay: Boolean(form.watch("defaultForVendorPay")),
+            }}
+            onChange={(value) => {
+              form.setValue("defaultForExpense", value.defaultForExpense);
+              form.setValue("defaultForReceive", value.defaultForReceive);
+              form.setValue("defaultForVendorPay", value.defaultForVendorPay);
+            }}
+          />
         </div>
       </form>
     </CreateEditDrawer>

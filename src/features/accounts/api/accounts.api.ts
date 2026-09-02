@@ -45,7 +45,7 @@ export async function createAccount(companyId: string, payload: AccountPayload) 
 export async function updateAccount(
   companyId: string,
   accountId: string,
-  payload: AccountPayload,
+  payload: Partial<AccountPayload>,
 ) {
   const { data } = await apiClient.patch<Account>(
     `/companies/${companyId}/accounts/${accountId}`,

@@ -19,6 +19,9 @@ export const bankAccountSchema = z.object({
   openingBalanceDate: optionalString,
   isPrimary: z.boolean(),
   isActive: z.boolean(),
+  defaultForExpense: z.boolean().optional(),
+  defaultForReceive: z.boolean().optional(),
+  defaultForVendorPay: z.boolean().optional(),
 });
 
 export type BankAccountFormInput = z.input<typeof bankAccountSchema>;

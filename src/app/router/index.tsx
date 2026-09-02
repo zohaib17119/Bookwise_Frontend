@@ -68,6 +68,7 @@ import { ProfitAndLossPage } from "@/features/reports/pages/profit-and-loss-page
 import { ReportsHomePage } from "@/features/reports/pages/reports-home-page";
 import { TrialBalancePage } from "@/features/reports/pages/trial-balance-page";
 import { AccountingSettingsPage } from "@/features/settings/pages/accounting-settings-page";
+import { OpeningBalancesPage } from "@/features/settings/pages/opening-balances-page";
 import { CompanySettingsPage } from "@/features/settings/pages/company-settings-page";
 import { SettingsHomePage } from "@/features/settings/pages/settings-home-page";
 import { SettingsPlaceholderPage } from "@/features/settings/pages/settings-placeholder-page";
@@ -206,6 +207,7 @@ const router = createBrowserRouter([
                       { index: true, element: <SettingsHomePage /> },
                       { path: "company", element: <CompanySettingsPage /> },
                       { path: "accounting", element: <AccountingSettingsPage /> },
+                      { path: "opening-balances", element: <OpeningBalancesPage /> },
                       { path: "tax", element: <SettingsTaxPage /> },
                       { path: "invoice-template", element: <InvoiceTemplateSettingsPage /> },
                       { path: "estimate-template", element: <EstimateTemplateSettingsPage /> },

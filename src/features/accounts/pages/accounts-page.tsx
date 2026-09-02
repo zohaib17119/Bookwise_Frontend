@@ -21,9 +21,19 @@ import {
   useParentAccountOptions,
   useUpdateAccount,
 } from "@/features/accounts/hooks/use-accounts";
+import { updateAccount } from "@/features/accounts/api/accounts.api";
 import { AccountFormDrawer } from "@/features/accounts/components/account-form-drawer";
+import { isCashLikeAccount } from "@/features/accounts/utils/cash-like";
+import {
+  mappingPayloadFromPaymentFlags,
+  paymentDefaultFlagsForAccount,
+} from "@/features/accounts/utils/payment-defaults";
 import type { Account } from "@/features/accounts/types/account.types";
 import type { AccountFormValues } from "@/features/accounts/schemas/account.schema";
+import {
+  useDefaultAccountMapping,
+  useUpsertDefaultAccountMapping,
+} from "@/features/settings/hooks/use-default-account-mapping";
 
 export function AccountsPage() {
   const { companyId, company, permissions } = useActiveCompany();
@@ -54,6 +64,8 @@ export function AccountsPage() {
   const createMutation = useCreateAccount(companyId);
   const updateMutation = useUpdateAccount(companyId, selectedAccount?.id ?? null);
   const deleteMutation = useDeleteAccount(companyId);
+  const mappingQuery = useDefaultAccountMapping(companyId);
+  const mappingMutation = useUpsertDefaultAccountMapping(companyId);
   const canView = canViewEntity(permissions, "accounts");
   const canManage = canManageEntity(permissions, "accounts");
 
@@ -235,24 +247,51 @@ export function AccountsPage() {
           activeMutation.reset();
         }}
         onSubmit={async (values: AccountFormValues) => {
+          const {
+            defaultForExpense,
+            defaultForReceive,
+            defaultForVendorPay,
+            includeInDashboardCash,
+            ...rest
+          } = values;
           const payload = {
-            ...values,
-            code: values.code || undefined,
-            description: values.description || undefined,
-            subtype: values.subtype || undefined,
-            currencyCode: values.currencyCode || undefined,
+            ...rest,
+            code: rest.code || undefined,
+            description: rest.description || undefined,
+            subtype: rest.subtype || undefined,
+            currencyCode: rest.currencyCode || undefined,
           };
 
+          let accountId = selectedAccount?.id;
           if (drawerMode === "create") {
-            await createMutation.mutateAsync(payload);
-          } else {
-            await updateMutation.mutateAsync(payload);
+            const created = await createMutation.mutateAsync(payload);
+            accountId = created.id;
+            if (includeInDashboardCash === false && companyId && accountId) {
+              await updateAccount(companyId, accountId, { includeInDashboardCash: false });
+            }
+          } else if (accountId) {
+            await updateMutation.mutateAsync({
+              ...payload,
+              includeInDashboardCash,
+            });
+          }
+
+          if (accountId && isCashLikeAccount(values)) {
+            const mappingPayload = mappingPayloadFromPaymentFlags(mappingQuery.data, accountId, {
+              defaultForExpense: Boolean(defaultForExpense),
+              defaultForReceive: Boolean(defaultForReceive),
+              defaultForVendorPay: Boolean(defaultForVendorPay),
+            });
+            if (Object.keys(mappingPayload).length > 0) {
+              await mappingMutation.mutateAsync(mappingPayload);
+            }
           }
 
           setDrawerOpen(false);
         }}
         open={drawerOpen}
         parentAccounts={parentOptionsQuery.data ?? []}
+        paymentDefaults={paymentDefaultFlagsForAccount(mappingQuery.data, selectedAccount?.id)}
       />
 
       <ConfirmDeleteDialog

@@ -91,10 +91,6 @@ export function ExpenseDetailPage() {
               <dd className="font-medium">{expense.expenseAccountName ?? "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Vendor</dt>
-              <dd className="font-medium">{expense.vendorName ?? "-"}</dd>
-            </div>
-            <div>
               <dt className="text-sm text-muted-foreground">Reference</dt>
               <dd className="font-medium">{expense.referenceNumber ?? "-"}</dd>
             </div>

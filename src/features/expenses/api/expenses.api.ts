@@ -14,6 +14,7 @@ function buildQuery(params: ExpenseListParams) {
   if (params.vendorId) query.set("vendorId", params.vendorId);
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
+  if (params.expenseAccountIds !== undefined) query.set("expenseAccountIds", params.expenseAccountIds);
   query.set("limit", String(params.limit ?? 25));
   if (params.page) query.set("page", String(params.page));
   const serialized = query.toString();
@@ -39,7 +40,19 @@ function serializeExpensePayload(payload: ExpensePayload): ExpensePayload {
 
 export async function getExpenses(companyId: string, params: ExpenseListParams = {}) {
   const { data } = await apiClient.get(`/companies/${companyId}/expenses${buildQuery(params)}`);
-  return extractPaginated<Expense>(data);
+  const parsed = extractPaginated<Expense>(data);
+  const envelope = (data ?? {}) as Record<string, unknown>;
+  const nested =
+    envelope.data && typeof envelope.data === "object"
+      ? (envelope.data as Record<string, unknown>)
+      : envelope;
+  const filteredTotalAmount =
+    nested.filteredTotalAmount != null
+      ? String(nested.filteredTotalAmount)
+      : envelope.filteredTotalAmount != null
+        ? String(envelope.filteredTotalAmount)
+        : "0.00";
+  return { ...parsed, filteredTotalAmount };
 }
 
 export async function getExpense(companyId: string, expenseId: string) {
@@ -62,7 +75,10 @@ export async function updateExpense(
 ) {
   const { data } = await apiClient.patch<Expense>(
     `/companies/${companyId}/expenses/${expenseId}`,
-    payload,
+    {
+      ...payload,
+      ...(payload.amount ? { amount: serializeMoneyField(payload.amount) } : {}),
+    },
   );
   return data;
 }

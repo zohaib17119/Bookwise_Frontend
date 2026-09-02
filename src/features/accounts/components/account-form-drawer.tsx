@@ -11,6 +11,8 @@ import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
+import { PaymentDefaultCheckboxes } from "@/features/accounts/components/payment-default-checkboxes";
+import { isCashLikeAccount } from "@/features/accounts/utils/cash-like";
 import type { ApiError } from "@/lib/api/types";
 import { getFirstFieldError } from "@/lib/api/error";
 import {
@@ -29,6 +31,11 @@ interface AccountFormDrawerProps {
   error?: ApiError | null;
   onClose: () => void;
   onSubmit: (values: AccountFormValues) => Promise<void> | void;
+  paymentDefaults?: {
+    defaultForExpense: boolean;
+    defaultForReceive: boolean;
+    defaultForVendorPay: boolean;
+  };
 }
 
 const accountTypeOptions = [
@@ -55,6 +62,7 @@ export function AccountFormDrawer({
   error,
   onClose,
   onSubmit,
+  paymentDefaults,
 }: AccountFormDrawerProps) {
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
@@ -68,6 +76,10 @@ export function AccountFormDrawer({
       parentAccountId: null,
       currencyCode: companyCurrency ?? "USD",
       isActive: true,
+      includeInDashboardCash: true,
+      defaultForExpense: false,
+      defaultForReceive: false,
+      defaultForVendorPay: false,
     },
   });
 
@@ -84,8 +96,12 @@ export function AccountFormDrawer({
       parentAccountId: account?.parentAccountId ?? null,
       currencyCode: account?.currencyCode ?? companyCurrency ?? "USD",
       isActive: account?.isActive ?? true,
+      includeInDashboardCash: account?.includeInDashboardCash ?? true,
+      defaultForExpense: paymentDefaults?.defaultForExpense ?? false,
+      defaultForReceive: paymentDefaults?.defaultForReceive ?? false,
+      defaultForVendorPay: paymentDefaults?.defaultForVendorPay ?? false,
     });
-  }, [account, companyCurrency, form, open]);
+  }, [account, companyCurrency, form, open, paymentDefaults]);
 
   return (
     <CreateEditDrawer
@@ -199,6 +215,39 @@ export function AccountFormDrawer({
                 </p>
               </div>
             </div>
+            {isCashLikeAccount({
+              type: form.watch("type"),
+              subtype: form.watch("subtype"),
+            }) ? (
+              <>
+                <div className="flex items-center gap-3 rounded-xl border bg-white px-4 py-3">
+                  <Checkbox
+                    checked={form.watch("includeInDashboardCash") ?? true}
+                    onChange={(event) => form.setValue("includeInDashboardCash", event.target.checked)}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Include in dashboard cash</p>
+                    <p className="text-xs text-muted-foreground">
+                      When checked, this account is part of the Cash Balance total.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border bg-white px-4 py-3">
+                  <PaymentDefaultCheckboxes
+                    value={{
+                      defaultForExpense: Boolean(form.watch("defaultForExpense")),
+                      defaultForReceive: Boolean(form.watch("defaultForReceive")),
+                      defaultForVendorPay: Boolean(form.watch("defaultForVendorPay")),
+                    }}
+                    onChange={(value) => {
+                      form.setValue("defaultForExpense", value.defaultForExpense);
+                      form.setValue("defaultForReceive", value.defaultForReceive);
+                      form.setValue("defaultForVendorPay", value.defaultForVendorPay);
+                    }}
+                  />
+                </div>
+              </>
+            ) : null}
           </FieldGrid>
           <FormField
             error={

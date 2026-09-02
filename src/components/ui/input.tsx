@@ -16,6 +16,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
       type={type}
       {...props}
       onWheel={(event) => {
+        console.log("its an onwheel")
         if (type === "number") {
           event.preventDefault();
         }

@@ -81,8 +81,23 @@ export function useUpdateAccount(
   accountId: string | null,
 ) {
   return useMutation({
-    mutationFn: (payload: AccountPayload) =>
+    mutationFn: (payload: Partial<AccountPayload>) =>
       updateAccount(companyId!, accountId!, payload),
+    onSuccess: async () => {
+      if (companyId) await invalidateAccountQueries(companyId);
+    },
+  });
+}
+
+export function usePatchAccount(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: ({
+      accountId,
+      payload,
+    }: {
+      accountId: string;
+      payload: Partial<AccountPayload>;
+    }) => updateAccount(companyId!, accountId, payload),
     onSuccess: async () => {
       if (companyId) await invalidateAccountQueries(companyId);
     },

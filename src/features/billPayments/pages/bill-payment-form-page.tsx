@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AllocationEditor } from "@/components/documents/allocation-editor";
 import { AllocationSummaryCard } from "@/components/documents/allocation-summary-card";
@@ -15,6 +16,9 @@ import { FormSection } from "@/components/shared/form-section";
 import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
+import { isCashLikeAccount } from "@/features/accounts/utils/cash-like";
+import { useDefaultAccountMapping } from "@/features/settings/hooks/use-default-account-mapping";
 import {
   useCreateBillPayment,
 } from "@/features/billPayments/hooks/use-bill-payments";
@@ -39,6 +43,8 @@ export function BillPaymentFormPage() {
   const presetBillId = searchParams.get("billId") ?? "";
   const { company, permissions } = useActiveCompany();
   const vendorsQuery = useVendorOptions(companyId);
+  const accountsQuery = useAccountOptions(companyId);
+  const mappingQuery = useDefaultAccountMapping(companyId);
   const createMutation = useCreateBillPayment(companyId);
   const canManage = canManageEntity(permissions, "bill_payments");
   const currencyCode = company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
@@ -50,12 +56,23 @@ export function BillPaymentFormPage() {
       vendorId: presetVendorId,
       paymentDate: new Date().toISOString().slice(0, 10),
       paymentMethod: "Bank Transfer",
+      paymentAccountId: "",
       referenceNumber: "",
       amount: "",
       notes: "",
     },
   });
   const selectedVendorId = form.watch("vendorId");
+  const cashAccounts = useMemo(
+    () => (accountsQuery.data ?? []).filter((account) => account.isActive && isCashLikeAccount(account)),
+    [accountsQuery.data],
+  );
+  const defaultVendorPay =
+    mappingQuery.data?.defaultVendorPay?.accountId || mappingQuery.data?.cashBank?.accountId || "";
+  useEffect(() => {
+    if (!defaultVendorPay || form.getValues("paymentAccountId")) return;
+    form.setValue("paymentAccountId", defaultVendorPay);
+  }, [defaultVendorPay, form]);
   const watchedAmount = form.watch("amount");
   const formErrors = form.formState.errors;
   const hasFormErrors = Object.keys(formErrors).length > 0 && form.formState.isSubmitted;
@@ -172,6 +189,7 @@ export function BillPaymentFormPage() {
             vendorId: values.vendorId,
             paymentDate: values.paymentDate,
             paymentMethod: values.paymentMethod,
+            paymentAccountId: values.paymentAccountId || undefined,
             referenceNumber: values.referenceNumber || undefined,
             amount: toMoneyDecimalString(values.amount),
             notes: values.notes || undefined,
@@ -208,6 +226,16 @@ export function BillPaymentFormPage() {
               />
               <FormField label="Payment date" error={formErrors.paymentDate?.message}>
                 <Input type="date" {...form.register("paymentDate")} />
+              </FormField>
+              <FormField label="Pay from">
+                <Select {...form.register("paymentAccountId")}>
+                  <option value="">Select account</option>
+                  {cashAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {(account.code ? `${account.code} ` : "") + account.name}
+                    </option>
+                  ))}
+                </Select>
               </FormField>
               <FormField label="Payment method" error={formErrors.paymentMethod?.message}>
                 <Input {...form.register("paymentMethod")} placeholder="Bank Transfer" />

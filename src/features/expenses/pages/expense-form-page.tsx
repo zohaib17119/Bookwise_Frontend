@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
@@ -6,15 +6,17 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { CounterpartySelect } from "@/components/documents/counterparty-select";
 import { FieldGrid } from "@/components/shared/field-grid";
 import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import { PageContainer } from "@/components/shared/page-container";
 import { PageHeader } from "@/components/shared/page-header";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
+import { buildPayFromOptions } from "@/features/accounts/utils/payment-account-options";
+import { useBankAccounts } from "@/features/banking/hooks/use-banking";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
+import { ExpenseCategorySelect } from "@/features/expenses/components/expense-category-select";
 import { useCreateExpense } from "@/features/expenses/hooks/use-expenses";
 import {
   expenseSchema,
@@ -22,7 +24,7 @@ import {
   type ExpenseFormValues,
 } from "@/features/expenses/schemas/expense.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
-import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
+import { useDefaultAccountMapping } from "@/features/settings/hooks/use-default-account-mapping";
 import { formatCurrency } from "@/lib/utils/format";
 import { toMoneyString } from "@/lib/utils/money";
 
@@ -30,24 +32,11 @@ export function ExpenseFormPage() {
   const navigate = useNavigate();
   const { companyId, company, permissions } = useActiveCompany();
   const accountsQuery = useAccountOptions(companyId);
-  const vendorsQuery = useVendorOptions(companyId);
+  const bankAccountsQuery = useBankAccounts(companyId);
+  const mappingQuery = useDefaultAccountMapping(companyId);
   const createMutation = useCreateExpense(companyId);
   const canManage = canManageEntity(permissions, "expenses");
   const displayCurrency = getCompanyBaseCurrency(company);
-
-  const bankAccounts = useMemo(
-    () => (accountsQuery.data ?? []).filter((account) => account.type === "BANK" && account.isActive),
-    [accountsQuery.data],
-  );
-
-  const expenseAccounts = useMemo(
-    () =>
-      (accountsQuery.data ?? []).filter(
-        (account) =>
-          (account.type === "EXPENSE" || account.type === "COST_OF_GOODS_SOLD") && account.isActive,
-      ),
-    [accountsQuery.data],
-  );
 
   const form = useForm<ExpenseFormInput, undefined, ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -55,12 +44,23 @@ export function ExpenseFormPage() {
       paymentDate: new Date().toISOString().slice(0, 10),
       paymentAccountId: "",
       expenseAccountId: "",
-      vendorId: "",
       amount: "",
       description: "",
       referenceNumber: "",
     },
   });
+
+  const payFromOptions = useMemo(
+    () => buildPayFromOptions(accountsQuery.data ?? [], bankAccountsQuery.data ?? []),
+    [accountsQuery.data, bankAccountsQuery.data],
+  );
+  const defaultPayFrom =
+    mappingQuery.data?.defaultExpensePayment?.accountId || mappingQuery.data?.cashBank?.accountId || "";
+  useEffect(() => {
+    if (!defaultPayFrom || form.getValues("paymentAccountId")) return;
+    form.setValue("paymentAccountId", defaultPayFrom);
+  }, [defaultPayFrom, form]);
+
   const watchedAmount = form.watch("amount");
 
   if (!canManage) {
@@ -95,7 +95,6 @@ export function ExpenseFormPage() {
             paymentDate: values.paymentDate,
             paymentAccountId: values.paymentAccountId,
             expenseAccountId: values.expenseAccountId,
-            vendorId: values.vendorId || undefined,
             amount: values.amount,
             currencyCode: displayCurrency,
             description: values.description,
@@ -115,25 +114,21 @@ export function ExpenseFormPage() {
               </FormField>
               <FormField label="Pay from" error={form.formState.errors.paymentAccountId?.message}>
                 <Select {...form.register("paymentAccountId")}>
-                  <option value="">Select bank account</option>
-                  {bankAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.code ? `${account.code} — ` : ""}
-                      {account.name}
+                  <option value="">Select cash or bank account</option>
+                  {payFromOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
                     </option>
                   ))}
                 </Select>
               </FormField>
               <FormField label="Category" error={form.formState.errors.expenseAccountId?.message}>
-                <Select {...form.register("expenseAccountId")}>
-                  <option value="">Select expense account</option>
-                  {expenseAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.code ? `${account.code} — ` : ""}
-                      {account.name}
-                    </option>
-                  ))}
-                </Select>
+                <ExpenseCategorySelect
+                  accounts={accountsQuery.data ?? []}
+                  companyId={companyId}
+                  onChange={(accountId) => form.setValue("expenseAccountId", accountId)}
+                  value={form.watch("expenseAccountId")}
+                />
               </FormField>
               <FormField label="Amount" error={form.formState.errors.amount?.message}>
                 <Input step="0.01" type="number" {...form.register("amount")} />
@@ -142,19 +137,6 @@ export function ExpenseFormPage() {
                 <Input {...form.register("referenceNumber")} placeholder="Check or receipt number" />
               </FormField>
             </FieldGrid>
-
-            <CounterpartySelect
-              error={form.formState.errors.vendorId?.message}
-              label="Vendor (optional)"
-              onChange={(value) => form.setValue("vendorId", value)}
-              options={(vendorsQuery.data ?? []).map((vendor) => ({
-                id: vendor.id,
-                label: vendor.displayName,
-                secondary: vendor.vendorCode ?? undefined,
-              }))}
-              placeholder="Select vendor"
-              value={form.watch("vendorId") ?? ""}
-            />
 
             <FormField label="Description" error={form.formState.errors.description?.message}>
               <Input {...form.register("description")} placeholder="What was this expense for?" />

@@ -39,6 +39,7 @@ export function AccountingSettingsPage() {
       accountHierarchyEnabled: accountingSettingsQuery.data?.accountHierarchyEnabled ?? true,
       allowManualJournalEntries: accountingSettingsQuery.data?.allowManualJournalEntries ?? true,
       lockDate: accountingSettingsQuery.data?.lockDate ?? "",
+      expenseUpdateNotesRequired: accountingSettingsQuery.data?.expenseUpdateNotesRequired ?? false,
     },
   });
 
@@ -118,6 +119,14 @@ export function AccountingSettingsPage() {
               onChange={(event) => form.setValue("allowManualJournalEntries", event.target.checked)}
             />
             Allow manual journal entries
+          </label>
+          <label className="flex items-center gap-2">
+            <Checkbox
+              checked={form.watch("expenseUpdateNotesRequired")}
+              disabled={!canManage}
+              onChange={(event) => form.setValue("expenseUpdateNotesRequired", event.target.checked)}
+            />
+            Require notes when updating an expense
           </label>
         </div>
       </SettingsSectionCard>

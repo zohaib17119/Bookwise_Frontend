@@ -125,6 +125,21 @@ function parseDashboardResponse(raw: Record<string, unknown>): DashboardOverview
       totalInvoices: parseCount(counts.totalInvoices),
       totalBills: parseCount(counts.totalBills),
     },
+    cashAccounts: Array.isArray(raw.cashAccounts)
+      ? raw.cashAccounts.map((row) => {
+          const account = row as Record<string, unknown>;
+          return {
+            id: String(account.id ?? ""),
+            code: account.code == null ? null : String(account.code),
+            name: String(account.name ?? ""),
+            type: String(account.type ?? ""),
+            subtype: account.subtype == null ? null : String(account.subtype),
+            included: Boolean(account.included),
+            balance: parseNumber(account.balance),
+          };
+        })
+      : [],
+    inventoryShortages: raw.inventoryShortages as DashboardOverview["inventoryShortages"],
   };
 }
 

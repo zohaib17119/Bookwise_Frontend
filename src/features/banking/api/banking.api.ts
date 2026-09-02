@@ -47,9 +47,31 @@ function serializeBankTransactionPayload(payload: BankTransactionPayload): BankT
   }) as BankTransactionPayload;
 }
 
+function mapBankAccount(raw: Record<string, unknown>): BankAccount {
+  const nested = (raw.account ?? {}) as Record<string, unknown>;
+  const linkedAccountId = String(raw.linkedAccountId ?? raw.accountId ?? nested.id ?? "");
+  return {
+    id: String(raw.id ?? ""),
+    linkedAccountId,
+    linkedAccountName: (raw.linkedAccountName as string | null | undefined) ?? (nested.name as string | undefined) ?? null,
+    linkedAccountCode: (nested.code as string | undefined) ?? null,
+    name: String(raw.name ?? ""),
+    accountNumberMasked: (raw.accountNumberMasked as string | null | undefined) ?? null,
+    bankName: (raw.bankName as string | null | undefined) ?? null,
+    branchName: (raw.branchName as string | null | undefined) ?? null,
+    currencyCode: (raw.currencyCode as string | null | undefined) ?? null,
+    openingBalance: raw.openingBalance == null ? null : Number(raw.openingBalance),
+    openingBalanceDate: (raw.openingBalanceDate as string | null | undefined) ?? null,
+    isPrimary: Boolean(raw.isPrimary),
+    isActive: raw.isActive !== false,
+  };
+}
+
 export async function getBankAccounts(companyId: string) {
-  const { data } = await apiClient.get<BankAccount[]>(`/companies/${companyId}/bank-accounts?limit=100`);
-  return extractListData(data);
+  const { data } = await apiClient.get<unknown>(`/companies/${companyId}/bank-accounts?limit=100`);
+  return extractListData(data as Parameters<typeof extractListData>[0]).map((item) =>
+    mapBankAccount(item as Record<string, unknown>),
+  );
 }
 
 export async function createBankAccount(companyId: string, payload: BankAccountPayload) {

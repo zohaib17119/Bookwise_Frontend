@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CounterpartySelect } from "@/components/documents/counterparty-select";
 import { PageContainer } from "@/components/shared/page-container";
@@ -15,6 +16,9 @@ import { FieldGrid } from "@/components/shared/field-grid";
 import { AllocationEditor } from "@/components/documents/allocation-editor";
 import { AllocationSummaryCard } from "@/components/documents/allocation-summary-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
+import { isCashLikeAccount } from "@/features/accounts/utils/cash-like";
+import { useDefaultAccountMapping } from "@/features/settings/hooks/use-default-account-mapping";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import {
   useCreateCustomerPayment,
@@ -38,6 +42,8 @@ export function CustomerPaymentFormPage() {
   const presetCustomerId = searchParams.get("customerId") ?? "";
   const { company, permissions } = useActiveCompany();
   const customersQuery = useCustomerOptions(companyId);
+  const accountsQuery = useAccountOptions(companyId);
+  const mappingQuery = useDefaultAccountMapping(companyId);
   const createMutation = useCreateCustomerPayment(companyId);
   const canManage = canManageEntity(permissions, "customer_payments");
   const currencyCode = company?.baseCurrencyCode ?? company?.currencyCode ?? "USD";
@@ -49,6 +55,7 @@ export function CustomerPaymentFormPage() {
       customerId: presetCustomerId,
       paymentDate: new Date().toISOString().slice(0, 10),
       paymentMethod: "Bank Transfer",
+      paymentAccountId: "",
       referenceNumber: "",
       amount: "",
       notes: "",
@@ -57,6 +64,16 @@ export function CustomerPaymentFormPage() {
   const formErrors = form.formState.errors;
   const hasFormErrors = Object.keys(formErrors).length > 0 && form.formState.isSubmitted;
   const selectedCustomerId = form.watch("customerId");
+  const cashAccounts = useMemo(
+    () => (accountsQuery.data ?? []).filter((account) => account.isActive && isCashLikeAccount(account)),
+    [accountsQuery.data],
+  );
+  const defaultReceive =
+    mappingQuery.data?.defaultCustomerReceive?.accountId || mappingQuery.data?.cashBank?.accountId || "";
+  useEffect(() => {
+    if (!defaultReceive || form.getValues("paymentAccountId")) return;
+    form.setValue("paymentAccountId", defaultReceive);
+  }, [defaultReceive, form]);
   const watchedAmount = form.watch("amount");
   const openInvoicesQuery = useOpenInvoicesByCustomer(companyId, selectedCustomerId || undefined);
   const [allocations, setAllocations] = useState<Record<string, number>>({});
@@ -141,6 +158,7 @@ export function CustomerPaymentFormPage() {
             customerId: values.customerId,
             paymentDate: values.paymentDate,
             paymentMethod: values.paymentMethod,
+            paymentAccountId: values.paymentAccountId || undefined,
             referenceNumber: values.referenceNumber || undefined,
             amount: toMoneyDecimalString(values.amount),
             notes: values.notes || undefined,
@@ -177,6 +195,16 @@ export function CustomerPaymentFormPage() {
               />
               <FormField label="Payment date" error={formErrors.paymentDate?.message}>
                 <Input type="date" {...form.register("paymentDate")} />
+              </FormField>
+              <FormField label="Deposit to">
+                <Select {...form.register("paymentAccountId")}>
+                  <option value="">Select account</option>
+                  {cashAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {(account.code ? `${account.code} ` : "") + account.name}
+                    </option>
+                  ))}
+                </Select>
               </FormField>
               <FormField label="Payment method" error={formErrors.paymentMethod?.message}>
                 <Input {...form.register("paymentMethod")} placeholder="Bank Transfer" />

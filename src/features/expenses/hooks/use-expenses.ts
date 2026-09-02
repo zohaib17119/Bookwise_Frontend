@@ -7,6 +7,7 @@ import {
   updateExpense,
 } from "@/features/expenses/api/expenses.api";
 import type {
+  Expense,
   ExpenseListParams,
   ExpensePayload,
   ExpenseUpdatePayload,
@@ -42,7 +43,11 @@ export function useCreateExpense(companyId: string | undefined) {
   return useMutation({
     mutationFn: (payload: ExpensePayload) => createExpense(companyId!, payload),
     onSuccess: async () => {
-      if (companyId) await invalidateExpenseQueries(companyId);
+      if (!companyId) return;
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["companies", companyId, "expenses"] }),
+        queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] }),
+      ]);
     },
   });
 }
@@ -51,8 +56,20 @@ export function useUpdateExpense(companyId: string | undefined, expenseId: strin
   return useMutation({
     mutationFn: (payload: ExpenseUpdatePayload) =>
       updateExpense(companyId!, expenseId!, payload),
-    onSuccess: async () => {
-      if (companyId) await invalidateExpenseQueries(companyId);
+    onSuccess: async (updated) => {
+      if (!companyId) return;
+      queryClient.setQueriesData(
+        { queryKey: ["companies", companyId, "expenses"] },
+        (old: { items?: Expense[] } | undefined) => {
+          if (!old?.items) return old;
+          return {
+            ...old,
+            items: old.items.map((item) => (item.id === updated.id ? updated : item)),
+          };
+        },
+      );
+      await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "expenses"] });
+      await queryClient.invalidateQueries({ queryKey: ["companies", companyId, "dashboard"] });
     },
   });
 }

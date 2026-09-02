@@ -16,6 +16,7 @@ export interface Expense {
   taxRateId?: string | null;
   taxAmount: string;
   taxAmountBase: string;
+  lastUpdateNote?: string | null;
   vendorName?: string | null;
   paymentAccountName?: string | null;
   expenseAccountName?: string | null;
@@ -27,6 +28,7 @@ export interface ExpenseListParams extends BaseEntityListParams {
   vendorId?: string;
   fromDate?: string;
   toDate?: string;
+  expenseAccountIds?: string;
 }
 
 export interface ExpensePayload {
@@ -47,6 +49,8 @@ export interface ExpenseUpdatePayload {
   paymentAccountId?: string;
   expenseAccountId?: string;
   vendorId?: string | null;
+  amount?: string;
   description?: string;
   referenceNumber?: string | null;
+  updateNote?: string;
 }

@@ -8,7 +8,12 @@ import { ErrorState } from "@/components/shared/error-state";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { TableActions } from "@/components/shared/table-actions";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
+import { paymentDefaultFlagsForAccount, mappingPayloadFromPaymentFlags } from "@/features/accounts/utils/payment-defaults";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import {
+  useDefaultAccountMapping,
+  useUpsertDefaultAccountMapping,
+} from "@/features/settings/hooks/use-default-account-mapping";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { BankAccountFormDrawer } from "@/features/banking/components/bank-account-form-drawer";
 import {
@@ -27,6 +32,8 @@ export function BankAccountsPage() {
   const canManage = canManageEntity(permissions, "banking");
   const accountsQuery = useBankAccounts(companyId);
   const ledgerAccountsQuery = useAccountOptions(companyId);
+  const mappingQuery = useDefaultAccountMapping(companyId);
+  const mappingMutation = useUpsertDefaultAccountMapping(companyId);
   const createMutation = useCreateBankAccount(companyId);
   const deleteMutation = useDeleteBankAccount(companyId);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
@@ -140,15 +147,32 @@ export function BankAccountsPage() {
               : undefined,
             openingBalanceDate: values.openingBalanceDate || undefined,
           };
+          const { defaultForExpense, defaultForReceive, defaultForVendorPay, ...bankPayload } = payload;
           if (drawerMode === "create") {
-            await createMutation.mutateAsync(payload);
+            await createMutation.mutateAsync(bankPayload);
           } else {
-            await updateMutation.mutateAsync(payload);
+            await updateMutation.mutateAsync(bankPayload);
+          }
+          const mappingPayload = mappingPayloadFromPaymentFlags(
+            mappingQuery.data,
+            values.linkedAccountId,
+            {
+              defaultForExpense: Boolean(defaultForExpense),
+              defaultForReceive: Boolean(defaultForReceive),
+              defaultForVendorPay: Boolean(defaultForVendorPay),
+            },
+          );
+          if (Object.keys(mappingPayload).length > 0) {
+            await mappingMutation.mutateAsync(mappingPayload);
           }
           setDrawerOpen(false);
         }}
         open={drawerOpen}
         bankAccount={selectedAccount}
+        paymentDefaults={paymentDefaultFlagsForAccount(
+          mappingQuery.data,
+          selectedAccount?.linkedAccountId,
+        )}
       />
 
       <ConfirmDeleteDialog

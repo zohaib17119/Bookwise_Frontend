@@ -67,6 +67,16 @@ export interface DashboardSummarySet {
   totalBills: number;
 }
 
+export interface DashboardCashAccount {
+  id: string;
+  code?: string | null;
+  name: string;
+  type: string;
+  subtype?: string | null;
+  included: boolean;
+  balance: number;
+}
+
 export interface DashboardOverview {
   currencyCode: string;
   company?: {
@@ -84,6 +94,7 @@ export interface DashboardOverview {
     accountsPayable: DashboardSparklinePoint[];
   };
   counts: DashboardSummarySet;
+  cashAccounts?: DashboardCashAccount[];
   inventoryShortages?: {
     count: number;
     totalQuantity: string | number;

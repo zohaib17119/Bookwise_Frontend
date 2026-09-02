@@ -10,6 +10,10 @@ export const accountSchema = z.object({
   parentAccountId: z.string().uuid().nullable().optional(),
   currencyCode: z.string().min(3, "Use a 3-letter currency code").max(3).optional().or(z.literal("")),
   isActive: z.boolean(),
+  includeInDashboardCash: z.boolean().optional(),
+  defaultForExpense: z.boolean().optional(),
+  defaultForReceive: z.boolean().optional(),
+  defaultForVendorPay: z.boolean().optional(),
 });
 
 export type AccountFormValues = z.infer<typeof accountSchema>;
