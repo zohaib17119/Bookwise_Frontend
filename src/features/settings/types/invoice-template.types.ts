@@ -294,7 +294,7 @@ function isLegacyTaxKey(key: string): boolean {
 }
 
 function expandLegacyTaxColumn(col: BuiltinInvoiceTableColumn): BuiltinInvoiceTableColumn[] {
-  if (col.key !== "tax" && !isLegacyTaxKey(col.key as string)) return [col];
+  if (!isLegacyTaxKey(col.key as string)) return [col];
   return [
     { kind: "builtin", key: "taxPercent" },
     {
