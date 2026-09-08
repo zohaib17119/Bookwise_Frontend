@@ -31,23 +31,27 @@ import { useCompanyDashboard } from "@/features/dashboard/hooks/use-dashboard";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import {
   getPeriodRangeFromPreset,
-  type DashboardPeriodPreset,
+  type DashboardQueryParams,
 } from "@/features/dashboard/types/dashboard.types";
 import { useLowStockCount } from "@/features/inventory/hooks/use-inventory";
 import { taxBalanceHint } from "@/features/shared/utils/wht-labels";
-import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils/format";
+import { formatCurrency, formatNumber, formatPercent, formatShortDateRange } from "@/lib/utils/format";
 
 export function DashboardPage() {
   const { companyId, company, currency, permissions } = useActiveCompany();
   const user = useAuthStore((state) => state.user);
-  const [preset, setPreset] = useState<DashboardPeriodPreset>(30);
+  const [dateRange, setDateRange] = useState<DashboardQueryParams>(() => getPeriodRangeFromPreset(30));
   const [lowStockAlertDismissed, setLowStockAlertDismissed] = useState(false);
   const [shortageAlertDismissed, setShortageAlertDismissed] = useState(false);
   const [cashPanelOpen, setCashPanelOpen] = useState(false);
   const patchAccount = usePatchAccount(companyId);
   const canManageAccounts = canManageEntity(permissions, "accounts");
 
-  const periodParams = useMemo(() => getPeriodRangeFromPreset(preset), [preset]);
+  const periodParams = dateRange;
+  const periodLabel = useMemo(() => {
+    if (!dateRange.fromDate || !dateRange.toDate) return "";
+    return formatShortDateRange(dateRange.fromDate, dateRange.toDate);
+  }, [dateRange.fromDate, dateRange.toDate]);
   const dashboardQuery = useCompanyDashboard(companyId, periodParams);
   const lowStockQuery = useLowStockCount(companyId);
   const profitMarginMiniChart = useMemo(
@@ -91,8 +95,8 @@ export function DashboardPage() {
       <DashboardHeader
         companyName={company?.name ?? dashboard?.company?.name ?? "Company"}
         fromDate={dashboard?.period.fromDate ?? periodParams.fromDate ?? ""}
-        onPresetChange={setPreset}
-        preset={preset}
+        onFromDateChange={(value) => setDateRange((prev) => ({ ...prev, fromDate: value }))}
+        onToDateChange={(value) => setDateRange((prev) => ({ ...prev, toDate: value }))}
         previousFromDate={dashboard?.period.previousFromDate ?? ""}
         previousToDate={dashboard?.period.previousToDate ?? ""}
         toDate={dashboard?.period.toDate ?? periodParams.toDate ?? ""}
@@ -227,7 +231,7 @@ export function DashboardPage() {
           currency={displayCurrency}
           data={dashboard?.financialOverview ?? []}
           isLoading={isLoading}
-          periodDays={preset}
+          periodLabel={periodLabel}
         />
         <CashFlowDonutChart
           currency={displayCurrency}
@@ -240,7 +244,7 @@ export function DashboardPage() {
             }
           }
           isLoading={isLoading}
-          periodDays={preset}
+          periodLabel={periodLabel}
         />
       </div>
 

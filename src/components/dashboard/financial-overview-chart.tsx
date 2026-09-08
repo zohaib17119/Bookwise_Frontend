@@ -18,21 +18,21 @@ interface FinancialOverviewChartProps {
   data: DashboardFinancialOverviewPoint[];
   currency: string;
   isLoading?: boolean;
-  periodDays: number;
+  periodLabel: string;
 }
 
 export function FinancialOverviewChart({
   data,
   currency,
   isLoading,
-  periodDays,
+  periodLabel,
 }: FinancialOverviewChartProps) {
   return (
     <div className="surface p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Financial Overview</h2>
         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-          Last {periodDays} days
+          {periodLabel}
         </span>
       </div>
 

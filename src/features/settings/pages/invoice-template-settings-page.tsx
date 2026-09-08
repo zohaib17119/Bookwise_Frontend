@@ -20,18 +20,30 @@ import {
 } from "@/features/settings/hooks/use-invoice-templates";
 import {
   COLUMN_LABELS,
+  COLUMN_SAMPLE_VALUES,
   DEFAULT_INVOICE_TEMPLATE_LAYOUT,
+  FORMULA_LINE_TOKENS,
+  INVOICE_TABLE_COLUMN_KEYS,
+  MAX_INVOICE_TABLE_COLUMNS,
   addChildToBox,
   applyQuotationTitle,
+  columnHeaderLabel,
+  columnIdentity,
   createBoxAfterTable,
   createBoxBeforeTable,
+  isBuiltinColumn,
+  isFormulaColumn,
   newElementId,
+  normalizeLayoutColumns,
   removeElementAndChildren,
   reorderBoxChild,
   inferYAnchor,
   getLineTableElement,
   sanitizeTemplateLayoutForApi,
   type DocumentTemplateKind,
+  type BuiltinInvoiceTableColumn,
+  type FormulaInvoiceTableColumn,
+  type InvoiceTableColumn,
   type InvoiceTableColumnKey,
   type InvoiceTemplateLayout,
   type TemplateElement,
@@ -43,21 +55,80 @@ function cloneLayout(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
 }
 
 function ensureSerialColumn(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
-  if (layout.columns.includes("serial")) return layout;
-  return { ...layout, columns: ["serial", ...layout.columns] };
+  const columns = normalizeLayoutColumns(layout.columns);
+  return { ...layout, columns };
 }
 
 function moveColumn(
-  columns: InvoiceTableColumnKey[],
+  columns: InvoiceTableColumn[],
   index: number,
   direction: -1 | 1,
-): InvoiceTableColumnKey[] {
+): InvoiceTableColumn[] {
   const next = [...columns];
   const target = index + direction;
   if (target < 0 || target >= next.length) return next;
   const [item] = next.splice(index, 1);
   next.splice(target, 0, item);
   return next;
+}
+
+function toggleColumn(columns: InvoiceTableColumn[], key: InvoiceTableColumnKey): InvoiceTableColumn[] {
+  if (key === "serial") return columns;
+  const exists = columns.some((col) => isBuiltinColumn(col) && col.key === key);
+  if (exists) return columns.filter((col) => !(isBuiltinColumn(col) && col.key === key));
+  if (columns.length >= MAX_INVOICE_TABLE_COLUMNS) return columns;
+  return [...columns, { kind: "builtin", key }];
+}
+
+function patchBuiltinColumn(
+  columns: InvoiceTableColumn[],
+  key: InvoiceTableColumnKey,
+  patch: Partial<Pick<BuiltinInvoiceTableColumn, "headerFormat" | "cellFormat">>,
+): InvoiceTableColumn[] {
+  return columns.map((col) =>
+    isBuiltinColumn(col) && col.key === key ? { ...col, ...patch } : col,
+  );
+}
+
+function patchFormulaColumn(
+  columns: InvoiceTableColumn[],
+  id: string,
+  patch: Partial<Pick<FormulaInvoiceTableColumn, "header" | "expression" | "numeric">>,
+): InvoiceTableColumn[] {
+  return columns.map((col) =>
+    isFormulaColumn(col) && col.id === id ? { ...col, ...patch } : col,
+  );
+}
+
+function removeColumn(columns: InvoiceTableColumn[], identity: string): InvoiceTableColumn[] {
+  return columns.filter((col) => columnIdentity(col) !== identity);
+}
+
+function addFormulaColumn(columns: InvoiceTableColumn[]): InvoiceTableColumn[] {
+  if (columns.length >= MAX_INVOICE_TABLE_COLUMNS) return columns;
+  const id = newElementId("formula-col");
+  return [
+    ...columns,
+    {
+      kind: "formula",
+      id,
+      header: "Custom column",
+      expression: "{lineSubtotal + lineTaxAmount}",
+      numeric: true,
+    },
+  ];
+}
+
+function addImageChild(): Omit<TemplateElement, "parentId" | "sortOrder"> {
+  return {
+    id: newElementId("image"),
+    kind: "image",
+    content: "",
+    x: 0,
+    y: 0,
+    width: 100,
+    visible: true,
+  };
 }
 
 export function InvoiceTemplateSettingsPage({
@@ -350,6 +421,12 @@ export function InvoiceTemplateSettingsPage({
                   }),
                 );
               }}
+              onAddImage={() => {
+                if (!selectedBoxId) return;
+                const child = addImageChild();
+                setLayout((prev) => addChildToBox(prev, selectedBoxId, child));
+                setSelectedId(child.id);
+              }}
               selectedBoxId={selectedBoxId}
             />
 
@@ -414,43 +491,199 @@ export function InvoiceTemplateSettingsPage({
 
             <div className="space-y-2 border-t pt-3">
               <p className="text-sm font-semibold">Table columns</p>
-              <ul className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Toggle columns, reorder them, and wrap auto values with text using {"{value}"} (e.g.
+                your amount is {"{value}"}).
+              </p>
+              <ul className="space-y-1">
+                {INVOICE_TABLE_COLUMN_KEYS.map((key) => {
+                  const enabled = layout.columns.some((col) => isBuiltinColumn(col) && col.key === key);
+                  return (
+                    <li key={key}>
+                      <label className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={enabled}
+                          disabled={!canManage || key === "serial"}
+                          onChange={() =>
+                            setLayout((prev) => ({
+                              ...prev,
+                              columns: toggleColumn(prev.columns, key),
+                            }))
+                          }
+                        />
+                        {COLUMN_LABELS[key]}
+                        {key === "serial" ? (
+                          <span className="text-xs text-muted-foreground">(required)</span>
+                        ) : null}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <Button
+                disabled={!canManage || layout.columns.length >= MAX_INVOICE_TABLE_COLUMNS}
+                onClick={() =>
+                  setLayout((prev) => ({
+                    ...prev,
+                    columns: addFormulaColumn(prev.columns),
+                  }))
+                }
+                size="sm"
+                type="button"
+                variant="secondary"
+              >
+                Add custom column
+              </Button>
+              <ul className="space-y-3 pt-2">
                 {layout.columns.map((column, index) => (
-                  <li
-                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
-                    key={column}
-                  >
-                    <span>{COLUMN_LABELS[column]}</span>
-                    <span className="flex gap-1">
-                      <Button
-                        disabled={!canManage || index === 0}
-                        onClick={() =>
-                          setLayout((prev) => ({
-                            ...prev,
-                            columns: moveColumn(prev.columns, index, -1),
-                          }))
-                        }
-                        size="sm"
-                        type="button"
-                        variant="secondary"
-                      >
-                        ↑
-                      </Button>
-                      <Button
-                        disabled={!canManage || index === layout.columns.length - 1}
-                        onClick={() =>
-                          setLayout((prev) => ({
-                            ...prev,
-                            columns: moveColumn(prev.columns, index, 1),
-                          }))
-                        }
-                        size="sm"
-                        type="button"
-                        variant="secondary"
-                      >
-                        ↓
-                      </Button>
-                    </span>
+                  <li className="space-y-2 rounded-lg border px-3 py-2 text-sm" key={columnIdentity(column)}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{columnHeaderLabel(column)}</span>
+                      <span className="flex gap-1">
+                        <Button
+                          disabled={!canManage || index === 0}
+                          onClick={() =>
+                            setLayout((prev) => ({
+                              ...prev,
+                              columns: moveColumn(prev.columns, index, -1),
+                            }))
+                          }
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          disabled={!canManage || index === layout.columns.length - 1}
+                          onClick={() =>
+                            setLayout((prev) => ({
+                              ...prev,
+                              columns: moveColumn(prev.columns, index, 1),
+                            }))
+                          }
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          ↓
+                        </Button>
+                        {isFormulaColumn(column) ? (
+                          <Button
+                            disabled={!canManage}
+                            onClick={() =>
+                              setLayout((prev) => ({
+                                ...prev,
+                                columns: removeColumn(prev.columns, column.id),
+                              }))
+                            }
+                            size="sm"
+                            type="button"
+                            variant="secondary"
+                          >
+                            Remove
+                          </Button>
+                        ) : null}
+                      </span>
+                    </div>
+                    {isFormulaColumn(column) ? (
+                      <>
+                        <label className="block text-xs text-muted-foreground">
+                          Header
+                          <Input
+                            disabled={!canManage}
+                            onChange={(e) =>
+                              setLayout((prev) => ({
+                                ...prev,
+                                columns: patchFormulaColumn(prev.columns, column.id, {
+                                  header: e.target.value,
+                                }),
+                              }))
+                            }
+                            value={column.header}
+                          />
+                        </label>
+                        <label className="block text-xs text-muted-foreground">
+                          Expression
+                          <textarea
+                            className="mt-1 min-h-[72px] w-full rounded-md border px-2 py-1 text-sm"
+                            disabled={!canManage}
+                            onChange={(e) =>
+                              setLayout((prev) => ({
+                                ...prev,
+                                columns: patchFormulaColumn(prev.columns, column.id, {
+                                  expression: e.target.value,
+                                }),
+                              }))
+                            }
+                            value={column.expression}
+                          />
+                        </label>
+                        <div className="flex flex-wrap gap-1">
+                          {FORMULA_LINE_TOKENS.map((token) => (
+                            <button
+                              className="rounded border px-2 py-0.5 text-xs"
+                              disabled={!canManage}
+                              key={token}
+                              onClick={() =>
+                                setLayout((prev) => ({
+                                  ...prev,
+                                  columns: patchFormulaColumn(prev.columns, column.id, {
+                                    expression: `${column.expression}{${token}}`,
+                                  }),
+                                }))
+                              }
+                              type="button"
+                            >
+                              {token}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="block text-[11px] text-muted-foreground">
+                          Tokens like {"{qty}"} {"{rate}"} {"{lineSubtotal + lineTaxAmount}"} ka
+                          result preview mein dikhta hai
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <label className="block text-xs text-muted-foreground">
+                          Header text
+                          <Input
+                            disabled={!canManage}
+                            onChange={(e) =>
+                              setLayout((prev) => ({
+                                ...prev,
+                                columns: patchBuiltinColumn(prev.columns, column.key, {
+                                  headerFormat: e.target.value,
+                                }),
+                              }))
+                            }
+                            placeholder={`${COLUMN_LABELS[column.key]} or Item {value}`}
+                            value={column.headerFormat ?? ""}
+                          />
+                        </label>
+                        <label className="block text-xs text-muted-foreground">
+                          Cell text
+                          <Input
+                            disabled={!canManage}
+                            onChange={(e) =>
+                              setLayout((prev) => ({
+                                ...prev,
+                                columns: patchBuiltinColumn(prev.columns, column.key, {
+                                  cellFormat: e.target.value,
+                                }),
+                              }))
+                            }
+                            placeholder={COLUMN_SAMPLE_VALUES[column.key]}
+                            value={column.cellFormat ?? ""}
+                          />
+                          <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                            Sample value: {COLUMN_SAMPLE_VALUES[column.key]} — wrap it with text
+                            using {"{value}"}
+                          </span>
+                        </label>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -503,6 +736,11 @@ export function InvoiceTemplateSettingsPage({
                     style: { fontSize: 11, color: "#334155", textAlign: "left" },
                   }),
                 );
+              }}
+              onAddImageToBox={(boxId) => {
+                const child = addImageChild();
+                setLayout((prev) => addChildToBox(prev, boxId, child));
+                setSelectedId(child.id);
               }}
               onChange={(patch) => {
                 if (!selectedId) return;

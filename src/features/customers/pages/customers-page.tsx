@@ -240,12 +240,19 @@ export function CustomersPage() {
             billingState: values.billingState || undefined,
             billingPostalCode: values.billingPostalCode || undefined,
             billingCountry: values.billingCountry || undefined,
-            shippingAddressLine1: values.shippingAddressLine1 || undefined,
-            shippingAddressLine2: values.shippingAddressLine2 || undefined,
-            shippingCity: values.shippingCity || undefined,
-            shippingState: values.shippingState || undefined,
-            shippingPostalCode: values.shippingPostalCode || undefined,
-            shippingCountry: values.shippingCountry || undefined,
+            shippingAddresses: (values.shippingAddresses ?? [])
+              .filter((address) => address.label?.trim())
+              .map((address, index) => ({
+                id: address.id || undefined,
+                label: address.label.trim(),
+                addressLine1: address.addressLine1 || undefined,
+                addressLine2: address.addressLine2 || undefined,
+                city: address.city || undefined,
+                state: address.state || undefined,
+                postalCode: address.postalCode || undefined,
+                country: address.country || undefined,
+                sortOrder: index,
+              })),
             notes: values.notes || undefined,
           };
 

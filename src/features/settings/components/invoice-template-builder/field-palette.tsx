@@ -10,6 +10,7 @@ interface FieldPaletteProps {
   selectedBoxId: string | null;
   onAddField: (binding: string, label: string) => void;
   onAddText: () => void;
+  onAddImage: () => void;
   onAddBoxBeforeTable: () => void;
   onAddBoxAfterTable: () => void;
   onAddSpecial: (kind: "lineTable" | "notes" | "footer") => void;
@@ -22,6 +23,7 @@ export function FieldPalette({
   selectedBoxId,
   onAddField,
   onAddText,
+  onAddImage,
   onAddBoxBeforeTable,
   onAddBoxAfterTable,
   onAddSpecial,
@@ -41,6 +43,9 @@ export function FieldPalette({
       <div className="flex flex-wrap gap-2">
         <Button disabled={!canManage || !selectedBoxId} onClick={onAddText} size="sm" type="button" variant="secondary">
           Add text line
+        </Button>
+        <Button disabled={!canManage || !selectedBoxId} onClick={onAddImage} size="sm" type="button" variant="secondary">
+          Add image
         </Button>
         <Button
           disabled={!canManage}

@@ -3,4 +3,8 @@ export interface BaseEntityListParams {
   includeInactive?: boolean;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortDir?: ListSortDir;
 }
+
+export type ListSortDir = "asc" | "desc";

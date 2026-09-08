@@ -18,7 +18,7 @@ import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
 import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
 import { exclToIncl, inclToExcl } from "@/features/shared/utils/document-calculations";
-import { toDecimalString } from "@/features/shared/utils/decimal-string";
+import { toEditableDecimalString } from "@/features/shared/utils/decimal-string";
 
 const DOCUMENT_TERMS_DAYS = [0, 15, 30, 45, 60, 90] as const;
 
@@ -86,7 +86,7 @@ export default function InvoiceEditorPage({
       const parsed = Number(rawValue);
       if (!Number.isFinite(parsed) || rawValue.trim() === "") return;
       const unitEx = inclToExcl(parsed, taxPercent);
-      form.setValue(`lines.${index}.unitPrice`, toDecimalString(unitEx), setLineValueOptions);
+      form.setValue(`lines.${index}.unitPrice`, toEditableDecimalString(unitEx), setLineValueOptions);
     },
     [form],
   );
@@ -273,11 +273,16 @@ export default function InvoiceEditorPage({
     form.setValue("contactPersonDepartment", customer?.contactPersonDepartment ?? "", {
       shouldDirty: true,
     });
+    form.setValue("shippingAddressId", "", { shouldDirty: true });
   }, [watchedCustomerId, mode, customersQuery.data, form]);
 
   const selectedCustomer = customersQuery.data?.find(
     (c: any) => c.id === watchedCustomerId
   );
+  const shippingAddresses = (selectedCustomer?.shippingAddresses ?? []) as Array<{
+    id: string;
+    label: string;
+  }>;
 
   const addLine = () => {
     const currentLines = form.getValues("lines") || [];
@@ -414,6 +419,22 @@ export default function InvoiceEditorPage({
                   </p>
                 </div>
               )}
+              {shippingAddresses.length > 0 ? (
+                <div className="mt-4">
+                  <label className="mb-1 block text-sm font-medium">Ship to</label>
+                  <Select
+                    {...form.register("shippingAddressId")}
+                    className="w-full border p-2"
+                  >
+                    <option value="">No shipping address</option>
+                    {shippingAddresses.map((address) => (
+                      <option key={address.id} value={address.id}>
+                        {address.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-3">

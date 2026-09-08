@@ -103,6 +103,8 @@ export interface Bill {
 export interface BillListParams extends BaseEntityListParams {
   status?: string;
   vendorId?: string;
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface BillPayload {

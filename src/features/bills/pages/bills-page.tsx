@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
@@ -8,7 +9,10 @@ import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
 import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
+import { toggleListSort } from "@/components/shared/sortable-table-header";
 import { TableColumnPicker } from "@/components/shared/table-column-picker";
+import type { ListSortDir } from "@/features/shared/types/common";
+import { lastNDaysRange } from "@/lib/utils/date-range";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -68,6 +72,11 @@ export function BillsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [vendorId, setVendorId] = useState("");
+  const defaultRange = lastNDaysRange(30);
+  const [fromDate, setFromDate] = useState(defaultRange.fromDate);
+  const [toDate, setToDate] = useState(defaultRange.toDate);
+  const [sortBy, setSortBy] = useState("issueDate");
+  const [sortDir, setSortDir] = useState<ListSortDir>("desc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const deferredSearch = useDeferredValue(search);
@@ -79,6 +88,10 @@ export function BillsPage() {
     search: deferredSearch.trim() || undefined,
     status: status || undefined,
     vendorId: vendorId || undefined,
+    fromDate,
+    toDate,
+    sortBy,
+    sortDir,
     page,
     limit,
   });
@@ -121,9 +134,18 @@ export function BillsPage() {
     );
   }
 
+  const handleSort = (key: string) => {
+    const next = toggleListSort(sortBy, sortDir, key);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+    setPage(1);
+  };
+
   const columnMap: Record<string, DataTableColumn<Bill>> = {
     number: {
       key: "number",
+      sortable: true,
+      sortKey: "billNumber",
       header: "Bill",
       render: (bill) => (
         <div>
@@ -140,11 +162,13 @@ export function BillsPage() {
     vendor: { key: "vendor", header: "Vendor", render: (bill) => bill.vendorName || "-" },
     issueDate: {
       key: "issueDate",
+      sortable: true,
       header: "Issue Date",
       render: (bill) => formatDate(bill.issueDate),
     },
     dueDate: {
       key: "dueDate",
+      sortable: true,
       header: "Due Date",
       render: (bill) => formatDate(bill.dueDate),
     },
@@ -265,6 +289,7 @@ export function BillsPage() {
     },
     total: {
       key: "total",
+      sortable: true,
       header: "Total",
       className: "text-right",
       render: (bill) =>
@@ -275,6 +300,7 @@ export function BillsPage() {
     },
     amountDue: {
       key: "amountDue",
+      sortable: true,
       header: "Amount Due",
       className: "text-right",
       render: (bill) =>
@@ -311,7 +337,7 @@ export function BillsPage() {
                 type="button"
                 variant="secondary"
               >
-                Claim purchase tax
+                Claim sales tax
               </Button>
             ) : null}
             {incomeWhtOutstanding > 0 ? (
@@ -352,6 +378,9 @@ export function BillsPage() {
             emptyTitle="No bills yet"
             getRowKey={(bill) => bill.id}
             isLoading={billsQuery.isLoading}
+            onSort={handleSort}
+            sortDir={sortDir}
+            sortKey={sortBy}
             pagination={
               billsQuery.data
                 ? {
@@ -393,6 +422,18 @@ export function BillsPage() {
       title="Bills"
       toolbar={
         <FilterBar>
+          <DateRangeToolbar
+            fromDate={fromDate}
+            onFromDateChange={(value) => {
+              setFromDate(value);
+              setPage(1);
+            }}
+            onToDateChange={(value) => {
+              setToDate(value);
+              setPage(1);
+            }}
+            toDate={toDate}
+          />
           <FilterField className="md:min-w-[240px] md:flex-1">
             <SearchInput
               onChange={(value) => {
@@ -503,7 +544,7 @@ export function BillsPage() {
       savedPercent={null}
       title={
         dialogKind === "bill-purchase-tax"
-          ? `Claim purchase tax — ${dialogBill?.billNumber ?? ""}`
+          ? `Claim sales tax — ${dialogBill?.billNumber ?? ""}`
           : (dialogBill?.incomeWhtHeldBy ?? "COMPANY") === "COMPANY"
             ? `Pay income WHT — ${dialogBill?.billNumber ?? ""}`
             : `Claim income WHT — ${dialogBill?.billNumber ?? ""}`

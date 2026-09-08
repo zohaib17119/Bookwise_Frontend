@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +27,43 @@ function todayIsoDate() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function shippingAddressesFromCustomer(customer?: Customer | null) {
+  if (customer?.shippingAddresses?.length) {
+    return customer.shippingAddresses.map((address) => ({
+      id: address.id ?? "",
+      label: address.label ?? "",
+      addressLine1: address.addressLine1 ?? "",
+      addressLine2: address.addressLine2 ?? "",
+      city: address.city ?? "",
+      state: address.state ?? "",
+      postalCode: address.postalCode ?? "",
+      country: address.country ?? "",
+    }));
+  }
+  if (
+    customer?.shippingAddressLine1 ||
+    customer?.shippingAddressLine2 ||
+    customer?.shippingCity ||
+    customer?.shippingState ||
+    customer?.shippingPostalCode ||
+    customer?.shippingCountry
+  ) {
+    return [
+      {
+        id: "",
+        label: "Shipping",
+        addressLine1: customer.shippingAddressLine1 ?? "",
+        addressLine2: customer.shippingAddressLine2 ?? "",
+        city: customer.shippingCity ?? "",
+        state: customer.shippingState ?? "",
+        postalCode: customer.shippingPostalCode ?? "",
+        country: customer.shippingCountry ?? "",
+      },
+    ];
+  }
+  return [];
 }
 
 interface CustomerFormDrawerProps {
@@ -80,15 +117,15 @@ export function CustomerFormDrawer({
       billingState: "",
       billingPostalCode: "",
       billingCountry: "",
-      shippingAddressLine1: "",
-      shippingAddressLine2: "",
-      shippingCity: "",
-      shippingState: "",
-      shippingPostalCode: "",
-      shippingCountry: "",
+      shippingAddresses: [],
       notes: "",
       isActive: true,
     },
+  });
+
+  const shippingFields = useFieldArray({
+    control: form.control,
+    name: "shippingAddresses",
   });
 
   useEffect(() => {
@@ -120,12 +157,7 @@ export function CustomerFormDrawer({
       billingState: customer?.billingState ?? "",
       billingPostalCode: customer?.billingPostalCode ?? "",
       billingCountry: customer?.billingCountry ?? "",
-      shippingAddressLine1: customer?.shippingAddressLine1 ?? "",
-      shippingAddressLine2: customer?.shippingAddressLine2 ?? "",
-      shippingCity: customer?.shippingCity ?? "",
-      shippingState: customer?.shippingState ?? "",
-      shippingPostalCode: customer?.shippingPostalCode ?? "",
-      shippingCountry: customer?.shippingCountry ?? "",
+      shippingAddresses: shippingAddressesFromCustomer(customer),
       notes: customer?.notes ?? "",
       isActive: customer?.isActive ?? true,
     });
@@ -235,18 +267,16 @@ export function CustomerFormDrawer({
                     render={({ field }) => (
                       <CurrencySelect
                         disabled={currencyLocked}
-                        name={field.name}
-                        onBlur={field.onBlur}
                         onChange={field.onChange}
-                        value={field.value}
+                        value={field.value ?? ""}
                       />
                     )}
                   />
                 </FormField>
-                <FormField helperText="Defaults to 30 days." label="Payment terms (days)">
+                <FormField label="Payment terms (days)">
                   <Input type="number" {...form.register("paymentTermsDays")} />
                 </FormField>
-                <FormField helperText="Defaults to 0." label="Opening balance">
+                <FormField label="Opening balance">
                   <Input type="number" step="0.01" {...form.register("openingBalance")} />
                 </FormField>
                 <FormField helperText="Defaults to today." label="Opening balance date">
@@ -278,27 +308,76 @@ export function CustomerFormDrawer({
               </FieldGrid>
             </FormSection>
 
-            <FormSection title="Shipping address">
-              <FieldGrid>
-                <FormField label="Address line 1">
-                  <Input {...form.register("shippingAddressLine1")} />
-                </FormField>
-                <FormField label="Address line 2">
-                  <Input {...form.register("shippingAddressLine2")} />
-                </FormField>
-                <FormField label="City">
-                  <Input {...form.register("shippingCity")} />
-                </FormField>
-                <FormField label="State">
-                  <Input {...form.register("shippingState")} />
-                </FormField>
-                <FormField label="Postal code">
-                  <Input {...form.register("shippingPostalCode")} />
-                </FormField>
-                <FormField label="Country">
-                  <Input {...form.register("shippingCountry")} />
-                </FormField>
-              </FieldGrid>
+            <FormSection
+              description="Optional. Add up to 10 labeled locations (warehouse, factory, head office)."
+              title="Shipping addresses"
+            >
+              <div className="space-y-4">
+                {shippingFields.fields.map((field, index) => (
+                  <div className="space-y-3 rounded-xl border p-3" key={field.id}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">Address {index + 1}</p>
+                      <Button
+                        onClick={() => shippingFields.remove(index)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                    <FieldGrid>
+                      <FormField
+                        error={form.formState.errors.shippingAddresses?.[index]?.label?.message}
+                        label="Label"
+                      >
+                        <Input
+                          {...form.register(`shippingAddresses.${index}.label`)}
+                          placeholder="Warehouse / Factory / Head office"
+                        />
+                      </FormField>
+                      <FormField label="Address line 1">
+                        <Input {...form.register(`shippingAddresses.${index}.addressLine1`)} />
+                      </FormField>
+                      <FormField label="Address line 2">
+                        <Input {...form.register(`shippingAddresses.${index}.addressLine2`)} />
+                      </FormField>
+                      <FormField label="City">
+                        <Input {...form.register(`shippingAddresses.${index}.city`)} />
+                      </FormField>
+                      <FormField label="State">
+                        <Input {...form.register(`shippingAddresses.${index}.state`)} />
+                      </FormField>
+                      <FormField label="Postal code">
+                        <Input {...form.register(`shippingAddresses.${index}.postalCode`)} />
+                      </FormField>
+                      <FormField label="Country">
+                        <Input {...form.register(`shippingAddresses.${index}.country`)} />
+                      </FormField>
+                    </FieldGrid>
+                  </div>
+                ))}
+                <Button
+                  disabled={shippingFields.fields.length >= 10}
+                  onClick={() =>
+                    shippingFields.append({
+                      id: "",
+                      label: "",
+                      addressLine1: "",
+                      addressLine2: "",
+                      city: "",
+                      state: "",
+                      postalCode: "",
+                      country: "",
+                    })
+                  }
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Add shipping address
+                </Button>
+              </div>
             </FormSection>
 
             <FormSection title="Notes and status">

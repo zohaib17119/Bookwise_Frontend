@@ -43,8 +43,16 @@ export interface Invoice {
   contactPersonName?: string | null;
   contactMobile?: string | null;
   contactPersonDepartment?: string | null;
-  deliveryDate?: string | null;
-  deliveryChallanNumber?: string | null;
+  deliveryDate?: string;
+  deliveryChallanNumber?: string;
+  shippingAddressId?: string | null;
+  shippingAddressLabel?: string | null;
+  shippingAddressLine1?: string | null;
+  shippingAddressLine2?: string | null;
+  shippingCity?: string | null;
+  shippingState?: string | null;
+  shippingPostalCode?: string | null;
+  shippingCountry?: string | null;
   customerId: string;
   customerName?: string | null;
   estimateId?: string | null;
@@ -112,6 +120,8 @@ export interface Invoice {
 export interface InvoiceListParams extends BaseEntityListParams {
   status?: string;
   customerId?: string;
+  fromDate?: string;
+  toDate?: string;
 }
 
 export interface InvoicePayload {
@@ -124,6 +134,7 @@ export interface InvoicePayload {
   contactPersonDepartment?: string;
   deliveryDate?: string;
   deliveryChallanNumber?: string;
+  shippingAddressId?: string | null;
   issueDate?: string;
   dueDate?: string;
   currencyCode?: string;

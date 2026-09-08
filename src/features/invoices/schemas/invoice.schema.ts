@@ -102,6 +102,7 @@ export const invoiceSchema = documentBaseSchema
     contactPersonDepartment: z.string().optional().or(z.literal("")),
     deliveryDate: z.string().optional().or(z.literal("")),
     deliveryChallanNumber: z.string().optional().or(z.literal("")),
+    shippingAddressId: z.string().uuid().optional().or(z.literal("")),
     issueDate: z.string().optional().or(z.literal("")),
     dueDate: z.string().optional().or(z.literal("")),
     memoOnStatement: z.string().optional().or(z.literal("")),

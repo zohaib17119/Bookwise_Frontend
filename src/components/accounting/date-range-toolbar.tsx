@@ -14,21 +14,21 @@ export function DateRangeToolbar({
   onToDateChange,
 }: DateRangeToolbarProps) {
   return (
-    <>
-      <div className="w-full sm:w-auto sm:min-w-[160px]">
+    <div className="flex items-center gap-2">
+      <div className="min-w-[140px] sm:min-w-[160px]">
         <Input
           onChange={(event) => onFromDateChange(event.target.value)}
           type="date"
           value={fromDate}
         />
       </div>
-      <div className="w-full sm:w-auto sm:min-w-[160px]">
+      <div className="min-w-[140px] sm:min-w-[160px]">
         <Input
           onChange={(event) => onToDateChange(event.target.value)}
           type="date"
           value={toDate}
         />
       </div>
-    </>
+    </div>
   );
 }

@@ -118,7 +118,7 @@ export interface DashboardQueryParams {
 
 export type DashboardPeriodPreset = 7 | 30 | 90;
 
-export function getPeriodRangeFromPreset(days: DashboardPeriodPreset): DashboardQueryParams {
+export function getPeriodRangeFromPreset(days: number): DashboardQueryParams {
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(toDate.getDate() - (days - 1));

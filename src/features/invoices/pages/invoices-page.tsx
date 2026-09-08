@@ -1,6 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
@@ -8,7 +9,10 @@ import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
 import { FilterBar, FilterField } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
+import { toggleListSort } from "@/components/shared/sortable-table-header";
 import { TableColumnPicker } from "@/components/shared/table-column-picker";
+import type { ListSortDir } from "@/features/shared/types/common";
+import { lastNDaysRange } from "@/lib/utils/date-range";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useAuthStore } from "@/features/auth/store/auth.store";
@@ -72,6 +76,11 @@ export function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const defaultRange = lastNDaysRange(30);
+  const [fromDate, setFromDate] = useState(defaultRange.fromDate);
+  const [toDate, setToDate] = useState(defaultRange.toDate);
+  const [sortBy, setSortBy] = useState("issueDate");
+  const [sortDir, setSortDir] = useState<ListSortDir>("desc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const deferredSearch = useDeferredValue(search);
@@ -85,6 +94,10 @@ export function InvoicesPage() {
     search: deferredSearch.trim() || undefined,
     status: status || undefined,
     customerId: customerId || undefined,
+    fromDate,
+    toDate,
+    sortBy,
+    sortDir,
     page,
     limit,
   });
@@ -147,9 +160,18 @@ export function InvoicesPage() {
     settleIncomeWhtMutation.reset();
   };
 
+  const handleSort = (key: string) => {
+    const next = toggleListSort(sortBy, sortDir, key);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+    setPage(1);
+  };
+
   const columnMap: Record<string, DataTableColumn<Invoice>> = {
     number: {
       key: "number",
+      sortable: true,
+      sortKey: "invoiceNumber",
       header: "Invoice",
       render: (invoice) => (
         <div>
@@ -172,11 +194,13 @@ export function InvoicesPage() {
     },
     issueDate: {
       key: "issueDate",
+      sortable: true,
       header: "Issue Date",
       render: (invoice) => formatDate(invoice.issueDate),
     },
     dueDate: {
       key: "dueDate",
+      sortable: true,
       header: "Due Date",
       render: (invoice) => formatDate(invoice.dueDate),
     },
@@ -320,6 +344,7 @@ export function InvoicesPage() {
     },
     total: {
       key: "total",
+      sortable: true,
       header: "Total",
       className: "text-right",
       render: (invoice) =>
@@ -330,6 +355,7 @@ export function InvoicesPage() {
     },
     amountDue: {
       key: "amountDue",
+      sortable: true,
       header: "Amount Due",
       className: "text-right",
       render: (invoice) =>
@@ -399,6 +425,9 @@ export function InvoicesPage() {
             emptyTitle="No invoices yet"
             getRowKey={(invoice) => invoice.id}
             isLoading={invoicesQuery.isLoading}
+            onSort={handleSort}
+            sortDir={sortDir}
+            sortKey={sortBy}
             pagination={
               invoicesQuery.data
                 ? {
@@ -440,6 +469,18 @@ export function InvoicesPage() {
       title="Invoices"
       toolbar={
         <FilterBar>
+          <DateRangeToolbar
+            fromDate={fromDate}
+            onFromDateChange={(value) => {
+              setFromDate(value);
+              setPage(1);
+            }}
+            onToDateChange={(value) => {
+              setToDate(value);
+              setPage(1);
+            }}
+            toDate={toDate}
+          />
           <FilterField className="md:min-w-[240px] md:flex-1">
             <SearchInput
               onChange={(value) => {

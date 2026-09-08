@@ -1,5 +1,17 @@
 import type { BaseEntityListParams } from "@/features/shared/types/common";
 
+export interface CustomerShippingAddress {
+  id?: string;
+  label: string;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  sortOrder?: number;
+}
+
 export interface Customer {
   id: string;
   customerCode?: string | null;
@@ -31,6 +43,7 @@ export interface Customer {
   shippingState?: string | null;
   shippingPostalCode?: string | null;
   shippingCountry?: string | null;
+  shippingAddresses?: CustomerShippingAddress[];
   notes?: string | null;
   isActive: boolean;
 }
@@ -65,6 +78,7 @@ export interface CustomerPayload {
   shippingState?: string;
   shippingPostalCode?: string;
   shippingCountry?: string;
+  shippingAddresses?: CustomerShippingAddress[];
   notes?: string;
   isActive: boolean;
 }

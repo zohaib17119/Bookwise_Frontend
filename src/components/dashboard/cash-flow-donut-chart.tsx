@@ -8,7 +8,7 @@ interface CashFlowDonutChartProps {
   data: DashboardCashFlowOverview;
   currency: string;
   isLoading?: boolean;
-  periodDays: number;
+  periodLabel: string;
 }
 
 const COLORS = ["#22c55e", "#60a5fa", "#f87171"];
@@ -17,7 +17,7 @@ export function CashFlowDonutChart({
   data,
   currency,
   isLoading,
-  periodDays,
+  periodLabel,
 }: CashFlowDonutChartProps) {
   const segments = [
     { name: "Cash Balance", value: Math.abs(data.cashBalance), raw: data.cashBalance, color: COLORS[0] },
@@ -33,7 +33,7 @@ export function CashFlowDonutChart({
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Cash Flow Overview</h2>
         <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
-          Last {periodDays} days
+          {periodLabel}
         </span>
       </div>
 

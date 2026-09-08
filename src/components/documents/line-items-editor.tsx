@@ -25,7 +25,7 @@ import {
 } from "@/features/shared/utils/document-calculations";
 import { convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import type { DiscountType } from "@/features/shared/types/documents";
-import { toDecimalString, toNumber } from "@/features/shared/utils/decimal-string";
+import { toEditableDecimalString, toNumber } from "@/features/shared/utils/decimal-string";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 
 interface ItemOption {
@@ -188,7 +188,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
 
         setValue(
           `${name}.${index}.${priceField}` as never,
-          toDecimalString(price) as never,
+          toEditableDecimalString(price) as never,
           { shouldDirty: true, shouldValidate: true },
         );
         setValue(`${name}.${index}.itemName` as never, selectedItem.name as never, {
@@ -222,7 +222,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       if (taxCode && !isExempt && taxCode.effectiveRatePercent != null) {
         setValue(
           `${name}.${index}.taxRate` as never,
-          toDecimalString(taxCode.effectiveRatePercent) as never,
+          toEditableDecimalString(taxCode.effectiveRatePercent) as never,
         );
       } else {
         setValue(`${name}.${index}.taxRate` as never, "0" as never);
@@ -244,7 +244,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       const priceField = mode === "sales" ? "unitPrice" : "unitCost";
       setValue(
         `${name}.${index}.${priceField}` as never,
-        toDecimalString(unit) as never,
+        toEditableDecimalString(unit) as never,
         { shouldDirty: true, shouldValidate: true },
       );
     },
@@ -274,7 +274,7 @@ export function LineItemsEditor<TFieldValues extends FieldValues>({
       const unitEx = inclToExcl(parsed, rate);
       setValue(
         `${name}.${index}.unitCost` as never,
-        toDecimalString(unitEx) as never,
+        toEditableDecimalString(unitEx) as never,
         { shouldDirty: true, shouldValidate: true },
       );
     },

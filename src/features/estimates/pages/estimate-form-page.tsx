@@ -52,7 +52,7 @@ import type { EstimatePayload } from "@/features/estimates/types/estimate.types"
 import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schema";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
-import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
+import { toDecimalString, toEditableDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { queryClient } from "@/lib/query/query-client";
 
 interface EstimateFormPageProps {
@@ -105,13 +105,13 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             discountType: estimateQuery.data.discountType ?? undefined,
             discountValue:
               estimateQuery.data.discountValue != null
-                ? toOptionalDecimalString(estimateQuery.data.discountValue)
+                ? toEditableDecimalString(estimateQuery.data.discountValue)
                 : "",
             whtEnabled: Boolean(estimateQuery.data.whtEnabled),
             whtType: estimateQuery.data.whtType ?? "",
             whtRate:
               estimateQuery.data.whtRate != null
-                ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                ? toEditableDecimalString(estimateQuery.data.whtRate)
                 : "",
             whtBase: estimateQuery.data.whtBase ?? "",
             whtHeldBy: estimateQuery.data.whtHeldBy ?? "COUNTERPARTY",
@@ -121,9 +121,9 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             ),
             incomeWhtRate:
               estimateQuery.data.incomeWhtRate != null
-                ? toOptionalDecimalString(estimateQuery.data.incomeWhtRate)
+                ? toEditableDecimalString(estimateQuery.data.incomeWhtRate)
                 : estimateQuery.data.whtType === "INCOME" && estimateQuery.data.whtRate != null
-                  ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                  ? toEditableDecimalString(estimateQuery.data.whtRate)
                   : "",
             incomeWhtBase:
               estimateQuery.data.incomeWhtBase ??
@@ -138,9 +138,9 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
             ),
             salesTaxWhtRate:
               estimateQuery.data.salesTaxWhtRate != null
-                ? toOptionalDecimalString(estimateQuery.data.salesTaxWhtRate)
+                ? toEditableDecimalString(estimateQuery.data.salesTaxWhtRate)
                 : estimateQuery.data.whtType === "SALES_TAX" && estimateQuery.data.whtRate != null
-                  ? toOptionalDecimalString(estimateQuery.data.whtRate)
+                  ? toEditableDecimalString(estimateQuery.data.whtRate)
                   : "",
             salesTaxWhtBase:
               estimateQuery.data.salesTaxWhtBase ??
@@ -160,13 +160,13 @@ export function EstimateFormPage({ mode }: EstimateFormPageProps) {
                 return {
                   itemId: line.itemId ?? "",
                   description: line.description,
-                  quantity: toDecimalString(line.quantity),
-                  unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
+                  quantity: toEditableDecimalString(line.quantity),
+                  unitPrice: line.unitPrice != null ? toEditableDecimalString(line.unitPrice) : "",
                   discountType: line.discountType ?? undefined,
                   discountValue:
-                    line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
+                    line.discountValue != null ? toEditableDecimalString(line.discountValue) : "",
                   taxCodeId: resolvedTaxCodeId,
-                  taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+                  taxRate: line.taxRate != null ? toEditableDecimalString(line.taxRate) : "",
                 };
               }) ?? [],
           }

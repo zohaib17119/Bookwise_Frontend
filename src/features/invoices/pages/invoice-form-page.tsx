@@ -38,7 +38,7 @@ import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { normalizeDocumentTerms } from "@/features/shared/schemas/document.schema";
 import type { DiscountType } from "@/features/shared/types/documents";
-import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
+import { toEditableDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useCounterpartyCurrencyDefault } from "@/features/shared/hooks/use-counterparty-currency-default";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
 import { useVendorOptions } from "@/features/vendors/hooks/use-vendors";
@@ -130,6 +130,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             contactPersonDepartment: invoiceQuery.data.contactPersonDepartment ?? "",
             deliveryDate: toDateInputValue(invoiceQuery.data.deliveryDate),
             deliveryChallanNumber: invoiceQuery.data.deliveryChallanNumber ?? "",
+            shippingAddressId: invoiceQuery.data.shippingAddressId ?? "",
             issueDate: toDateInputValue(invoiceQuery.data.issueDate),
             dueDate: toDateInputValue(invoiceQuery.data.dueDate),
             currencyCode: invoiceQuery.data.currencyCode ?? getCompanyBaseCurrency(company),
@@ -141,13 +142,13 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             discountType: invoiceQuery.data.discountType ?? undefined,
             discountValue:
               invoiceQuery.data.discountValue != null
-                ? toOptionalDecimalString(invoiceQuery.data.discountValue)
+                ? toEditableDecimalString(invoiceQuery.data.discountValue)
                 : "",
             whtEnabled: Boolean(invoiceQuery.data.whtEnabled),
             whtType: invoiceQuery.data.whtType ?? "",
             whtRate:
               invoiceQuery.data.whtRate != null
-                ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                ? toEditableDecimalString(invoiceQuery.data.whtRate)
                 : "",
             whtBase: invoiceQuery.data.whtBase ?? "",
             whtHeldBy: invoiceQuery.data.whtHeldBy ?? "COUNTERPARTY",
@@ -157,9 +158,9 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             ),
             incomeWhtRate:
               invoiceQuery.data.incomeWhtRate != null
-                ? toOptionalDecimalString(invoiceQuery.data.incomeWhtRate)
+                ? toEditableDecimalString(invoiceQuery.data.incomeWhtRate)
                 : invoiceQuery.data.whtType === "INCOME" && invoiceQuery.data.whtRate != null
-                  ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                  ? toEditableDecimalString(invoiceQuery.data.whtRate)
                   : "",
             incomeWhtBase:
               invoiceQuery.data.incomeWhtBase ??
@@ -174,9 +175,9 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             ),
             salesTaxWhtRate:
               invoiceQuery.data.salesTaxWhtRate != null
-                ? toOptionalDecimalString(invoiceQuery.data.salesTaxWhtRate)
+                ? toEditableDecimalString(invoiceQuery.data.salesTaxWhtRate)
                 : invoiceQuery.data.whtType === "SALES_TAX" && invoiceQuery.data.whtRate != null
-                  ? toOptionalDecimalString(invoiceQuery.data.whtRate)
+                  ? toEditableDecimalString(invoiceQuery.data.whtRate)
                   : "",
             salesTaxWhtBase:
               invoiceQuery.data.salesTaxWhtBase ??
@@ -200,14 +201,14 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 return {
                   itemId: line.itemId ?? "",
                   description: line.description,
-                  quantity: toDecimalString(line.quantity),
-                  unitPrice: line.unitPrice != null ? toOptionalDecimalString(line.unitPrice) : "",
+                  quantity: toEditableDecimalString(line.quantity),
+                  unitPrice: line.unitPrice != null ? toEditableDecimalString(line.unitPrice) : "",
                   discountType: line.discountType ?? undefined,
                   discountValue:
-                    line.discountValue != null ? toOptionalDecimalString(line.discountValue) : "",
+                    line.discountValue != null ? toEditableDecimalString(line.discountValue) : "",
                   taxCodeId,
                   taxRateId,
-                  taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+                  taxRate: line.taxRate != null ? toEditableDecimalString(line.taxRate) : "",
                   itemName: line.itemName ?? "",
                 };
               }) ?? [],
@@ -222,6 +223,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             contactPersonDepartment: "",
             deliveryDate: "",
             deliveryChallanNumber: "",
+            shippingAddressId: "",
             issueDate: new Date().toISOString().split("T")[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
             currencyCode: getCompanyBaseCurrency(company),
@@ -281,7 +283,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
       if (line.taxRateId && !line.taxRate) {
         const rate = taxRatesQuery.data?.find((row) => row.id === line.taxRateId);
         if (rate) {
-          form.setValue(`lines.${index}.taxRate`, toOptionalDecimalString(rate.ratePercent) ?? "", {
+          form.setValue(`lines.${index}.taxRate`, toEditableDecimalString(rate.ratePercent), {
             shouldDirty: false,
           });
         }
@@ -310,7 +312,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
     form.setValue(`lines.${lineIndex}.itemId`, item.id, lineOpts);
     form.setValue(`lines.${lineIndex}.itemName`, item.name || "", lineOpts);
     form.setValue(`lines.${lineIndex}.description`, item.description || item.name, lineOpts);
-    form.setValue(`lines.${lineIndex}.unitPrice`, toDecimalString(price), lineOpts);
+    form.setValue(`lines.${lineIndex}.unitPrice`, toEditableDecimalString(price), lineOpts);
     form.setValue(`lines.${lineIndex}.taxRateId`, item.taxRateId ?? "", lineOpts);
   };
 
@@ -371,6 +373,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             contactPersonDepartment: values.contactPersonDepartment || undefined,
             deliveryDate: values.deliveryDate || undefined,
             deliveryChallanNumber: values.deliveryChallanNumber || undefined,
+            shippingAddressId: values.shippingAddressId || null,
             issueDate: values.issueDate || undefined,
             dueDate: values.dueDate || undefined,
             currencyCode: values.currencyCode || undefined,

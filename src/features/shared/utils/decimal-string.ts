@@ -40,6 +40,31 @@ export function toDecimalString(value: unknown, decimals = 4): string {
   return parsed.toFixed(decimals);
 }
 
+/**
+ * Display helper for editable qty/rate inputs. Rounds to 2dp when a real
+ * decimal exists and drops the decimal part entirely when it is zero:
+ * "2.0000" -> "2", "2.229" -> "2.23", "2.5" -> "2.50".
+ */
+export function toEditableDecimalString(value: unknown): string {
+  if (value === "" || value === null || value === undefined) {
+    return "";
+  }
+  if (typeof value === "number" && !Number.isFinite(value)) {
+    return "";
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return "";
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return trimmed;
+  }
+  const fixed = parsed.toFixed(2);
+  const stripped = fixed.replace(/\.00$/, "");
+  return stripped === "-0" ? "0" : stripped;
+}
+
 /** Currency-oriented helper — always two decimal places when non-empty. */
 export function toMoneyDecimalString(value: unknown): string {
   if (value === "" || value === null || value === undefined) {

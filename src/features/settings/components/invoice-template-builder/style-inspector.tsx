@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import FileInput from "@/components/ui/fileInput";
 import {
   INVOICE_FIELD_CATALOG,
   KIND_LABELS,
@@ -23,6 +24,7 @@ interface StyleInspectorProps {
   onSelectChild: (id: string) => void;
   onReorderChild: (childId: string, direction: -1 | 1) => void;
   onAddTextToBox: (boxId: string) => void;
+  onAddImageToBox: (boxId: string) => void;
 }
 
 function updateStyle(
@@ -41,6 +43,7 @@ export function StyleInspector({
   onSelectChild,
   onReorderChild,
   onAddTextToBox,
+  onAddImageToBox,
 }: StyleInspectorProps) {
   if (!element) {
     return (
@@ -213,19 +216,30 @@ export function StyleInspector({
             </p>
           )}
           <div className="space-y-2 border-t pt-3">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Contents
               </p>
-              <Button
-                disabled={!canManage}
-                onClick={() => onAddTextToBox(element.id)}
-                size="sm"
-                type="button"
-                variant="secondary"
-              >
-                Add text
-              </Button>
+              <span className="flex gap-1">
+                <Button
+                  disabled={!canManage}
+                  onClick={() => onAddTextToBox(element.id)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Add text
+                </Button>
+                <Button
+                  disabled={!canManage}
+                  onClick={() => onAddImageToBox(element.id)}
+                  size="sm"
+                  type="button"
+                  variant="secondary"
+                >
+                  Add image
+                </Button>
+              </span>
             </div>
             {boxChildren.length ? (
               <ul className="space-y-2">
@@ -327,6 +341,18 @@ export function StyleInspector({
             value={element.content ?? ""}
           />
         </label>
+      ) : null}
+
+      {element.kind === "image" ? (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">Box image</p>
+          {canManage ? (
+            <FileInput
+              logo={element.content ?? ""}
+              setlogo={(url) => onChange({ content: url || "" })}
+            />
+          ) : null}
+        </div>
       ) : null}
 
       <div className="space-y-2 border-t pt-3">

@@ -10,6 +10,17 @@ const optionalNumber = z.preprocess((value) => {
 }, z.number().min(0).max(3650).optional());
 const optionalDecimalString = z.string().optional().or(z.literal(""));
 
+const shippingAddressSchema = z.object({
+  id: optionalString,
+  label: z.string().trim().min(1, "Label is required").max(80),
+  addressLine1: optionalString,
+  addressLine2: optionalString,
+  city: optionalString,
+  state: optionalString,
+  postalCode: optionalString,
+  country: optionalString,
+});
+
 export const customerSchema = z.object({
   customerCode: optionalString,
   displayName: optionalString,
@@ -32,12 +43,7 @@ export const customerSchema = z.object({
   billingState: optionalString,
   billingPostalCode: optionalString,
   billingCountry: optionalString,
-  shippingAddressLine1: optionalString,
-  shippingAddressLine2: optionalString,
-  shippingCity: optionalString,
-  shippingState: optionalString,
-  shippingPostalCode: optionalString,
-  shippingCountry: optionalString,
+  shippingAddresses: z.array(shippingAddressSchema).max(10).default([]),
   notes: optionalString,
   isActive: z.boolean(),
 });

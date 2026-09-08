@@ -1,5 +1,5 @@
 import {
-  COLUMN_LABELS,
+  columnHeaderLabel,
   elementPreviewLabel,
   getBoxChildren,
   getTopLevelElements,
@@ -123,27 +123,50 @@ export function TemplateCanvas({
                     {elementPreviewLabel(element)}
                   </p>
                 ) : null}
-                {children.map((child) => (
-                  <button
-                    className={`block w-full truncate rounded px-1 py-0.5 text-left hover:bg-slate-100 ${
-                      selectedId === child.id ? "bg-primary/10 ring-1 ring-primary/40" : ""
-                    }`}
-                    key={child.id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onSelect(child.id);
-                    }}
-                    style={{
-                      fontSize: child.style?.fontSize ? `${child.style.fontSize}px` : undefined,
-                      fontWeight: child.style?.fontWeight === "bold" ? 700 : 400,
-                      color: child.style?.color,
-                      textAlign: child.style?.textAlign,
-                    }}
-                    type="button"
-                  >
-                    {elementPreviewLabel(child)}
-                  </button>
-                ))}
+                {children.map((child) =>
+                  child.kind === "image" && child.content?.trim() ? (
+                    <button
+                      className={`block w-full rounded px-1 py-0.5 text-left hover:bg-slate-100 ${
+                        selectedId === child.id ? "bg-primary/10 ring-1 ring-primary/40" : ""
+                      }`}
+                      key={child.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect(child.id);
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      type="button"
+                    >
+                      <img
+                        alt=""
+                        className="max-h-16 w-auto max-w-full object-contain"
+                        draggable={false}
+                        src={child.content}
+                      />
+                    </button>
+                  ) : (
+                    <button
+                      className={`block w-full truncate rounded px-1 py-0.5 text-left hover:bg-slate-100 ${
+                        selectedId === child.id ? "bg-primary/10 ring-1 ring-primary/40" : ""
+                      }`}
+                      key={child.id}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect(child.id);
+                      }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      style={{
+                        fontSize: child.style?.fontSize ? `${child.style.fontSize}px` : undefined,
+                        fontWeight: child.style?.fontWeight === "bold" ? 700 : 400,
+                        color: child.style?.color,
+                        textAlign: child.style?.textAlign,
+                      }}
+                      type="button"
+                    >
+                      {elementPreviewLabel(child)}
+                    </button>
+                  ),
+                )}
                 {element.kind === "box" && !children.length ? (
                   <p className="text-muted-foreground">Select box, then add fields from palette</p>
                 ) : null}
@@ -164,7 +187,7 @@ export function TemplateCanvas({
                   Line items ({SAMPLE_PREVIEW_ROW_COUNT} sample rows)
                 </p>
                 <p className="text-muted-foreground">
-                  {layout.columns.map((column) => COLUMN_LABELS[column]).join(" → ")}
+                  {layout.columns.map((column) => columnHeaderLabel(column)).join(" → ")}
                 </p>
                 {element.maxHeight ? (
                   <p className="mt-1 text-[9px] text-amber-700">Max height {element.maxHeight}%</p>

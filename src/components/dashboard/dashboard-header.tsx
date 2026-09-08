@@ -1,6 +1,5 @@
 import { CalendarDays } from "lucide-react";
-import { Select } from "@/components/ui/select";
-import type { DashboardPeriodPreset } from "@/features/dashboard/types/dashboard.types";
+import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { formatShortDateRange } from "@/lib/utils/format";
 
 interface DashboardHeaderProps {
@@ -10,8 +9,8 @@ interface DashboardHeaderProps {
   toDate: string;
   previousFromDate: string;
   previousToDate: string;
-  preset: DashboardPeriodPreset;
-  onPresetChange: (preset: DashboardPeriodPreset) => void;
+  onFromDateChange: (value: string) => void;
+  onToDateChange: (value: string) => void;
 }
 
 export function DashboardHeader({
@@ -21,8 +20,8 @@ export function DashboardHeader({
   toDate,
   previousFromDate,
   previousToDate,
-  preset,
-  onPresetChange,
+  onFromDateChange,
+  onToDateChange,
 }: DashboardHeaderProps) {
   const firstName = userName?.trim().split(/\s+/)[0] ?? "there";
 
@@ -44,15 +43,12 @@ export function DashboardHeader({
             {formatShortDateRange(previousFromDate, previousToDate)}
           </span>
         </div>
-        <Select
-          className="w-full min-w-[160px] sm:w-auto"
-          onChange={(event) => onPresetChange(Number(event.target.value) as DashboardPeriodPreset)}
-          value={String(preset)}
-        >
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
-        </Select>
+        <DateRangeToolbar
+          fromDate={fromDate}
+          onFromDateChange={onFromDateChange}
+          onToDateChange={onToDateChange}
+          toDate={toDate}
+        />
       </div>
     </div>
   );

@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import { LoadingSkeleton } from "@/components/shared/loading-skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { SortableTableHeader } from "@/components/shared/sortable-table-header";
+import type { ListSortDir } from "@/features/shared/types/common";
 import { cn } from "@/lib/utils/cn";
 
 export interface DataTableColumn<T> {
   key: string;
   header: string;
   className?: string;
+  sortable?: boolean;
+  sortKey?: string;
   render: (row: T) => ReactNode;
 }
 
@@ -28,6 +32,9 @@ interface DataTableProps<T> {
   emptyDescription?: string;
   getRowKey: (row: T) => string;
   pagination?: DataTablePagination;
+  sortKey?: string;
+  sortDir?: ListSortDir;
+  onSort?: (key: string) => void;
 }
 
 export function DataTable<T>({
@@ -38,6 +45,9 @@ export function DataTable<T>({
   emptyDescription,
   getRowKey,
   pagination,
+  sortKey,
+  sortDir,
+  onSort,
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
@@ -75,7 +85,17 @@ export function DataTable<T>({
                   )}
                   key={column.key}
                 >
-                  {column.header}
+                  {column.sortable && onSort ? (
+                    <SortableTableHeader
+                      activeSortKey={sortKey}
+                      label={column.header}
+                      onSort={onSort}
+                      sortDir={sortDir}
+                      sortKey={column.sortKey ?? column.key}
+                    />
+                  ) : (
+                    column.header
+                  )}
                 </th>
               ))}
             </tr>

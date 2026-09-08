@@ -5,12 +5,14 @@ export type InvoiceTableColumnKey =
   | "qty"
   | "rate"
   | "discount"
-  | "tax"
+  | "taxPercent"
+  | "taxAmount"
   | "total";
 
 export type TemplateElementKind =
   | "field"
   | "text"
+  | "image"
   | "box"
   | "letterhead"
   | "logo"
@@ -18,6 +20,35 @@ export type TemplateElementKind =
   | "totals"
   | "notes"
   | "footer";
+
+export interface BuiltinInvoiceTableColumn {
+  kind?: "builtin";
+  key: InvoiceTableColumnKey;
+  headerFormat?: string;
+  cellFormat?: string;
+}
+
+export interface FormulaInvoiceTableColumn {
+  kind: "formula";
+  id: string;
+  header: string;
+  expression: string;
+  numeric?: boolean;
+}
+
+export type InvoiceTableColumn = BuiltinInvoiceTableColumn | FormulaInvoiceTableColumn;
+
+export function isFormulaColumn(column: InvoiceTableColumn): column is FormulaInvoiceTableColumn {
+  return column.kind === "formula";
+}
+
+export function isBuiltinColumn(column: InvoiceTableColumn): column is BuiltinInvoiceTableColumn {
+  return !isFormulaColumn(column);
+}
+
+export function columnIdentity(column: InvoiceTableColumn): string {
+  return isFormulaColumn(column) ? column.id : column.key;
+}
 
 export type InvoiceFieldGroup = "invoice" | "company" | "customer" | "totals" | "special";
 
@@ -70,7 +101,7 @@ export interface InvoiceTemplateLayout {
   logoUrl?: string | null;
   footerImageUrl?: string | null;
   showLogo?: boolean;
-  columns: InvoiceTableColumnKey[];
+  columns: InvoiceTableColumn[];
   lineTable?: LineTableConfig;
   elements: TemplateElement[];
 }
@@ -144,6 +175,7 @@ export const INVOICE_FIELD_CATALOG: InvoiceFieldDefinition[] = [
   { binding: "customer.billingState", label: "Billing state", group: "customer" },
   { binding: "customer.billingPostalCode", label: "Billing postal code", group: "customer" },
   { binding: "customer.billingCountry", label: "Billing country", group: "customer" },
+  { binding: "customer.shippingAddressLabel", label: "Shipping address label", group: "customer" },
   { binding: "customer.shippingAddressLine1", label: "Shipping address line 1", group: "customer" },
   { binding: "customer.shippingAddressLine2", label: "Shipping address line 2", group: "customer" },
   { binding: "customer.shippingCity", label: "Shipping city", group: "customer" },
@@ -168,6 +200,51 @@ export const FIELD_GROUP_LABELS: Record<InvoiceFieldGroup, string> = {
   special: "Special",
 };
 
+export const INVOICE_TABLE_COLUMN_KEYS: InvoiceTableColumnKey[] = [
+  "serial",
+  "product",
+  "description",
+  "qty",
+  "rate",
+  "discount",
+  "taxPercent",
+  "taxAmount",
+  "total",
+];
+
+export const MAX_INVOICE_TABLE_COLUMNS = 20;
+
+export const FORMULA_LINE_TOKENS = [
+  "qty",
+  "rate",
+  "unitPrice",
+  "lineSubtotal",
+  "taxRate",
+  "lineTaxAmount",
+  "lineTotal",
+  "taxName",
+  "itemName",
+  "description",
+  "serial",
+  "lineNumber",
+] as const;
+
+export const DEFAULT_INVOICE_TABLE_COLUMNS: InvoiceTableColumn[] = INVOICE_TABLE_COLUMN_KEYS.map(
+  (key) => ({ kind: "builtin", key }),
+);
+
+export function applyColumnFormat(format: string | undefined, value: string): string {
+  if (!format?.trim()) return value;
+  if (format.includes("{value}")) return format.split("{value}").join(value);
+  return `${format.trim()} ${value}`.trim();
+}
+
+export function applyHeaderFormat(format: string | undefined, defaultLabel: string): string {
+  if (!format?.trim()) return defaultLabel;
+  if (format.includes("{value}")) return format.split("{value}").join(defaultLabel);
+  return format.trim();
+}
+
 export const COLUMN_LABELS: Record<InvoiceTableColumnKey, string> = {
   serial: "S.No",
   product: "Product",
@@ -175,13 +252,29 @@ export const COLUMN_LABELS: Record<InvoiceTableColumnKey, string> = {
   qty: "Qty",
   rate: "Rate",
   discount: "Discount",
-  tax: "Tax",
+  taxPercent: "Tax %",
+  taxAmount: "Tax amount",
   total: "Total",
+};
+
+/** What each builtin column renders for the backend preview sample invoice —
+ *  keep in sync with compileInvoiceTemplateShell in the backend compiler. */
+export const COLUMN_SAMPLE_VALUES: Record<InvoiceTableColumnKey, string> = {
+  serial: "1",
+  product: "Premium Widget",
+  description: "Blue finish",
+  qty: "2",
+  rate: "50.00",
+  discount: "—",
+  taxPercent: "15%",
+  taxAmount: "15.00",
+  total: "115.00",
 };
 
 export const KIND_LABELS: Record<TemplateElementKind, string> = {
   field: "Field line",
   text: "Text line",
+  image: "Image",
   box: "Box",
   letterhead: "Letterhead",
   logo: "Logo",
@@ -190,6 +283,96 @@ export const KIND_LABELS: Record<TemplateElementKind, string> = {
   notes: "Notes",
   footer: "Footer",
 };
+
+export function columnHeaderLabel(column: InvoiceTableColumn): string {
+  if (isFormulaColumn(column)) return column.header;
+  return applyHeaderFormat(column.headerFormat, COLUMN_LABELS[column.key]);
+}
+
+function isLegacyTaxKey(key: string): boolean {
+  return key === "tax";
+}
+
+function expandLegacyTaxColumn(col: BuiltinInvoiceTableColumn): BuiltinInvoiceTableColumn[] {
+  if (col.key !== "tax" && !isLegacyTaxKey(col.key as string)) return [col];
+  return [
+    { kind: "builtin", key: "taxPercent" },
+    {
+      kind: "builtin",
+      key: "taxAmount",
+      ...(col.headerFormat ? { headerFormat: col.headerFormat } : {}),
+      ...(col.cellFormat ? { cellFormat: col.cellFormat } : {}),
+    },
+  ];
+}
+
+function pickColumnFormats(raw: Record<string, unknown>) {
+  const out: Pick<BuiltinInvoiceTableColumn, "headerFormat" | "cellFormat"> = {};
+  if (typeof raw.headerFormat === "string" && raw.headerFormat.trim()) {
+    out.headerFormat = raw.headerFormat.trim().slice(0, 120);
+  }
+  if (typeof raw.cellFormat === "string" && raw.cellFormat.trim()) {
+    out.cellFormat = raw.cellFormat.trim().slice(0, 120);
+  }
+  return out;
+}
+
+function normalizeColumn(raw: unknown): InvoiceTableColumn[] {
+  if (typeof raw === "string") {
+    if (isLegacyTaxKey(raw)) return expandLegacyTaxColumn({ kind: "builtin", key: "tax" as InvoiceTableColumnKey });
+    if (!INVOICE_TABLE_COLUMN_KEYS.includes(raw as InvoiceTableColumnKey)) return [];
+    return [{ kind: "builtin", key: raw as InvoiceTableColumnKey }];
+  }
+  if (!raw || typeof raw !== "object") return [];
+  const rec = raw as Record<string, unknown>;
+  if (rec.kind === "formula") {
+    const id = typeof rec.id === "string" ? rec.id.trim().slice(0, 80) : "";
+    const header = typeof rec.header === "string" ? rec.header.trim().slice(0, 120) : "";
+    const expression = typeof rec.expression === "string" ? rec.expression.slice(0, 500) : "";
+    if (!id || !header || !expression.trim()) return [];
+    return [{
+      kind: "formula",
+      id,
+      header,
+      expression,
+      ...(rec.numeric === true ? { numeric: true } : {}),
+    }];
+  }
+  const key = rec.key;
+  if (typeof key === "string" && isLegacyTaxKey(key)) {
+    return expandLegacyTaxColumn({ kind: "builtin", key: "tax" as InvoiceTableColumnKey, ...pickColumnFormats(rec) });
+  }
+  if (typeof key !== "string" || !INVOICE_TABLE_COLUMN_KEYS.includes(key as InvoiceTableColumnKey)) {
+    return [];
+  }
+  return [{ kind: "builtin", key: key as InvoiceTableColumnKey, ...pickColumnFormats(rec) }];
+}
+
+export function normalizeLayoutColumns(raw: unknown): InvoiceTableColumn[] {
+  const fallback = [...DEFAULT_INVOICE_TABLE_COLUMNS];
+  if (!Array.isArray(raw)) return fallback;
+  const seenBuiltin = new Set<InvoiceTableColumnKey>();
+  const seenFormula = new Set<string>();
+  const columns: InvoiceTableColumn[] = [];
+  for (const item of raw) {
+    for (const col of normalizeColumn(item)) {
+      if (isFormulaColumn(col)) {
+        if (seenFormula.has(col.id)) continue;
+        seenFormula.add(col.id);
+        columns.push(col);
+        continue;
+      }
+      if (seenBuiltin.has(col.key)) continue;
+      seenBuiltin.add(col.key);
+      columns.push(col);
+    }
+    if (columns.length >= MAX_INVOICE_TABLE_COLUMNS) break;
+  }
+  if (columns.length && !columns.some((c) => isBuiltinColumn(c) && c.key === "serial")) {
+    columns.unshift({ kind: "builtin", key: "serial" });
+  }
+  return columns.length ? columns.slice(0, MAX_INVOICE_TABLE_COLUMNS) : fallback;
+}
 
 let elementCounter = 0;
 
@@ -362,7 +545,7 @@ export const DEFAULT_INVOICE_TEMPLATE_LAYOUT: InvoiceTemplateLayout = {
   logoUrl: null,
   footerImageUrl: null,
   showLogo: true,
-  columns: ["serial", "product", "description", "qty", "rate", "discount", "tax", "total"],
+  columns: [...DEFAULT_INVOICE_TABLE_COLUMNS],
   lineTable: { x: 2, y: 38, width: 96, visible: true },
   elements: [
     { id: "letterhead", kind: "letterhead", x: 0, y: 0, width: 100, height: 12, visible: false },
@@ -453,6 +636,7 @@ export function elementPreviewLabel(element: TemplateElement): string {
     return `${prefix}${getFieldLabel(element.binding)}`;
   }
   if (element.kind === "text") return element.content ?? "Text line";
+  if (element.kind === "image") return element.content?.trim() ? "Image" : "Image (empty)";
   if (element.kind === "box" || element.kind === "footer") {
     if (element.titleBinding) return `{${getFieldLabel(element.titleBinding)}}`;
     return element.content ?? (element.kind === "footer" ? "Footer" : "Box");

@@ -9,6 +9,8 @@ import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
 import { FilterBar } from "@/components/shared/filter-bar";
 import { SearchInput } from "@/components/shared/search-input";
+import { SortableTableHeader, toggleListSort } from "@/components/shared/sortable-table-header";
+import type { ListSortDir } from "@/features/shared/types/common";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { buildPayFromOptions } from "@/features/accounts/utils/payment-account-options";
 import { useBankAccounts } from "@/features/banking/hooks/use-banking";
@@ -65,6 +67,8 @@ export function ExpensesPage() {
   const range = defaultRange();
   const [fromDate, setFromDate] = useState(range.fromDate);
   const [toDate, setToDate] = useState(range.toDate);
+  const [sortBy, setSortBy] = useState("paymentDate");
+  const [sortDir, setSortDir] = useState<ListSortDir>("desc");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [addDraft, setAddDraft] = useState<Draft>(emptyDraft());
@@ -84,6 +88,8 @@ export function ExpensesPage() {
     page,
     limit,
     expenseAccountIds: expenseAccountIdsParam,
+    sortBy,
+    sortDir,
   });
   const createMutation = useCreateExpense(companyId);
   const updateMutation = useUpdateExpense(companyId, editingId);
@@ -151,6 +157,24 @@ export function ExpensesPage() {
   const pagination = expensesQuery.data?.pagination;
   const filteredTotalAmount = expensesQuery.data?.filteredTotalAmount ?? "0.00";
 
+  const handleSort = (key: string) => {
+    const next = toggleListSort(sortBy, sortDir, key);
+    setSortBy(next.sortBy);
+    setSortDir(next.sortDir);
+    setPage(1);
+  };
+
+  const expenseHeaders: Array<{ label: string; sortKey?: string; className?: string }> = [
+    { label: "Date", sortKey: "paymentDate" },
+    { label: "Category" },
+    { label: "Pay from" },
+    { label: "Amount", sortKey: "amount", className: "text-right" },
+    { label: "Description" },
+    { label: "Created", sortKey: "createdAt" },
+    { label: "Updated" },
+    { label: "" },
+  ];
+
   return (
     <EntityListPage
       content={
@@ -172,16 +196,25 @@ export function ExpensesPage() {
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-secondary/60">
                   <tr>
-                    {["Date", "Category", "Pay from", "Amount", "Description", "Created", "Updated", ""].map(
-                      (header) => (
-                        <th
-                          className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                          key={header}
-                        >
-                          {header}
-                        </th>
-                      ),
-                    )}
+                    {expenseHeaders.map((header) => (
+                      <th
+                        className={`px-3 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground ${header.className ?? ""}`}
+                        key={header.label || "actions"}
+                      >
+                        {header.sortKey ? (
+                          <SortableTableHeader
+                            activeSortKey={sortBy}
+                            className={header.className}
+                            label={header.label}
+                            onSort={handleSort}
+                            sortDir={sortDir}
+                            sortKey={header.sortKey}
+                          />
+                        ) : (
+                          header.label
+                        )}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>

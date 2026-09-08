@@ -9,6 +9,10 @@ function buildQuery(params: BillListParams) {
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
   if (params.vendorId) query.set("vendorId", params.vendorId);
+  if (params.fromDate) query.set("fromDate", params.fromDate);
+  if (params.toDate) query.set("toDate", params.toDate);
+  if (params.sortBy) query.set("sortBy", params.sortBy);
+  if (params.sortDir) query.set("sortDir", params.sortDir);
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
   const serialized = query.toString();

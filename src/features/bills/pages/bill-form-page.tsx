@@ -34,7 +34,7 @@ import { canManageEntity } from "@/features/permissions/utils/module-permissions
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
 import { getDocumentPreviewTotals } from "@/features/shared/utils/document-calculations";
 import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
-import { toDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
+import { toDecimalString, toEditableDecimalString, toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import {
   convertBasePriceToDocumentPrice,
   getCompanyBaseCurrency,
@@ -199,19 +199,19 @@ export function BillFormPage({ mode }: BillFormPageProps) {
       discountType: bill.discountType ?? undefined,
       discountValue:
         bill.discountValue != null && bill.discountValue !== ""
-          ? toOptionalDecimalString(bill.discountValue)
+          ? toEditableDecimalString(bill.discountValue)
           : "",
       whtEnabled: Boolean(bill.whtEnabled),
       whtType: bill.whtType ?? "",
-      whtRate: bill.whtRate != null ? toOptionalDecimalString(bill.whtRate) : "",
+      whtRate: bill.whtRate != null ? toEditableDecimalString(bill.whtRate) : "",
       whtBase: bill.whtBase ?? "",
       whtHeldBy: bill.whtHeldBy ?? "COMPANY",
       incomeWhtEnabled: Boolean(bill.incomeWhtEnabled ?? (bill.whtEnabled && bill.whtType === "INCOME")),
       incomeWhtRate:
         bill.incomeWhtRate != null
-          ? toOptionalDecimalString(bill.incomeWhtRate)
+          ? toEditableDecimalString(bill.incomeWhtRate)
           : bill.whtType === "INCOME" && bill.whtRate != null
-            ? toOptionalDecimalString(bill.whtRate)
+            ? toEditableDecimalString(bill.whtRate)
             : "",
       incomeWhtBase: bill.incomeWhtBase ?? (bill.whtType === "INCOME" ? bill.whtBase ?? "" : ""),
       incomeWhtHeldBy:
@@ -221,9 +221,9 @@ export function BillFormPage({ mode }: BillFormPageProps) {
       ),
       salesTaxWhtRate:
         bill.salesTaxWhtRate != null
-          ? toOptionalDecimalString(bill.salesTaxWhtRate)
+          ? toEditableDecimalString(bill.salesTaxWhtRate)
           : bill.whtType === "SALES_TAX" && bill.whtRate != null
-            ? toOptionalDecimalString(bill.whtRate)
+            ? toEditableDecimalString(bill.whtRate)
             : "",
       salesTaxWhtBase:
         bill.salesTaxWhtBase ?? (bill.whtType === "SALES_TAX" ? bill.whtBase ?? "" : ""),
@@ -233,17 +233,17 @@ export function BillFormPage({ mode }: BillFormPageProps) {
         bill.lines?.map((line) => ({
           itemId: line.itemId ?? "",
           description: line.description,
-          quantity: toDecimalString(line.quantity || "1"),
-          unitCost: line.unitCost != null ? toOptionalDecimalString(line.unitCost) : "",
+          quantity: toEditableDecimalString(line.quantity || "1"),
+          unitCost: line.unitCost != null ? toEditableDecimalString(line.unitCost) : "",
           itemName: line.itemName ?? "",
           unitName: "",
           discountType: line.discountType ?? undefined,
           discountValue:
             line.discountValue != null && line.discountValue !== ""
-              ? toOptionalDecimalString(line.discountValue)
+              ? toEditableDecimalString(line.discountValue)
               : "",
           taxCodeId: line.taxCodeId ?? "",
-          taxRate: line.taxRate != null ? toOptionalDecimalString(line.taxRate) : "",
+          taxRate: line.taxRate != null ? toEditableDecimalString(line.taxRate) : "",
           expenseAccountId: line.expenseAccountId ?? "",
         })) ?? [],
     });
@@ -475,7 +475,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
     form.setValue(`lines.${lineIndex}.itemName`, item.name, { shouldDirty: true });
     form.setValue(`lines.${lineIndex}.unitName`, item.unitName ?? "", { shouldDirty: true });
     form.setValue(`lines.${lineIndex}.description`, item.description || item.name, { shouldDirty: true });
-    form.setValue(`lines.${lineIndex}.unitCost`, toDecimalString(price), {
+    form.setValue(`lines.${lineIndex}.unitCost`, toEditableDecimalString(price), {
       shouldDirty: true,
       shouldValidate: true,
     });
