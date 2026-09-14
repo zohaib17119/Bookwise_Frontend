@@ -10,6 +10,15 @@ export interface Company {
   countryCode?: string | null;
   complianceModule?: "ZATCA" | "FBR" | null;
   zatcaConfig?: { isEnabled?: boolean } | null;
+  fbrConfig?: {
+    isEnabled?: boolean;
+    environment?: "SANDBOX" | "PRODUCTION";
+    integrationStatus?: "DISABLED" | "SETUP" | "ENABLED" | "ERROR";
+    fbrBusinessActivity?: string | null;
+    fbrBusinessSector?: string | null;
+    defaultSaleType?: string | null;
+    defaultScenarioId?: string | null;
+  } | null;
   state?: string | null;
   city?: string | null;
   postalCode?: string | null;

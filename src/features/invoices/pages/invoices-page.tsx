@@ -18,7 +18,12 @@ import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canShowFbr, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
+import {
+  canShowFbr,
+  canUseFbrDigitalInvoicing,
+  canUseZatcaReporting,
+} from "@/features/compliance/utils/compliance-access";
+import { formatFbrDiStatusLabel } from "@/features/compliance/utils/fbr-status";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
@@ -46,7 +51,7 @@ const INVOICE_VIEW_COLUMNS: TableViewColumnDef[] = [
   { id: "dueDate", label: "Due date", defaultVisible: false },
   { id: "payment", label: "Payment", defaultVisible: true },
   { id: "zatca", label: "ZATCA", defaultVisible: true },
-  { id: "fbrTaxReported", label: "FBR / Tax reported", defaultVisible: true },
+  { id: "fbrTaxReported", label: "FBR", defaultVisible: true },
   { id: "amountExclusiveTax", label: "Amount exclusive tax", defaultVisible: false },
   { id: "taxPercent", label: "Tax %", defaultVisible: false },
   { id: "taxAmount", label: "Tax amount", defaultVisible: true },
@@ -73,6 +78,7 @@ export function InvoicesPage() {
   const user = useAuthStore((state) => state.user);
   const showZatca = canUseZatcaReporting(company);
   const showFbr = canShowFbr(company);
+  const useFbrDi = canUseFbrDigitalInvoicing(company);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [customerId, setCustomerId] = useState("");
@@ -230,10 +236,21 @@ export function InvoicesPage() {
     },
     fbrTaxReported: {
       key: "fbrTaxReported",
-      header: "FBR / Tax reported",
-      render: (invoice) => (
-        <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
-      ),
+      header: useFbrDi ? "FBR DI" : "FBR / Tax reported",
+      render: (invoice) => {
+        if (useFbrDi) {
+          const status = invoice.fbrSubmissionStatus ?? "NOT_APPLICABLE";
+          return (
+            <DocumentStatusBadge
+              label={formatFbrDiStatusLabel(status, { digitalInvoicingEnabled: true })}
+              status={status}
+            />
+          );
+        }
+        return (
+          <DocumentStatusBadge status={invoice.complianceStatus ?? "NOT_APPLICABLE"} />
+        );
+      },
     },
     amountExclusiveTax: {
       key: "amountExclusiveTax",

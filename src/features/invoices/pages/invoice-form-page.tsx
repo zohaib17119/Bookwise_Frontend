@@ -12,6 +12,10 @@ import {
   getCompanyBaseCurrency,
   resolveDocumentExchangeRate,
 } from "@/features/companies/utils/company-currency";
+import {
+  canShowFbrSettings,
+  canUseFbrDigitalInvoicing,
+} from "@/features/compliance/utils/compliance-access";
 import { CustomerFormDrawer } from "@/features/customers/components/customer-form-drawer";
 import {
   useCreateCustomer,
@@ -462,6 +466,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         error={createCustomerMutation.error}
         isPending={createCustomerMutation.isPending}
         mode="create"
+        showFbrFields={canShowFbrSettings(company)}
+        requireFbrDi={canUseFbrDigitalInvoicing(company)}
         onClose={() => {
           setCustomerDrawerOpen(false);
           createCustomerMutation.reset();
@@ -482,6 +488,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             contactPersonDepartment: values.contactPersonDepartment || undefined,
             website: values.website || undefined,
             taxRegistrationNumber: values.taxRegistrationNumber || undefined,
+            fbrRegistrationType: values.fbrRegistrationType ?? null,
+            fbrProvince: values.fbrProvince || null,
             currencyCode: values.currencyCode || undefined,
             paymentTermsDays:
               values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)
@@ -548,6 +556,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
             hsCodeCategoryId: values.hsCodeCategoryId || null,
+            fbrUom: values.fbrUom || null,
+            fbrSaleType: values.fbrSaleType || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

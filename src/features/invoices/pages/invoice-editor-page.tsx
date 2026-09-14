@@ -14,6 +14,8 @@ import { ItemSelect } from "@/components/documents/item-select";
 import { DocumentCurrencyFields } from "@/components/documents/document-currency-fields";
 import { getCompanyBaseCurrency, convertBasePriceToDocumentPrice } from "@/features/companies/utils/company-currency";
 import { INVOICE_PAYMENT_OPTIONS } from "@/features/invoices/constants/payment-options";
+import { formatFbrMissingDetails } from "@/lib/api/error";
+import type { ApiError } from "@/lib/api/types";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
 import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
@@ -56,7 +58,7 @@ export default function InvoiceEditorPage({
   companyId: string;
   onCreateCustomer?: () => void;
   onCreateItemForLine?: (lineIndex: number, type: "inventory" | "service") => void;
-  submitError?: { message: string } | null;
+  submitError?: ApiError | null;
 }) {
   const watchedCustomerId = form.watch("customerId");
   const watchedCurrencyCode = form.watch("currencyCode");
@@ -903,8 +905,18 @@ export default function InvoiceEditorPage({
 
         {/* Footer Actions */}
         <div className="space-y-3 border-t p-4">
-          {submitError?.message ? (
-            <Alert title={submitError.message} variant="destructive" />
+          {submitError ? (
+            <Alert
+              description={(() => {
+                const formatted = formatFbrMissingDetails(submitError);
+                // Prefer structured missing list when present; message already states the gate.
+                if (!formatted) return undefined;
+                if (formatted === submitError.message) return undefined;
+                return formatted;
+              })()}
+              title={submitError.message}
+              variant="destructive"
+            />
           ) : null}
           <div className="flex justify-between">
           <div className="flex gap-2">

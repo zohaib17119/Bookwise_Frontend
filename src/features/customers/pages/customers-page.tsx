@@ -23,6 +23,7 @@ import {
 } from "@/features/customers/hooks/use-customers";
 import type { CustomerFormValues } from "@/features/customers/schemas/customer.schema";
 import type { Customer } from "@/features/customers/types/customer.types";
+import { canShowFbrSettings, canUseFbrDigitalInvoicing } from "@/features/compliance/utils/compliance-access";
 
 export function CustomersPage() {
   const { companyId, company, currency, permissions } = useActiveCompany();
@@ -207,6 +208,8 @@ export function CustomersPage() {
         error={activeMutation.error}
         isPending={activeMutation.isPending}
         mode={drawerMode}
+        showFbrFields={canShowFbrSettings(company)}
+        requireFbrDi={canUseFbrDigitalInvoicing(company)}
         onClose={() => {
           setDrawerOpen(false);
           activeMutation.reset();
@@ -227,6 +230,8 @@ export function CustomersPage() {
             contactPersonDepartment: values.contactPersonDepartment || undefined,
             website: values.website || undefined,
             taxRegistrationNumber: values.taxRegistrationNumber || undefined,
+            fbrRegistrationType: values.fbrRegistrationType ?? null,
+            fbrProvince: values.fbrProvince || null,
             currencyCode: values.currencyCode || undefined,
             paymentTermsDays:
               values.paymentTermsDays === undefined || Number.isNaN(values.paymentTermsDays)

@@ -72,6 +72,25 @@ export function formatDate(value?: string | null, locale = "en-US") {
   }).format(date);
 }
 
+export function formatDateTime(value?: string | null, locale = "en-US") {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export function formatShortDateRange(fromDate: string, toDate: string, locale = "en-US") {
   const formatter = new Intl.DateTimeFormat(locale, {
     month: "short",

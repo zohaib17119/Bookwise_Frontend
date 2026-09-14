@@ -77,6 +77,7 @@ import { SettingsTaxPage } from "@/features/settings/pages/settings-tax-page";
 import { InvoiceTemplateSettingsPage } from "@/features/settings/pages/invoice-template-settings-page";
 import { EstimateTemplateSettingsPage } from "@/features/settings/pages/estimate-template-settings-page";
 import { ZatcaSettingsRoute } from "@/features/settings/pages/zatca-country-guard";
+import { FbrSettingsRoute } from "@/features/settings/pages/fbr-country-guard";
 import { PosPage } from "@/features/pos/pages/pos-page";
 import { TaxCodesPage } from "@/features/tax/pages/tax-codes-page";
 import { TaxDetailPage } from "@/features/tax/pages/tax-detail-page";
@@ -212,6 +213,7 @@ const router = createBrowserRouter([
                       { path: "invoice-template", element: <InvoiceTemplateSettingsPage /> },
                       { path: "estimate-template", element: <EstimateTemplateSettingsPage /> },
                       { path: "zatca", element: <ZatcaSettingsRoute /> },
+                      { path: "fbr", element: <FbrSettingsRoute /> },
                       { path: "team", element: <SettingsTeamPage /> },
                       {
                         path: "preferences",

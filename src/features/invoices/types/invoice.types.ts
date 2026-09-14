@@ -32,6 +32,9 @@ export interface InvoiceLine extends DocumentLineInput {
   lineSubtotal?: string | null;
   lineTaxAmount?: string | null;
   lineTotal?: string | null;
+  fbrHsCode?: string | null;
+  fbrUom?: string | null;
+  fbrSaleType?: string | null;
 }
 
 export type InvoiceDocumentType = "TAX_INVOICE" | "CREDIT_NOTE" | "DEBIT_NOTE";
@@ -82,6 +85,23 @@ export interface Invoice {
   invoiceHash?: string | null;
   qrPayload?: string | null;
   complianceLastError?: string | null;
+  fbrSubmissionStatus?: string | null;
+  fbrSubmittedAt?: string | null;
+  fbrFbrInvoiceNumber?: string | null;
+  fbrInvoiceRefNo?: string | null;
+  fbrScenarioId?: string | null;
+  fbrAttemptCount?: number | null;
+  fbrLastError?: string | null;
+  fbrLastResponseCode?: string | null;
+  fbrFrozenSellerNTNCNIC?: string | null;
+  fbrFrozenSellerBusinessName?: string | null;
+  fbrFrozenSellerProvince?: string | null;
+  fbrFrozenSellerAddress?: string | null;
+  fbrFrozenBuyerNTNCNIC?: string | null;
+  fbrFrozenBuyerBusinessName?: string | null;
+  fbrFrozenBuyerProvince?: string | null;
+  fbrFrozenBuyerAddress?: string | null;
+  fbrFrozenBuyerRegistrationType?: string | null;
   total?: string | null;
   subtotal?: string | null;
   taxAmount?: string | null;

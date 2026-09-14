@@ -1,7 +1,7 @@
 import { NavLink, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils/cn";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
-import { canShowZatcaSettings } from "@/features/compliance/utils/compliance-access";
+import { canShowFbrSettings, canShowZatcaSettings } from "@/features/compliance/utils/compliance-access";
 
 const baseSettingsItems = [
   { segment: "company", label: "Company" },
@@ -20,6 +20,7 @@ export function SettingsNav() {
   const settingsItems = [
     ...baseSettingsItems.slice(0, 3),
     ...(canShowZatcaSettings(company) ? [{ segment: "zatca", label: "ZATCA" }] : []),
+    ...(canShowFbrSettings(company) ? [{ segment: "fbr", label: "FBR" }] : []),
     ...baseSettingsItems.slice(3),
   ];
 

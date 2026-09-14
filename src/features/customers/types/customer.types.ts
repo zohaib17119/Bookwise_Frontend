@@ -25,6 +25,8 @@ export interface Customer {
   contactPersonDepartment?: string | null;
   website?: string | null;
   taxRegistrationNumber?: string | null;
+  fbrRegistrationType?: "REGISTERED" | "UNREGISTERED" | null;
+  fbrProvince?: string | null;
   currencyCode?: string | null;
   hasTransactions?: boolean;
   paymentTermsDays?: number | null;
@@ -62,6 +64,8 @@ export interface CustomerPayload {
   contactPersonDepartment?: string;
   website?: string;
   taxRegistrationNumber?: string;
+  fbrRegistrationType?: "REGISTERED" | "UNREGISTERED" | null;
+  fbrProvince?: string | null;
   currencyCode?: string;
   paymentTermsDays?: number | null;
   openingBalance?: string;

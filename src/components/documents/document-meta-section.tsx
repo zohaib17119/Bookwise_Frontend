@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
+
 interface DocumentMetaItem {
   label: string;
-  value: string;
+  value: ReactNode;
 }
 
 interface DocumentMetaSectionProps {

@@ -12,6 +12,8 @@ export const itemSchema = z.object({
   barcode: optionalString,
   unitName: optionalString,
   hsCodeCategoryId: optionalString,
+  fbrUom: optionalString,
+  fbrSaleType: optionalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,
   incomeAccountId: optionalString,
@@ -25,6 +27,15 @@ export const itemSchema = z.object({
   reorderLevel: optionalDecimalString,
   isActive: z.boolean(),
 });
+
+export function buildItemSchema(requireFbrDi: boolean) {
+  if (!requireFbrDi) return itemSchema;
+  return itemSchema.extend({
+    hsCodeCategoryId: z.string().min(1, "HS code is required for FBR Digital Invoicing"),
+    fbrUom: z.string().trim().min(1, "FBR UoM is required"),
+    fbrSaleType: z.string().trim().min(1, "FBR sale type is required"),
+  });
+}
 
 export type ItemFormInput = z.input<typeof itemSchema>;
 export type ItemFormValues = z.output<typeof itemSchema>;

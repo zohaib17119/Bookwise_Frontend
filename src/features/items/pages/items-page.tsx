@@ -306,6 +306,8 @@ export function ItemsPage() {
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
             hsCodeCategoryId: values.hsCodeCategoryId || null,
+            fbrUom: values.fbrUom || null,
+            fbrSaleType: values.fbrSaleType || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

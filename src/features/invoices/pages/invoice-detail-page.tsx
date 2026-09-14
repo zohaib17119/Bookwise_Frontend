@@ -14,7 +14,11 @@ import { DocumentMetaSection } from "@/components/documents/document-meta-sectio
 import { DocumentTotalsCard } from "@/components/documents/document-totals-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canShowFbr, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
+import { canShowFbr, canUseFbrDigitalInvoicing, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
+import {
+  describeFbrDiStatusForUi,
+  formatFbrDiStatusLabel,
+} from "@/features/compliance/utils/fbr-status";
 import {
   CreateAdjustmentNoteDialog,
   type AdjustmentNoteType,
@@ -25,14 +29,19 @@ import {
   useDeleteInvoice,
   useInvoice,
   useMarkInvoiceTaxReported,
+  useRetryInvoiceFbrSubmit,
   useSendInvoice,
   useSubmitInvoiceCompliance,
+  useSubmitInvoiceFbrSync,
 } from "@/features/invoices/hooks/use-invoices";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
-import { formatDate } from "@/lib/utils/format";
+import { formatDate, formatDateTime } from "@/lib/utils/format";
 import { formatPaymentOptions } from "@/features/invoices/constants/payment-options";
 import InvoiceView from "./InvoiceView";
+import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
+import { Alert } from "@/components/ui/alert";
 
 export function InvoiceDetailPage() {
   const navigate = useNavigate();
@@ -41,10 +50,18 @@ export function InvoiceDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<AdjustmentNoteType | null>(null);
+  const [fbrFlash, setFbrFlash] = useState<{
+    tone: "ok" | "err";
+    text: string;
+    detail?: string | null;
+    preview?: string | null;
+  } | null>(null);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
   const deleteMutation = useDeleteInvoice(companyId);
   const sendMutation = useSendInvoice(companyId);
   const complianceMutation = useSubmitInvoiceCompliance(companyId);
+  const fbrSubmitMutation = useSubmitInvoiceFbrSync(companyId);
+  const fbrRetryMutation = useRetryInvoiceFbrSubmit(companyId);
   const markTaxReportedMutation = useMarkInvoiceTaxReported(companyId);
   const creditNoteMutation = useCreateCreditNote(companyId);
   const debitNoteMutation = useCreateDebitNote(companyId);
@@ -52,6 +69,7 @@ export function InvoiceDetailPage() {
   const canManage = canManageEntity(permissions, "invoices");
   const showZatca = canUseZatcaReporting(company);
   const showFbr = canShowFbr(company);
+  const useFbrDi = canUseFbrDigitalInvoicing(company);
   const baseCurrency = getCompanyBaseCurrency(company);
 
   if (!canView) {
@@ -72,6 +90,7 @@ export function InvoiceDetailPage() {
   const isAdjustmentNote = isCreditNote || isDebitNote;
   const documentCurrency = invoice.currencyCode ?? baseCurrency;
   const complianceStatus = invoice.complianceStatus ?? "NOT_APPLICABLE";
+  const fbrStatus = invoice.fbrSubmissionStatus ?? "NOT_APPLICABLE";
   const canRetryCompliance =
     showZatca &&
     invoice.status !== "DRAFT" &&
@@ -82,18 +101,74 @@ export function InvoiceDetailPage() {
     invoice.status !== "DRAFT" &&
     invoice.status !== "CANCELLED" &&
     complianceStatus === "PENDING";
-  const canMarkTaxReported =
-    showFbr &&
+  const fbrIssued =
+    useFbrDi &&
     canManage &&
     invoice.status !== "DRAFT" &&
     invoice.status !== "CANCELLED" &&
+    invoice.status !== "VOID";
+  const canSendFbr =
+    fbrIssued &&
+    ["NOT_APPLICABLE", "PENDING", "PROCESSING"].includes(fbrStatus) &&
+    !(fbrStatus === "SUBMITTED" && invoice.fbrFbrInvoiceNumber);
+  const canRetryFbr =
+    fbrIssued && ["FAILED", "REJECTED", "RETRYING"].includes(fbrStatus);
+  const fbrBusy = fbrSubmitMutation.isPending || fbrRetryMutation.isPending;
+  const canMarkTaxReported =
+    showFbr &&
+    canManage &&
+    !useFbrDi &&
+    invoice.status !== "DRAFT" &&
+    invoice.status !== "CANCELLED" &&
     complianceStatus === "PENDING";
+
+  const runFbrSync = async (mode: "submit" | "retry") => {
+    setFbrFlash(null);
+    try {
+      const data =
+        mode === "submit"
+          ? await fbrSubmitMutation.mutateAsync(invoice.id)
+          : await fbrRetryMutation.mutateAsync(invoice.id);
+      if (data.result.status === "SUBMITTED") {
+        setFbrFlash({
+          tone: "ok",
+          text: data.fbrFbrInvoiceNumber
+            ? `FBR accepted. Invoice number: ${data.fbrFbrInvoiceNumber}`
+            : "FBR accepted this document.",
+        });
+      } else {
+        const preview = data.gatewayPreview || data.result.gatewayPreview || null;
+        setFbrFlash({
+          tone: "err",
+          text:
+            data.fbrLastError ||
+            data.result.message ||
+            data.guidance?.summary ||
+            "FBR did not accept this document.",
+          detail: data.guidance?.action ?? null,
+          preview,
+        });
+      }
+    } catch (err) {
+      setFbrFlash({ tone: "err", text: getApiErrorMessage(err) });
+    }
+  };
   const canCreateAdjustment =
     canManage &&
     !isAdjustmentNote &&
     invoice.status !== "DRAFT" &&
     invoice.status !== "CANCELLED" &&
     invoice.status !== "VOID";
+
+  const fbrStatusLabel = formatFbrDiStatusLabel(fbrStatus, {
+    digitalInvoicingEnabled: useFbrDi,
+  });
+  const fbrGuidance = describeFbrDiStatusForUi({
+    fbrSubmissionStatus: fbrStatus,
+    fbrLastError: invoice.fbrLastError,
+    fbrLastResponseCode: invoice.fbrLastResponseCode,
+    digitalInvoicingEnabled: useFbrDi,
+  });
 
   const documentTitle = isCreditNote
     ? "Credit note details"
@@ -148,6 +223,29 @@ export function InvoiceDetailPage() {
                   ZATCA submission in progress
                 </span>
               ) : null}
+              {canSendFbr ? (
+                <Button
+                  isLoading={fbrBusy}
+                  onClick={() => void runFbrSync("submit")}
+                  type="button"
+                  variant="primary"
+                >
+                  Send to FBR
+                </Button>
+              ) : null}
+              {canRetryFbr ? (
+                <Button
+                  isLoading={fbrBusy}
+                  onClick={() => void runFbrSync("retry")}
+                  type="button"
+                  variant="secondary"
+                >
+                  Retry FBR submit
+                </Button>
+              ) : null}
+              {useFbrDi && invoice.status !== "DRAFT" ? (
+                <span className="text-sm text-muted-foreground">{fbrStatusLabel}</span>
+              ) : null}
               {canRetryCompliance ? (
                 <Button
                   isLoading={complianceMutation.isPending}
@@ -191,6 +289,26 @@ export function InvoiceDetailPage() {
         status={invoice.status}
         title={documentTitle}
       />
+
+      {fbrFlash ? (
+        <Alert
+          description={
+            <span className="space-y-2 block">
+              <span className="block">{fbrFlash.text}</span>
+              {fbrFlash.detail ? (
+                <span className="block opacity-90">{fbrFlash.detail}</span>
+              ) : null}
+              {fbrFlash.preview ? (
+                <span className="mt-2 block rounded-md border border-destructive/20 bg-white/60 p-2 font-mono text-xs break-all text-foreground">
+                  Gateway body: {fbrFlash.preview}
+                </span>
+              ) : null}
+            </span>
+          }
+          title={fbrFlash.tone === "ok" ? "FBR Digital Invoicing" : "FBR submit issue"}
+          variant={fbrFlash.tone === "ok" ? "success" : "destructive"}
+        />
+      ) : null}
 
       <DocumentActionBar
         actions={
@@ -253,12 +371,54 @@ export function InvoiceDetailPage() {
                       ]
                     : []),
                   ...(showFbr
-                    ? [
-                        {
-                          label: "FBR / Tax reported",
-                          value: complianceStatus.replace(/_/g, " "),
-                        },
-                      ]
+                    ? useFbrDi
+                      ? [
+                          {
+                            label: "FBR Digital Invoicing",
+                            value: (
+                              <DocumentStatusBadge label={fbrStatusLabel} status={fbrStatus} />
+                            ),
+                          },
+                          ...(invoice.fbrSubmittedAt
+                            ? [
+                                {
+                                  label: "FBR submitted at",
+                                  value: formatDateTime(invoice.fbrSubmittedAt),
+                                },
+                              ]
+                            : []),
+                          ...(invoice.fbrFbrInvoiceNumber
+                            ? [
+                                {
+                                  label: "FBR invoice number",
+                                  value: invoice.fbrFbrInvoiceNumber,
+                                },
+                              ]
+                            : []),
+                          ...(invoice.fbrInvoiceRefNo
+                            ? [{ label: "FBR local ref", value: invoice.fbrInvoiceRefNo }]
+                            : []),
+                          ...(typeof invoice.fbrAttemptCount === "number" &&
+                          invoice.fbrAttemptCount > 0
+                            ? [{ label: "FBR attempts", value: String(invoice.fbrAttemptCount) }]
+                            : []),
+                          ...(fbrGuidance.summary
+                            ? [{ label: "FBR status detail", value: fbrGuidance.summary }]
+                            : []),
+                          ...(fbrGuidance.action
+                            ? [{ label: "Suggested action", value: fbrGuidance.action }]
+                            : []),
+                          ...(invoice.fbrLastError &&
+                          ["FAILED", "REJECTED", "RETRYING"].includes(fbrStatus)
+                            ? [{ label: "FBR last error", value: invoice.fbrLastError }]
+                            : []),
+                        ]
+                      : [
+                          {
+                            label: "FBR / Tax reported",
+                            value: complianceStatus.replace(/_/g, " "),
+                          },
+                        ]
                     : []),
                   ...(invoice.paymentOptions?.length
                     ? [{

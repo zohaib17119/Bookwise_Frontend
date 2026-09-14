@@ -165,6 +165,45 @@ export async function submitInvoiceCompliance(companyId: string, invoiceId: stri
   return data;
 }
 
+export type FbrSyncSubmitResponse = {
+  mode: "sync";
+  result: {
+    status: string;
+    message?: string;
+    uuid?: string;
+    gatewayPreview?: string;
+  };
+  fbrSubmissionStatus: string;
+  fbrFbrInvoiceNumber?: string | null;
+  fbrLastError?: string | null;
+  fbrLastResponseCode?: string | null;
+  fbrSubmittedAt?: string | null;
+  gatewayPreview?: string | null;
+  guidance?: {
+    severity: string;
+    summary: string;
+    action: string;
+  };
+};
+
+export async function submitInvoiceFbrSync(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<FbrSyncSubmitResponse>(
+    `/companies/${companyId}/invoices/${invoiceId}/fbr/submit`,
+    undefined,
+    { timeout: 90_000 },
+  );
+  return data;
+}
+
+export async function retryInvoiceFbrSubmit(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<FbrSyncSubmitResponse>(
+    `/companies/${companyId}/invoices/${invoiceId}/fbr/retry`,
+    undefined,
+    { timeout: 90_000 },
+  );
+  return data;
+}
+
 export async function getNextInvoiceNumber(companyId: string) {
   const { data } = await apiClient.get<{ nextNumber: number }>(
     `/companies/${companyId}/invoices/next-number`,

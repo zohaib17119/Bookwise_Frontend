@@ -9,7 +9,9 @@ import {
   getNextInvoiceNumber,
   sendInvoice,
   markInvoiceTaxReported,
+  retryInvoiceFbrSubmit,
   submitInvoiceCompliance,
+  submitInvoiceFbrSync,
 } from "@/features/invoices/api/invoices.api";
 import type {
   InvoiceListParams,
@@ -122,6 +124,36 @@ export function useMarkInvoiceTaxReported(companyId: string | undefined) {
 export function useSubmitInvoiceCompliance(companyId: string | undefined) {
   return useMutation({
     mutationFn: (invoiceId: string) => submitInvoiceCompliance(companyId!, invoiceId),
+    onSuccess: async (_data, invoiceId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "invoices", invoiceId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useSubmitInvoiceFbrSync(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => submitInvoiceFbrSync(companyId!, invoiceId),
+    onSuccess: async (_data, invoiceId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "invoices", invoiceId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useRetryInvoiceFbrSubmit(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => retryInvoiceFbrSubmit(companyId!, invoiceId),
     onSuccess: async (_data, invoiceId) => {
       if (!companyId) return;
       await Promise.all([

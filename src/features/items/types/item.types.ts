@@ -13,6 +13,8 @@ export interface Item {
   unitName?: string | null;
   hsCode?: string | null;
   hsCodeCategoryId?: string | null;
+  fbrUom?: string | null;
+  fbrSaleType?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;
@@ -45,6 +47,8 @@ export interface ItemPayload {
   unitName?: string;
   hsCode?: string | null;
   hsCodeCategoryId?: string | null;
+  fbrUom?: string | null;
+  fbrSaleType?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;

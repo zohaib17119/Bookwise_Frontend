@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -15,7 +15,7 @@ import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import type { ApiError } from "@/lib/api/types";
 import {
-  itemSchema,
+  buildItemSchema,
   type ItemFormInput,
   type ItemFormValues,
 } from "@/features/items/schemas/item.schema";
@@ -25,16 +25,28 @@ import type { Account } from "@/features/accounts/types/account.types";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import type { TaxRate } from "@/features/tax/types/tax.types";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import {
+  canShowFbrSettings,
+  canUseFbrDigitalInvoicing,
+} from "@/features/compliance/utils/compliance-access";
 import { useCreateHsCodeCategory } from "@/features/items/hooks/use-hs-code-categories";
 import { useNextItemSku } from "@/features/items/hooks/use-items";
 import {
   useCreateUnitOfMeasure,
   useUnitsOfMeasure,
 } from "@/features/items/hooks/use-units-of-measure";
+import {
+  useAdoptFbrHsCode,
+  useFbrHsUoms,
+  useFbrRefHsCodes,
+  useFbrRefSaleTypes,
+  useFbrRefUoms,
+} from "@/features/settings/hooks/use-fbr-reference";
 import { cn } from "@/lib/utils/cn";
 
 const ADD_NEW_HS_CODE = "__add_new_hs_code__";
 const ADD_NEW_UNIT = "__add_new_unit__";
+const PICK_FBR_HS = "__pick_fbr_hs__";
 
 type ItemCreateType = "inventory" | "non_inventory" | "service";
 
@@ -70,16 +82,39 @@ export function ItemFormDrawer({
   onClose,
   onSubmit,
 }: ItemFormDrawerProps) {
-  const { companyId } = useActiveCompany();
+  const { companyId, company } = useActiveCompany();
+  const showFbrFields = canShowFbrSettings(company);
+  const requireFbrDi = canUseFbrDigitalInvoicing(company);
+  const companyDefaultSaleType = company?.fbrConfig?.defaultSaleType?.trim() || "";
   const nextSkuQuery = useNextItemSku(companyId, open && mode === "create");
   const unitsQuery = useUnitsOfMeasure(open);
   const createHsCodeMutation = useCreateHsCodeCategory(companyId);
   const createUnitMutation = useCreateUnitOfMeasure();
+  const adoptHsMutation = useAdoptFbrHsCode(companyId);
+  const uomsQuery = useFbrRefUoms(companyId, open && showFbrFields);
+  const saleTypesQuery = useFbrRefSaleTypes(companyId, open && showFbrFields);
 
   const [hsModalOpen, setHsModalOpen] = useState(false);
   const [newHsCode, setNewHsCode] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [hsModalError, setHsModalError] = useState<string | null>(null);
+
+  const [fbrHsPickerOpen, setFbrHsPickerOpen] = useState(false);
+  const [fbrHsQuery, setFbrHsQuery] = useState("");
+  const [fbrHsError, setFbrHsError] = useState<string | null>(null);
+  const [adoptedHsCode, setAdoptedHsCode] = useState("");
+  const deferredHsQuery = useDeferredValue(fbrHsQuery.trim());
+  const fbrHsCodesQuery = useFbrRefHsCodes(
+    companyId,
+    deferredHsQuery,
+    open && showFbrFields && (fbrHsPickerOpen || deferredHsQuery.length >= 2),
+  );
+  const hsUomsQuery = useFbrHsUoms(
+    companyId,
+    adoptedHsCode,
+    undefined,
+    open && showFbrFields && Boolean(adoptedHsCode),
+  );
 
   const [unitModalOpen, setUnitModalOpen] = useState(false);
   const [newUnitCode, setNewUnitCode] = useState("");
@@ -88,9 +123,10 @@ export function ItemFormDrawer({
   const [unitModalError, setUnitModalError] = useState<string | null>(null);
 
   const units = unitsQuery.data ?? [];
+  const schema = useMemo(() => buildItemSchema(requireFbrDi), [requireFbrDi]);
 
   const form = useForm<ItemFormInput, undefined, ItemFormValues>({
-    resolver: zodResolver(itemSchema),
+    resolver: zodResolver(schema),
     mode: "onSubmit",
     defaultValues: {
       itemCode: "",
@@ -101,6 +137,8 @@ export function ItemFormDrawer({
       barcode: "",
       unitName: "ea",
       hsCodeCategoryId: "",
+      fbrUom: "",
+      fbrSaleType: "",
       salesPrice: "0",
       purchaseCost: "0",
       incomeAccountId: "",
@@ -120,15 +158,21 @@ export function ItemFormDrawer({
   const trackQuantity = form.watch("trackQuantity");
   const taxRateId = form.watch("taxRateId");
   const selectedHsCodeCategoryId = form.watch("hsCodeCategoryId");
+  const itemName = form.watch("name");
   const selectedUnit = form.watch("unitName");
   const hasAccountOverrides = Boolean(
     item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
   );
+  const deferredItemName = useDeferredValue(itemName?.trim() ?? "");
 
   useEffect(() => {
     if (!open) return;
     const createType = mode === "create" ? defaultType : "inventory";
     const resolvedType = item?.type ?? createType;
+    const defaultSale =
+      mode === "create" && requireFbrDi
+        ? companyDefaultSaleType || "Goods at standard rate (default)"
+        : "";
     form.reset({
       itemCode: item?.itemCode ?? "",
       name: item?.name ?? "",
@@ -138,6 +182,8 @@ export function ItemFormDrawer({
       barcode: item?.barcode ?? "",
       unitName: item?.unitName ?? "ea",
       hsCodeCategoryId: item?.hsCodeCategoryId ?? "",
+      fbrUom: item?.fbrUom ?? "",
+      fbrSaleType: item?.fbrSaleType ?? defaultSale,
       salesPrice: item?.salesPrice ?? "0",
       purchaseCost: item?.purchaseCost ?? "0",
       incomeAccountId: item?.incomeAccountId ?? "",
@@ -155,7 +201,27 @@ export function ItemFormDrawer({
     setUnitModalOpen(false);
     setHsModalError(null);
     setUnitModalError(null);
-  }, [defaultType, form, item, mode, open]);
+    setFbrHsPickerOpen(false);
+    setFbrHsQuery("");
+    setFbrHsError(null);
+    setAdoptedHsCode(item?.hsCode?.trim() ?? "");
+  }, [companyDefaultSaleType, defaultType, form, item, mode, open, requireFbrDi]);
+
+  useEffect(() => {
+    if (!open || !showFbrFields || fbrHsPickerOpen) return;
+    if (deferredItemName.length >= 2) {
+      setFbrHsQuery(deferredItemName);
+    }
+  }, [deferredItemName, fbrHsPickerOpen, open, showFbrFields]);
+
+  useEffect(() => {
+    const suggested = hsUomsQuery.data?.items ?? [];
+    if (!suggested.length) return;
+    const current = form.getValues("fbrUom")?.trim();
+    if (!current) {
+      form.setValue("fbrUom", suggested[0].description, { shouldValidate: true });
+    }
+  }, [form, hsUomsQuery.data?.items]);
 
   useEffect(() => {
     if (!open || mode !== "create" || !nextSkuQuery.data) return;
@@ -182,12 +248,40 @@ export function ItemFormDrawer({
   }, [form, taxRateId]);
 
   const handleHsCodeSelect = (value: string) => {
+    if (value === PICK_FBR_HS) {
+      setFbrHsPickerOpen(true);
+      setFbrHsError(null);
+      setFbrHsQuery(form.getValues("name")?.trim() || "");
+      return;
+    }
     if (value === ADD_NEW_HS_CODE) {
       setHsModalOpen(true);
       setHsModalError(null);
       return;
     }
     form.setValue("hsCodeCategoryId", value, { shouldValidate: true });
+    const matched = hsCodeCategories.find((category) => category.id === value);
+    setAdoptedHsCode(matched?.code?.trim() ?? "");
+  };
+
+  const handleAdoptFbrHs = async (hsCode: string, description: string) => {
+    setFbrHsError(null);
+    try {
+      const adopted = await adoptHsMutation.mutateAsync({
+        hsCode,
+        description,
+      });
+      form.setValue("hsCodeCategoryId", adopted.hsCodeCategoryId, { shouldValidate: true });
+      setAdoptedHsCode(adopted.hsCode);
+      setFbrHsPickerOpen(false);
+      setFbrHsQuery("");
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Failed to adopt FBR HS code";
+      setFbrHsError(message);
+    }
   };
 
   const handleUnitSelect = (value: string) => {
@@ -210,6 +304,7 @@ export function ItemFormDrawer({
     try {
       const created = await createHsCodeMutation.mutateAsync({ code, categoryName });
       form.setValue("hsCodeCategoryId", created.id, { shouldValidate: true });
+      setAdoptedHsCode(created.code?.trim() || code);
       setHsModalOpen(false);
       setNewHsCode("");
       setNewCategoryName("");
@@ -276,19 +371,57 @@ export function ItemFormDrawer({
           {error ? <Alert title={error.message} variant="destructive" /> : null}
           <FormSection title="Item profile" description="Minimal required fields for fast entry.">
             <FieldGrid>
-              <FormField label="Name" error={form.formState.errors.name?.message}>
+              <FormField
+                error={form.formState.errors.name?.message}
+                helperText={
+                  showFbrFields
+                    ? "Type at least 2 characters — matching FBR HS codes appear below (after reference sync)."
+                    : undefined
+                }
+                label="Name"
+              >
                 <Input {...form.register("name")} placeholder="Paper cup" />
               </FormField>
+              {showFbrFields && deferredItemName.length >= 2 && !selectedHsCodeCategoryId ? (
+                <div className="md:col-span-2 max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
+                  <p className="px-1 text-xs text-muted-foreground">
+                    FBR HS matches for “{deferredItemName}”
+                    {fbrHsCodesQuery.isFetching ? " · searching…" : ""}
+                  </p>
+                  {(fbrHsCodesQuery.data?.items ?? []).length === 0 && !fbrHsCodesQuery.isFetching ? (
+                    <p className="px-1 py-2 text-xs text-muted-foreground">
+                      No matches. Refresh FBR lists in Settings, or open “Search FBR HS list…”.
+                    </p>
+                  ) : (
+                    (fbrHsCodesQuery.data?.items ?? []).slice(0, 8).map((row) => (
+                      <button
+                        className="flex w-full flex-col rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                        disabled={adoptHsMutation.isPending}
+                        key={row.id}
+                        onClick={() => void handleAdoptFbrHs(row.hsCode, row.description)}
+                        type="button"
+                      >
+                        <span className="font-medium">{row.hsCode}</span>
+                        <span className="text-xs text-muted-foreground">{row.description}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : null}
               <FormField
                 error={form.formState.errors.hsCodeCategoryId?.message}
-                helperText="Optional. Select an existing HS category or add a new one."
-                label="Item code / HS code"
+                helperText={
+                  requireFbrDi
+                    ? "Required for FBR Digital Invoicing. Prefer FBR list / name search so the code matches PRAL."
+                    : "Optional. Select an existing HS category, search FBR list, or add a new one."
+                }
+                label={requireFbrDi ? "Item code / HS code" : "Item code / HS code"}
               >
                 <Select
                   onChange={(event) => handleHsCodeSelect(event.target.value)}
                   value={selectedHsCodeCategoryId || ""}
                 >
-                  <option value="">No HS code</option>
+                  <option value="">{requireFbrDi ? "Select HS code…" : "No HS code"}</option>
                   {selectedHsCodeCategoryId &&
                   !hsCodeCategories.some((category) => category.id === selectedHsCodeCategoryId) ? (
                     <option value={selectedHsCodeCategoryId}>
@@ -300,9 +433,60 @@ export function ItemFormDrawer({
                       {`${category.code}(${category.categoryName})`}
                     </option>
                   ))}
+                  {showFbrFields ? (
+                    <option value={PICK_FBR_HS}>Search FBR HS list…</option>
+                  ) : null}
                   <option value={ADD_NEW_HS_CODE}>Add new HS code…</option>
                 </Select>
               </FormField>
+              {showFbrFields ? (
+                <>
+                  <FormField
+                    error={form.formState.errors.fbrUom?.message}
+                    helperText={
+                      adoptedHsCode
+                        ? "Preferred: UoMs allowed for this HS (HS_UOM). Fallbacks are full FBR UoM list."
+                        : "Exact FBR UoM description for Digital Invoicing (uoM)."
+                    }
+                    label={requireFbrDi ? "FBR UoM" : "FBR UoM (optional)"}
+                  >
+                    <Select {...form.register("fbrUom")} value={form.watch("fbrUom") ?? ""}>
+                      <option value="">{requireFbrDi ? "Select UoM…" : "Not set"}</option>
+                      {(hsUomsQuery.data?.items ?? []).map((uom) => (
+                        <option key={`hs-${uom.uomId}`} value={uom.description}>
+                          {uom.description} (for HS)
+                        </option>
+                      ))}
+                      {(uomsQuery.data ?? [])
+                        .filter(
+                          (uom) =>
+                            !(hsUomsQuery.data?.items ?? []).some(
+                              (hs) => hs.description === uom.description,
+                            ),
+                        )
+                        .map((uom) => (
+                          <option key={uom.id} value={uom.description}>
+                            {uom.description}
+                          </option>
+                        ))}
+                    </Select>
+                  </FormField>
+                  <FormField
+                    error={form.formState.errors.fbrSaleType?.message}
+                    helperText="Default FBR saleType for invoice lines."
+                    label={requireFbrDi ? "FBR sale type" : "FBR sale type (optional)"}
+                  >
+                    <Select {...form.register("fbrSaleType")} value={form.watch("fbrSaleType") ?? ""}>
+                      <option value="">{requireFbrDi ? "Select sale type…" : "Not set"}</option>
+                      {(saleTypesQuery.data ?? []).map((saleType) => (
+                        <option key={saleType.id} value={saleType.description}>
+                          {saleType.description}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
+                </>
+              ) : null}
               <FormField label="Type">
                 <Select {...form.register("type")}>
                   <option value="inventory">Inventory</option>
@@ -511,6 +695,67 @@ export function ItemFormDrawer({
           </FormSection>
         </form>
       </CreateEditDrawer>
+
+      {fbrHsPickerOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-slate-950/45 backdrop-blur-sm"
+            onClick={adoptHsMutation.isPending ? undefined : () => setFbrHsPickerOpen(false)}
+          />
+          <div className="fixed left-1/2 top-1/2 z-[70] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 p-4">
+            <div className={cn("surface space-y-4 p-6")}>
+              <div>
+                <h3 className="text-lg font-semibold">Search FBR HS codes</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Selecting a code creates or links a company HS category for this item.
+                </p>
+              </div>
+              {fbrHsError ? <Alert title={fbrHsError} variant="destructive" /> : null}
+              <FormField label="Search">
+                <Input
+                  onChange={(event) => setFbrHsQuery(event.target.value)}
+                  placeholder="Type HS code or description…"
+                  value={fbrHsQuery}
+                />
+              </FormField>
+              <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-2">
+                {(fbrHsCodesQuery.data?.items ?? []).length === 0 ? (
+                  <p className="px-2 py-3 text-sm text-muted-foreground">
+                    {fbrHsCodesQuery.isFetching
+                      ? "Searching…"
+                      : fbrHsQuery.trim()
+                        ? "No matches. Try another query or refresh FBR lists in Settings."
+                        : "Type to search the FBR HS master list."}
+                  </p>
+                ) : (
+                  (fbrHsCodesQuery.data?.items ?? []).map((row) => (
+                    <button
+                      className="flex w-full flex-col rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
+                      disabled={adoptHsMutation.isPending}
+                      key={row.id}
+                      onClick={() => void handleAdoptFbrHs(row.hsCode, row.description)}
+                      type="button"
+                    >
+                      <span className="font-medium">{row.hsCode}</span>
+                      <span className="text-xs text-muted-foreground">{row.description}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  disabled={adoptHsMutation.isPending}
+                  onClick={() => setFbrHsPickerOpen(false)}
+                  type="button"
+                  variant="ghost"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {hsModalOpen ? (
         <>

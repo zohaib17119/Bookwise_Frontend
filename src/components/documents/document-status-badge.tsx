@@ -2,6 +2,8 @@ import { cn } from "@/lib/utils/cn";
 
 interface DocumentStatusBadgeProps {
   status?: string | null;
+  /** Optional display text; defaults to status with underscores as spaces. */
+  label?: string | null;
 }
 
 const statusClassMap: Record<string, string> = {
@@ -22,17 +24,20 @@ const statusClassMap: Record<string, string> = {
   NOT_RECEIVED: "bg-amber-50 text-amber-800",
   PARTIALLY_RECEIVED: "bg-orange-50 text-orange-700",
   RECEIVED: "bg-emerald-50 text-emerald-700",
-  // ZATCA / compliance
+  // ZATCA / compliance / FBR DI
   NOT_APPLICABLE: "bg-slate-100 text-slate-600",
   PENDING: "bg-amber-50 text-amber-800",
+  PROCESSING: "bg-amber-50 text-amber-800",
+  RETRYING: "bg-orange-50 text-orange-800",
   SUBMITTED: "bg-blue-50 text-blue-700",
   CLEARED: "bg-emerald-50 text-emerald-700",
   REPORTED: "bg-emerald-50 text-emerald-700",
   ERROR: "bg-rose-50 text-rose-700",
+  FAILED: "bg-rose-50 text-rose-700",
 };
 
-export function DocumentStatusBadge({ status }: DocumentStatusBadgeProps) {
-  const label = status?.replace(/_/g, " ") ?? "Unknown";
+export function DocumentStatusBadge({ status, label }: DocumentStatusBadgeProps) {
+  const text = (label ?? status?.replace(/_/g, " ") ?? "Unknown").trim() || "Unknown";
 
   return (
     <span
@@ -41,7 +46,7 @@ export function DocumentStatusBadge({ status }: DocumentStatusBadgeProps) {
         statusClassMap[status ?? ""] ?? "bg-secondary text-secondary-foreground",
       )}
     >
-      {label}
+      {text}
     </span>
   );
 }

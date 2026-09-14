@@ -12,7 +12,14 @@ type BackendErrorBody = {
     | {
         formErrors?: string[];
         fieldErrors?: ApiFieldErrors;
-      };
+        missing?: Array<{
+          entity: string;
+          id?: string | null;
+          name?: string | null;
+          fields: string[];
+        }>;
+      }
+    | unknown;
 };
 
 const TECHNICAL_MESSAGE_PATTERNS = [
@@ -120,6 +127,13 @@ function extractFieldErrors(errors: BackendErrorBody["errors"]): ApiFieldErrors 
   return isFlatFieldMap ? (errors as ApiFieldErrors) : undefined;
 }
 
+function extractDetails(errors: BackendErrorBody["errors"]): ApiError["details"] | undefined {
+  if (!errors || typeof errors !== "object" || Array.isArray(errors)) {
+    return undefined;
+  }
+  return errors as ApiError["details"];
+}
+
 function getUserFacingFallback(): string {
   return USER_FACING_FALLBACK;
 }
@@ -141,6 +155,7 @@ export function normalizeApiError(error: unknown): ApiError {
       status: error.response?.status,
       code: data?.code,
       fieldErrors: extractFieldErrors(data?.errors),
+      details: extractDetails(data?.errors),
     };
   }
 
@@ -179,4 +194,25 @@ export function firstFieldErrorMessage(error: unknown): string | undefined {
     if (messages?.[0]) return messages[0];
   }
   return undefined;
+}
+
+/** Format FBR DI readiness `errors.missing` for invoice/create UX. */
+export function formatFbrMissingDetails(error: unknown): string | null {
+  const apiError = normalizeApiError(error);
+  const details = apiError.details;
+  if (!details || typeof details !== "object" || !("missing" in details)) return null;
+  const missing = (details as { missing?: unknown }).missing;
+  if (!Array.isArray(missing) || missing.length === 0) return null;
+
+  const lines = missing.map((entry) => {
+    const row = entry as {
+      entity?: string;
+      name?: string | null;
+      fields?: string[];
+    };
+    const who = row.name ? `${row.entity ?? "record"} "${row.name}"` : row.entity ?? "record";
+    const fields = Array.isArray(row.fields) ? row.fields.join(", ") : "required fields";
+    return `${who}: add ${fields}`;
+  });
+  return `FBR Digital Invoicing is enabled — ${lines.join("; ")}`;
 }

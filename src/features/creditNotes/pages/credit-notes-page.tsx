@@ -8,7 +8,8 @@ import { ErrorState } from "@/components/shared/error-state";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
-import { canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
+import { canUseFbrDigitalInvoicing, canUseZatcaReporting } from "@/features/compliance/utils/compliance-access";
+import { formatFbrDiStatusLabel } from "@/features/compliance/utils/fbr-status";
 import { CreateAdjustmentNoteDialog } from "@/features/creditNotes/components/create-adjustment-note-dialog";
 import {
   useCreateCreditNote,
@@ -22,6 +23,7 @@ export function CreditNotesPage() {
   const navigate = useNavigate();
   const { companyId, company, permissions } = useActiveCompany();
   const showZatca = canUseZatcaReporting(company);
+  const useFbrDi = canUseFbrDigitalInvoicing(company);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [createOpen, setCreateOpen] = useState(false);
@@ -81,6 +83,23 @@ export function CreditNotesPage() {
             render: (note: Invoice) => (
               <DocumentStatusBadge status={note.complianceStatus ?? "NOT_APPLICABLE"} />
             ),
+          } satisfies DataTableColumn<Invoice>,
+        ]
+      : []),
+    ...(useFbrDi
+      ? [
+          {
+            key: "fbrSubmissionStatus",
+            header: "FBR DI",
+            render: (note: Invoice) => {
+              const status = note.fbrSubmissionStatus ?? "NOT_APPLICABLE";
+              return (
+                <DocumentStatusBadge
+                  label={formatFbrDiStatusLabel(status, { digitalInvoicingEnabled: true })}
+                  status={status}
+                />
+              );
+            },
           } satisfies DataTableColumn<Invoice>,
         ]
       : []),

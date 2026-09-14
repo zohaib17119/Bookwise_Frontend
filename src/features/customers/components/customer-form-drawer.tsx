@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { ApiErrorAlert } from "@/components/shared/api-error-alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { AdvancedSection } from "@/components/shared/advanced-section";
 import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
@@ -14,13 +15,15 @@ import { FormField } from "@/components/shared/form-field";
 import { FormSection } from "@/components/shared/form-section";
 import type { ApiError } from "@/lib/api/types";
 import {
-  customerSchema,
+  buildCustomerSchema,
+  normalizeFbrNtnCnicInput,
   type CustomerFormInput,
   type CustomerFormValues,
 } from "@/features/customers/schemas/customer.schema";
 import type { Customer } from "@/features/customers/types/customer.types";
 import { toOptionalDecimalString } from "@/features/shared/utils/decimal-string";
 import { useNextCustomerCode } from "@/features/customers/hooks/use-customers";
+import { useFbrRefProvinces } from "@/features/settings/hooks/use-fbr-reference";
 
 function todayIsoDate() {
   const now = new Date();
@@ -72,6 +75,9 @@ interface CustomerFormDrawerProps {
   customer?: Customer | null;
   companyId?: string;
   companyCurrency?: string | null;
+  showFbrFields?: boolean;
+  /** When true, FBR DI buyer fields are required on the form. */
+  requireFbrDi?: boolean;
   isPending?: boolean;
   error?: ApiError | null;
   onClose: () => void;
@@ -84,6 +90,8 @@ export function CustomerFormDrawer({
   customer,
   companyId,
   companyCurrency,
+  showFbrFields = false,
+  requireFbrDi = false,
   isPending,
   error,
   onClose,
@@ -91,9 +99,11 @@ export function CustomerFormDrawer({
 }: CustomerFormDrawerProps) {
   const currencyLocked = mode === "edit" && Boolean(customer?.hasTransactions);
   const nextCodeQuery = useNextCustomerCode(companyId, open && mode === "create");
+  const provincesQuery = useFbrRefProvinces(companyId, "", open && showFbrFields);
+  const schema = useMemo(() => buildCustomerSchema(requireFbrDi), [requireFbrDi]);
 
   const form = useForm<CustomerFormInput, undefined, CustomerFormValues>({
-    resolver: zodResolver(customerSchema),
+    resolver: zodResolver(schema),
     mode: "onSubmit",
     defaultValues: {
       customerCode: "",
@@ -107,6 +117,8 @@ export function CustomerFormDrawer({
       contactPersonDepartment: "",
       website: "",
       taxRegistrationNumber: "",
+      fbrRegistrationType: null,
+      fbrProvince: "",
       currencyCode: companyCurrency ?? "USD",
       paymentTermsDays: 30,
       openingBalance: "0",
@@ -142,6 +154,8 @@ export function CustomerFormDrawer({
       contactPersonDepartment: customer?.contactPersonDepartment ?? "",
       website: customer?.website ?? "",
       taxRegistrationNumber: customer?.taxRegistrationNumber ?? "",
+      fbrRegistrationType: customer?.fbrRegistrationType ?? null,
+      fbrProvince: customer?.fbrProvince ?? "",
       currencyCode: customer?.currencyCode ?? companyCurrency ?? "USD",
       paymentTermsDays: customer?.paymentTermsDays ?? 30,
       openingBalance:
@@ -170,6 +184,8 @@ export function CustomerFormDrawer({
     }
   }, [form, mode, nextCodeQuery.data, open]);
 
+  const taxRegistrationField = form.register("taxRegistrationNumber");
+
   return (
     <CreateEditDrawer
       description="Only legal name is required. Everything else is optional or has defaults."
@@ -180,7 +196,13 @@ export function CustomerFormDrawer({
           </Button>
           <Button
             isLoading={isPending}
-            onClick={form.handleSubmit(async (values) => onSubmit(values))}
+            onClick={form.handleSubmit(async (values) => {
+              const next = { ...values };
+              if (showFbrFields) {
+                next.taxRegistrationNumber = normalizeFbrNtnCnicInput(values.taxRegistrationNumber);
+              }
+              await onSubmit(next);
+            })}
             type="button"
           >
             {mode === "create" ? "Create customer" : "Save changes"}
@@ -198,9 +220,78 @@ export function CustomerFormDrawer({
           description="Fast entry fields. Code is auto-filled and editable."
         >
           <FieldGrid>
-            <FormField label="Tax registration / NTN (optional)">
-              <Input {...form.register("taxRegistrationNumber")} placeholder="NTN / VAT / TRN" />
+            <FormField
+              error={form.formState.errors.taxRegistrationNumber?.message}
+              helperText={
+                showFbrFields
+                  ? "FBR DI: digits only — NTN 7 or 9, CNIC 13. Certificate forms like A-029996-8 are OK; we strip letter/dashes to 0299968."
+                  : undefined
+              }
+              label={requireFbrDi ? "Tax registration / NTN" : "Tax registration / NTN (optional)"}
+            >
+              <Input
+                {...taxRegistrationField}
+                onBlur={(event) => {
+                  taxRegistrationField.onBlur(event);
+                  if (!showFbrFields) return;
+                  const cleaned = normalizeFbrNtnCnicInput(event.target.value);
+                  if (cleaned !== event.target.value) {
+                    form.setValue("taxRegistrationNumber", cleaned, { shouldValidate: true });
+                  }
+                }}
+                placeholder={showFbrFields ? "e.g. A-029996-8 or 0299968" : "NTN / VAT / TRN"}
+              />
             </FormField>
+            {showFbrFields ? (
+              <>
+                <FormField
+                  error={form.formState.errors.fbrRegistrationType?.message}
+                  helperText="FBR buyer registration type for Digital Invoicing."
+                  label={requireFbrDi ? "FBR registration type" : "FBR registration type (optional)"}
+                >
+                  <Select
+                    {...form.register("fbrRegistrationType", {
+                      setValueAs: (value) => (value === "" ? null : value),
+                    })}
+                    value={form.watch("fbrRegistrationType") ?? ""}
+                  >
+                    <option value="">{requireFbrDi ? "Select…" : "Not set"}</option>
+                    <option value="REGISTERED">Registered</option>
+                    <option value="UNREGISTERED">Unregistered</option>
+                  </Select>
+                </FormField>
+                <FormField
+                  error={form.formState.errors.fbrProvince?.message}
+                  helperText="Must match FBR province reference names."
+                  label={requireFbrDi ? "FBR province" : "FBR province (optional)"}
+                >
+                  <Select {...form.register("fbrProvince")} value={form.watch("fbrProvince") ?? ""}>
+                    <option value="">{requireFbrDi ? "Select province…" : "Not set"}</option>
+                    {form.watch("fbrProvince") &&
+                    !(provincesQuery.data ?? []).some((p) => p.description === form.watch("fbrProvince")) ? (
+                      <option value={form.watch("fbrProvince")!}>{form.watch("fbrProvince")}</option>
+                    ) : null}
+                    {(provincesQuery.data ?? []).map((p) => (
+                      <option key={p.id} value={p.description}>
+                        {p.description}
+                      </option>
+                    ))}
+                  </Select>
+                  {provincesQuery.isError ? (
+                    <p className="mt-1 text-xs text-destructive">
+                      Could not load FBR provinces. Restart backend or use Settings → FBR → Refresh FBR lists.
+                    </p>
+                  ) : null}
+                  {!provincesQuery.isError &&
+                  provincesQuery.isFetched &&
+                  (provincesQuery.data?.length ?? 0) === 0 ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      No provinces yet. Open Settings → FBR → Refresh FBR lists, then reopen this form.
+                    </p>
+                  ) : null}
+                </FormField>
+              </>
+            ) : null}
             <FormField error={form.formState.errors.legalName?.message} label="Legal name">
               <Input {...form.register("legalName")} placeholder="Acme Retail LLC" />
             </FormField>
@@ -287,7 +378,10 @@ export function CustomerFormDrawer({
 
             <FormSection title="Billing address">
               <FieldGrid>
-                <FormField label="Address line 1">
+                <FormField
+                  error={form.formState.errors.billingAddressLine1?.message}
+                  label={requireFbrDi ? "Address line 1" : "Address line 1"}
+                >
                   <Input {...form.register("billingAddressLine1")} />
                 </FormField>
                 <FormField label="Address line 2">
