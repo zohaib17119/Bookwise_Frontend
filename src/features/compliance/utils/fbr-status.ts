@@ -75,6 +75,14 @@ export function describeFbrDiStatusForUi(input: {
     const lower = error.toLowerCase();
     let action = "Fix the highlighted data, then use Retry FBR submit.";
     if (
+      code === "0204" ||
+      /\b0204\b/.test(error) ||
+      lower.includes("sale type not match") ||
+      (lower.includes("sale type") && lower.includes("scenario"))
+    ) {
+      action =
+        "Item sale type must match Settings → FBR scenario (SN001 → Goods at standard rate (default); not Goods (FED in ST Mode)). Fix the item, then Retry.";
+    } else if (
       code === "PARSE" ||
       lower.includes("not json") ||
       lower.includes("parseerror") ||
@@ -87,7 +95,8 @@ export function describeFbrDiStatusForUi(input: {
     } else if (lower.includes("uom") || lower.includes("unit")) {
       action = "Set FBR UoM on the item, then retry.";
     } else if (lower.includes("scenario")) {
-      action = "Set default scenario ID in Settings → FBR (sandbox), then retry.";
+      action =
+        "Set default scenario ID in Settings → FBR so it matches item sale types (e.g. SN001 with Goods at standard rate (default)), then retry.";
     } else if (lower.includes("registration") || lower.includes("buyer")) {
       action = "Set buyer FBR registration type / NTN / province on the customer, then retry.";
     } else if (code === "401" || code === "403" || lower.includes("token")) {
