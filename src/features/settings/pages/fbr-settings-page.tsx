@@ -461,7 +461,7 @@ export function FbrSettingsPage() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <FormField
-            helperText="FBR DI: digits only — NTN 7 or 9, CNIC 13. Certificate forms like A-029996-8 are OK; we strip letter/dashes. Falls back to company tax registration if empty."
+            helperText="FBR DI: C831684-3 → C831684 (letter kept). Falls back to company tax registration if empty."
             label="Seller NTN / CNIC"
           >
             <Input
@@ -474,7 +474,7 @@ export function FbrSettingsPage() {
               onChange={(event) =>
                 setConfig((current) => ({ ...current, sellerNTNCNIC: event.target.value }))
               }
-              placeholder="e.g. A-029996-8 or 0299968"
+              placeholder="e.g. C831684-3 or C831684"
               value={config.sellerNTNCNIC ?? ""}
             />
           </FormField>

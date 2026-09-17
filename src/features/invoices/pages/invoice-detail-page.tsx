@@ -55,6 +55,16 @@ export function InvoiceDetailPage() {
     text: string;
     detail?: string | null;
     preview?: string | null;
+    fbrDi?: {
+      environment: string;
+      postUrl: string;
+      requestJson: unknown;
+      httpStatus: number | null;
+      responseBody: unknown;
+      reachedGateway: boolean;
+      mocked?: boolean;
+      mapIssues?: Array<{ path: string; message: string }>;
+    } | null;
   } | null>(null);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
   const deleteMutation = useDeleteInvoice(companyId);
@@ -129,12 +139,14 @@ export function InvoiceDetailPage() {
         mode === "submit"
           ? await fbrSubmitMutation.mutateAsync(invoice.id)
           : await fbrRetryMutation.mutateAsync(invoice.id);
+      const fbrDi = data.fbrDi ?? data.result.fbrDi ?? null;
       if (data.result.status === "SUBMITTED") {
         setFbrFlash({
           tone: "ok",
           text: data.fbrFbrInvoiceNumber
             ? `FBR accepted. Invoice number: ${data.fbrFbrInvoiceNumber}`
             : "FBR accepted this document.",
+          fbrDi,
         });
       } else {
         const preview = data.gatewayPreview || data.result.gatewayPreview || null;
@@ -147,6 +159,7 @@ export function InvoiceDetailPage() {
             "FBR did not accept this document.",
           detail: data.guidance?.action ?? null,
           preview,
+          fbrDi,
         });
       }
     } catch (err) {
@@ -301,6 +314,40 @@ export function InvoiceDetailPage() {
               {fbrFlash.preview ? (
                 <span className="mt-2 block rounded-md border border-destructive/20 bg-white/60 p-2 font-mono text-xs break-all text-foreground">
                   Gateway body: {fbrFlash.preview}
+                </span>
+              ) : null}
+              {fbrFlash.fbrDi ? (
+                <span className="mt-2 block space-y-2 rounded-md border border-border bg-white/60 p-3 text-foreground">
+                  <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    FBR DI attempt
+                    {fbrFlash.fbrDi.mocked ? " (mocked — not live sandbox)" : ""}
+                    {!fbrFlash.fbrDi.reachedGateway ? " (local MAP — gateway not called)" : ""}
+                  </span>
+                  <span className="block font-mono text-xs break-all">
+                    PostURL: {fbrFlash.fbrDi.postUrl}
+                  </span>
+                  {fbrFlash.fbrDi.httpStatus != null ? (
+                    <span className="block font-mono text-xs">
+                      HTTP: {fbrFlash.fbrDi.httpStatus}
+                    </span>
+                  ) : null}
+                  <span className="block">
+                    <span className="text-xs text-muted-foreground">Request JSON</span>
+                    <pre className="mt-1 max-h-48 overflow-auto rounded border border-border/60 bg-muted/40 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap break-all">
+                      {JSON.stringify(fbrFlash.fbrDi.requestJson, null, 2)}
+                    </pre>
+                  </span>
+                  <span className="block">
+                    <span className="text-xs text-muted-foreground">FBR response</span>
+                    <pre className="mt-1 max-h-48 overflow-auto rounded border border-border/60 bg-muted/40 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap break-all">
+                      {JSON.stringify(fbrFlash.fbrDi.responseBody, null, 2)}
+                    </pre>
+                  </span>
+                  {fbrFlash.fbrDi.mapIssues?.length ? (
+                    <span className="block font-mono text-xs text-destructive">
+                      {fbrFlash.fbrDi.mapIssues.map((i) => `${i.path}: ${i.message}`).join("; ")}
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </span>

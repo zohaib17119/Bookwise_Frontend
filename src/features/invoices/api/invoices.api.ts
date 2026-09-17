@@ -165,6 +165,17 @@ export async function submitInvoiceCompliance(companyId: string, invoiceId: stri
   return data;
 }
 
+export type FbrDiAttemptEvidence = {
+  environment: string;
+  postUrl: string;
+  requestJson: unknown;
+  httpStatus: number | null;
+  responseBody: unknown;
+  reachedGateway: boolean;
+  mocked?: boolean;
+  mapIssues?: Array<{ path: string; message: string }>;
+};
+
 export type FbrSyncSubmitResponse = {
   mode: "sync";
   result: {
@@ -172,6 +183,7 @@ export type FbrSyncSubmitResponse = {
     message?: string;
     uuid?: string;
     gatewayPreview?: string;
+    fbrDi?: FbrDiAttemptEvidence;
   };
   fbrSubmissionStatus: string;
   fbrFbrInvoiceNumber?: string | null;
@@ -179,6 +191,7 @@ export type FbrSyncSubmitResponse = {
   fbrLastResponseCode?: string | null;
   fbrSubmittedAt?: string | null;
   gatewayPreview?: string | null;
+  fbrDi?: FbrDiAttemptEvidence | null;
   guidance?: {
     severity: string;
     summary: string;

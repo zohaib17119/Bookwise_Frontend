@@ -222,11 +222,11 @@ export function CustomerFormDrawer({
           <FieldGrid>
             <FormField
               error={form.formState.errors.taxRegistrationNumber?.message}
-              helperText={
-                showFbrFields
-                  ? "FBR DI: digits only — NTN 7 or 9, CNIC 13. Certificate forms like A-029996-8 are OK; we strip letter/dashes to 0299968."
-                  : undefined
-              }
+                helperText={
+                  showFbrFields
+                    ? "FBR DI: C831684-3 becomes C831684 (letter kept, dash + check digit dropped). Or 7/9 digit NTN / 13-digit CNIC."
+                    : undefined
+                }
               label={requireFbrDi ? "Tax registration / NTN" : "Tax registration / NTN (optional)"}
             >
               <Input
@@ -239,7 +239,7 @@ export function CustomerFormDrawer({
                     form.setValue("taxRegistrationNumber", cleaned, { shouldValidate: true });
                   }
                 }}
-                placeholder={showFbrFields ? "e.g. A-029996-8 or 0299968" : "NTN / VAT / TRN"}
+                placeholder={showFbrFields ? "e.g. C831684-3 or C831684" : "NTN / VAT / TRN"}
               />
             </FormField>
             {showFbrFields ? (

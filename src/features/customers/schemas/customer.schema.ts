@@ -10,14 +10,38 @@ const optionalNumber = z.preprocess((value) => {
 }, z.number().min(0).max(3650).optional());
 const optionalDecimalString = z.string().optional().or(z.literal(""));
 
-/** FBR DI: strip letter/dash print formats like A-029996-8 → 0299968. */
+/** FBR DI: `C831684-3` → `C831684` (keep letter, drop dash + check digit). */
 export function normalizeFbrNtnCnicInput(raw: string | null | undefined): string {
   if (raw == null) return "";
-  return String(raw).replace(/\D/g, "");
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+
+  if (/^\d{5}-\d{7}-\d$/.test(trimmed)) {
+    return trimmed.replace(/\D/g, "");
+  }
+  if (/^\d{13}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const digitsOnly = trimmed.replace(/\D/g, "");
+  const hasLetter = /[A-Za-z]/.test(trimmed);
+  if (!hasLetter && digitsOnly.length === 13) {
+    return digitsOnly;
+  }
+
+  if (trimmed.includes("-")) {
+    const beforeLastDash = trimmed.slice(0, trimmed.lastIndexOf("-"));
+    return beforeLastDash.replace(/[-\s]/g, "").replace(/[^A-Za-z0-9]/g, "");
+  }
+
+  return trimmed.replace(/[-\s]/g, "").replace(/[^A-Za-z0-9]/g, "");
 }
 
-function isValidFbrNtnCnicDigits(digits: string): boolean {
-  return [7, 9, 13].includes(digits.length) && /^\d+$/.test(digits);
+function isValidFbrNtnCnicValue(value: string): boolean {
+  if (/^[A-Za-z]\d{6}$/.test(value)) return true;
+  if (/^\d{7}$/.test(value) || /^\d{9}$/.test(value)) return true;
+  if (/^\d{13}$/.test(value)) return true;
+  return false;
 }
 
 const shippingAddressSchema = z.object({
@@ -72,28 +96,26 @@ export function buildCustomerSchema(requireFbrDi: boolean) {
       billingAddressLine1: z.string().trim().min(1, "Billing address is required for FBR"),
     })
     .superRefine((values, ctx) => {
-      const digits = normalizeFbrNtnCnicInput(values.taxRegistrationNumber);
+      const normalized = normalizeFbrNtnCnicInput(values.taxRegistrationNumber);
       if (values.fbrRegistrationType === "REGISTERED") {
-        if (!digits) {
+        if (!normalized) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["taxRegistrationNumber"],
             message: "NTN / tax registration is required for Registered buyers",
           });
-        } else if (!isValidFbrNtnCnicDigits(digits)) {
+        } else if (!isValidFbrNtnCnicValue(normalized)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["taxRegistrationNumber"],
-            message:
-              "FBR DI needs digits only: NTN 7 or 9 digits, or CNIC 13 (e.g. A-029996-8 → 0299968)",
+            message: "FBR DI: use C831684-3 → C831684, or 7/9 digit NTN, or 13-digit CNIC",
           });
         }
-      } else if (digits && !isValidFbrNtnCnicDigits(digits)) {
+      } else if (normalized && !isValidFbrNtnCnicValue(normalized)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["taxRegistrationNumber"],
-          message:
-            "FBR DI needs digits only: NTN 7 or 9 digits, or CNIC 13 (e.g. A-029996-8 → 0299968)",
+          message: "FBR DI: use C831684-3 → C831684, or 7/9 digit NTN, or 13-digit CNIC",
         });
       }
     });
