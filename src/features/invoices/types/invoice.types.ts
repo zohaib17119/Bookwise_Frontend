@@ -93,6 +93,11 @@ export interface Invoice {
   fbrAttemptCount?: number | null;
   fbrLastError?: string | null;
   fbrLastResponseCode?: string | null;
+  fbrLastRequestJson?: unknown | null;
+  fbrLastResponseBody?: unknown | null;
+  fbrLastHttpStatus?: number | null;
+  fbrLastPostUrl?: string | null;
+  fbrLastReachedGateway?: boolean | null;
   fbrFrozenSellerNTNCNIC?: string | null;
   fbrFrozenSellerBusinessName?: string | null;
   fbrFrozenSellerProvince?: string | null;

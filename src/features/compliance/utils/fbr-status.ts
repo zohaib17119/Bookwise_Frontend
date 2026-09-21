@@ -74,6 +74,13 @@ export function describeFbrDiStatusForUi(input: {
   if (status === "REJECTED") {
     const lower = error.toLowerCase();
     let action = "Fix the highlighted data, then use Retry FBR submit.";
+    if (code === "MAP") {
+      return {
+        summary: error || "BooksWise local validation rejected this (not sent to FBR).",
+        action:
+          "BooksWise local validation stopped this before FBR. Fix the fields below, then retry. This is not an FBR gateway response.",
+      };
+    }
     if (
       code === "0204" ||
       /\b0204\b/.test(error) ||

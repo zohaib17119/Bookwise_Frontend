@@ -39,6 +39,11 @@ import { canManageEntity, canViewEntity } from "@/features/permissions/utils/mod
 import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
 import { formatDate, formatDateTime } from "@/lib/utils/format";
 import { formatPaymentOptions } from "@/features/invoices/constants/payment-options";
+import {
+  fbrDiOriginBanner,
+  resolveFbrDiSource,
+  type FbrDiAttemptEvidence,
+} from "@/features/invoices/api/invoices.api";
 import InvoiceView from "./InvoiceView";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { Alert } from "@/components/ui/alert";
@@ -55,16 +60,7 @@ export function InvoiceDetailPage() {
     text: string;
     detail?: string | null;
     preview?: string | null;
-    fbrDi?: {
-      environment: string;
-      postUrl: string;
-      requestJson: unknown;
-      httpStatus: number | null;
-      responseBody: unknown;
-      reachedGateway: boolean;
-      mocked?: boolean;
-      mapIssues?: Array<{ path: string; message: string }>;
-    } | null;
+    fbrDi?: FbrDiAttemptEvidence | null;
   } | null>(null);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
   const deleteMutation = useDeleteInvoice(companyId);
@@ -140,25 +136,30 @@ export function InvoiceDetailPage() {
           ? await fbrSubmitMutation.mutateAsync(invoice.id)
           : await fbrRetryMutation.mutateAsync(invoice.id);
       const fbrDi = data.fbrDi ?? data.result.fbrDi ?? null;
+      const source = resolveFbrDiSource(fbrDi);
+      const origin = fbrDiOriginBanner(source);
       if (data.result.status === "SUBMITTED") {
         setFbrFlash({
           tone: "ok",
-          text: data.fbrFbrInvoiceNumber
-            ? `FBR accepted. Invoice number: ${data.fbrFbrInvoiceNumber}`
-            : "FBR accepted this document.",
+          text: `${origin} ${
+            data.fbrFbrInvoiceNumber
+              ? `FBR accepted. Invoice number: ${data.fbrFbrInvoiceNumber}`
+              : "FBR accepted this document."
+          }`,
           fbrDi,
         });
       } else {
         const preview = data.gatewayPreview || data.result.gatewayPreview || null;
+        const errBody =
+          data.fbrLastError ||
+          data.result.message ||
+          data.guidance?.summary ||
+          "Submit did not succeed.";
         setFbrFlash({
           tone: "err",
-          text:
-            data.fbrLastError ||
-            data.result.message ||
-            data.guidance?.summary ||
-            "FBR did not accept this document.",
+          text: `${origin} ${errBody}`,
           detail: data.guidance?.action ?? null,
-          preview,
+          preview: source === "LOCAL_MAP" ? null : preview,
           fbrDi,
         });
       }
@@ -307,6 +308,14 @@ export function InvoiceDetailPage() {
         <Alert
           description={
             <span className="space-y-2 block">
+              {fbrFlash.fbrDi ? (
+                <span className="block rounded-md border border-border bg-muted/50 px-2 py-1.5 text-sm font-medium text-foreground">
+                  {fbrDiOriginBanner(resolveFbrDiSource(fbrFlash.fbrDi))}
+                  <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                    source={resolveFbrDiSource(fbrFlash.fbrDi)}
+                  </span>
+                </span>
+              ) : null}
               <span className="block">{fbrFlash.text}</span>
               {fbrFlash.detail ? (
                 <span className="block opacity-90">{fbrFlash.detail}</span>
@@ -319,12 +328,17 @@ export function InvoiceDetailPage() {
               {fbrFlash.fbrDi ? (
                 <span className="mt-2 block space-y-2 rounded-md border border-border bg-white/60 p-3 text-foreground">
                   <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    FBR DI attempt
-                    {fbrFlash.fbrDi.mocked ? " (mocked — not live sandbox)" : ""}
-                    {!fbrFlash.fbrDi.reachedGateway ? " (local MAP — gateway not called)" : ""}
+                    {resolveFbrDiSource(fbrFlash.fbrDi) === "LOCAL_MAP"
+                      ? "BooksWise local validation (not sent to FBR)"
+                      : resolveFbrDiSource(fbrFlash.fbrDi) === "MOCK"
+                        ? "Mock DI attempt"
+                        : "FBR gateway attempt"}
                   </span>
                   <span className="block font-mono text-xs break-all">
                     PostURL: {fbrFlash.fbrDi.postUrl}
+                    {resolveFbrDiSource(fbrFlash.fbrDi) === "LOCAL_MAP"
+                      ? " (not called)"
+                      : ""}
                   </span>
                   {fbrFlash.fbrDi.httpStatus != null ? (
                     <span className="block font-mono text-xs">
@@ -338,7 +352,11 @@ export function InvoiceDetailPage() {
                     </pre>
                   </span>
                   <span className="block">
-                    <span className="text-xs text-muted-foreground">FBR response</span>
+                    <span className="text-xs text-muted-foreground">
+                      {resolveFbrDiSource(fbrFlash.fbrDi) === "LOCAL_MAP"
+                        ? "BooksWise validation errors"
+                        : "FBR response"}
+                    </span>
                     <pre className="mt-1 max-h-48 overflow-auto rounded border border-border/60 bg-muted/40 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap break-all">
                       {JSON.stringify(fbrFlash.fbrDi.responseBody, null, 2)}
                     </pre>
@@ -352,8 +370,68 @@ export function InvoiceDetailPage() {
               ) : null}
             </span>
           }
-          title={fbrFlash.tone === "ok" ? "FBR Digital Invoicing" : "FBR submit issue"}
+          title={
+            fbrFlash.tone === "ok"
+              ? "FBR Digital Invoicing"
+              : resolveFbrDiSource(fbrFlash.fbrDi) === "LOCAL_MAP"
+                ? "BooksWise validation"
+                : resolveFbrDiSource(fbrFlash.fbrDi) === "MOCK"
+                  ? "FBR mock result"
+                  : "FBR gateway response"
+          }
           variant={fbrFlash.tone === "ok" ? "success" : "destructive"}
+        />
+      ) : null}
+
+      {!fbrFlash && useFbrDi && invoice.fbrLastRequestJson != null ? (
+        <Alert
+          description={
+            <span className="space-y-2 block">
+              <span className="block rounded-md border border-border bg-muted/50 px-2 py-1.5 text-sm font-medium text-foreground">
+                {invoice.fbrLastReachedGateway === false
+                  ? fbrDiOriginBanner("LOCAL_MAP")
+                  : fbrDiOriginBanner("FBR_GATEWAY")}
+                <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                  source=
+                  {invoice.fbrLastReachedGateway === false ? "LOCAL_MAP" : "FBR_GATEWAY"}
+                </span>
+              </span>
+              <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Last stored attempt
+              </span>
+              {invoice.fbrLastPostUrl ? (
+                <span className="block font-mono text-xs break-all">
+                  PostURL: {invoice.fbrLastPostUrl}
+                  {invoice.fbrLastReachedGateway === false ? " (not called)" : ""}
+                </span>
+              ) : null}
+              {invoice.fbrLastHttpStatus != null ? (
+                <span className="block font-mono text-xs">HTTP: {invoice.fbrLastHttpStatus}</span>
+              ) : null}
+              <span className="block">
+                <span className="text-xs text-muted-foreground">Request JSON</span>
+                <pre className="mt-1 max-h-48 overflow-auto rounded border border-border/60 bg-muted/40 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap break-all">
+                  {JSON.stringify(invoice.fbrLastRequestJson, null, 2)}
+                </pre>
+              </span>
+              <span className="block">
+                <span className="text-xs text-muted-foreground">
+                  {invoice.fbrLastReachedGateway === false
+                    ? "BooksWise validation errors"
+                    : "FBR response"}
+                </span>
+                <pre className="mt-1 max-h-48 overflow-auto rounded border border-border/60 bg-muted/40 p-2 font-mono text-[11px] leading-snug whitespace-pre-wrap break-all">
+                  {JSON.stringify(invoice.fbrLastResponseBody ?? null, null, 2)}
+                </pre>
+              </span>
+            </span>
+          }
+          title={
+            invoice.fbrLastReachedGateway === false
+              ? "BooksWise validation (stored)"
+              : "FBR gateway response (stored)"
+          }
+          variant="default"
         />
       ) : null}
 

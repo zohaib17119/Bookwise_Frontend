@@ -215,13 +215,15 @@ export function ItemFormDrawer({
   }, [deferredItemName, fbrHsPickerOpen, open, showFbrFields]);
 
   useEffect(() => {
+    if (!open || !showFbrFields || !adoptedHsCode) return;
     const suggested = hsUomsQuery.data?.items ?? [];
     if (!suggested.length) return;
     const current = form.getValues("fbrUom")?.trim();
-    if (!current) {
+    const stillValid = suggested.some((u) => u.description === current);
+    if (!current || !stillValid) {
       form.setValue("fbrUom", suggested[0].description, { shouldValidate: true });
     }
-  }, [form, hsUomsQuery.data?.items]);
+  }, [adoptedHsCode, form, hsUomsQuery.data?.items, open, showFbrFields]);
 
   useEffect(() => {
     if (!open || mode !== "create" || !nextSkuQuery.data) return;

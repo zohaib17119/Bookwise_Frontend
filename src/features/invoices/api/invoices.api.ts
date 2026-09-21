@@ -165,6 +165,8 @@ export async function submitInvoiceCompliance(companyId: string, invoiceId: stri
   return data;
 }
 
+export type FbrDiAttemptSource = "LOCAL_MAP" | "FBR_GATEWAY" | "MOCK";
+
 export type FbrDiAttemptEvidence = {
   environment: string;
   postUrl: string;
@@ -172,9 +174,29 @@ export type FbrDiAttemptEvidence = {
   httpStatus: number | null;
   responseBody: unknown;
   reachedGateway: boolean;
+  source?: FbrDiAttemptSource;
   mocked?: boolean;
   mapIssues?: Array<{ path: string; message: string }>;
 };
+
+export function resolveFbrDiSource(
+  fbrDi?: Pick<FbrDiAttemptEvidence, "source" | "reachedGateway" | "mocked"> | null,
+): FbrDiAttemptSource {
+  if (fbrDi?.source) return fbrDi.source;
+  if (fbrDi?.mocked) return "MOCK";
+  if (fbrDi && fbrDi.reachedGateway === false) return "LOCAL_MAP";
+  return "FBR_GATEWAY";
+}
+
+export function fbrDiOriginBanner(source: FbrDiAttemptSource): string {
+  if (source === "LOCAL_MAP") {
+    return "BooksWise ne request rok li — FBR ko nahi bheji (local validation).";
+  }
+  if (source === "MOCK") {
+    return "Mock mode — live FBR hit nahi hua.";
+  }
+  return "Request FBR pe gayi — neeche FBR/gateway response hai.";
+}
 
 export type FbrSyncSubmitResponse = {
   mode: "sync";
