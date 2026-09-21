@@ -177,6 +177,7 @@ export type FbrDiAttemptEvidence = {
   source?: FbrDiAttemptSource;
   mocked?: boolean;
   mapIssues?: Array<{ path: string; message: string }>;
+  bypassedLocalMap?: boolean;
 };
 
 export function resolveFbrDiSource(
@@ -221,19 +222,27 @@ export type FbrSyncSubmitResponse = {
   };
 };
 
-export async function submitInvoiceFbrSync(companyId: string, invoiceId: string) {
+export async function submitInvoiceFbrSync(
+  companyId: string,
+  invoiceId: string,
+  options?: { bypassLocalMap?: boolean },
+) {
   const { data } = await apiClient.post<FbrSyncSubmitResponse>(
     `/companies/${companyId}/invoices/${invoiceId}/fbr/submit`,
-    undefined,
+    options?.bypassLocalMap ? { bypassLocalMap: true } : {},
     { timeout: 90_000 },
   );
   return data;
 }
 
-export async function retryInvoiceFbrSubmit(companyId: string, invoiceId: string) {
+export async function retryInvoiceFbrSubmit(
+  companyId: string,
+  invoiceId: string,
+  options?: { bypassLocalMap?: boolean },
+) {
   const { data } = await apiClient.post<FbrSyncSubmitResponse>(
     `/companies/${companyId}/invoices/${invoiceId}/fbr/retry`,
-    undefined,
+    options?.bypassLocalMap ? { bypassLocalMap: true } : {},
     { timeout: 90_000 },
   );
   return data;

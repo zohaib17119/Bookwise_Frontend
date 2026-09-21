@@ -120,6 +120,15 @@ export function InvoiceDetailPage() {
   const canRetryFbr =
     fbrIssued && ["FAILED", "REJECTED", "RETRYING"].includes(fbrStatus);
   const fbrBusy = fbrSubmitMutation.isPending || fbrRetryMutation.isPending;
+  const flashIsLocalMap =
+    Boolean(fbrFlash?.fbrDi) && resolveFbrDiSource(fbrFlash?.fbrDi) === "LOCAL_MAP";
+  const storedIsLocalMap =
+    !fbrFlash &&
+    invoice.fbrLastReachedGateway === false &&
+    invoice.fbrLastRequestJson != null;
+  const canForceFbrAnyway =
+    canRetryFbr &&
+    ((flashIsLocalMap && fbrFlash?.fbrDi?.requestJson != null) || storedIsLocalMap);
   const canMarkTaxReported =
     showFbr &&
     canManage &&
@@ -128,13 +137,22 @@ export function InvoiceDetailPage() {
     invoice.status !== "CANCELLED" &&
     complianceStatus === "PENDING";
 
-  const runFbrSync = async (mode: "submit" | "retry") => {
+  const runFbrSync = async (
+    mode: "submit" | "retry",
+    options?: { bypassLocalMap?: boolean },
+  ) => {
     setFbrFlash(null);
     try {
       const data =
         mode === "submit"
-          ? await fbrSubmitMutation.mutateAsync(invoice.id)
-          : await fbrRetryMutation.mutateAsync(invoice.id);
+          ? await fbrSubmitMutation.mutateAsync({
+              invoiceId: invoice.id,
+              bypassLocalMap: options?.bypassLocalMap,
+            })
+          : await fbrRetryMutation.mutateAsync({
+              invoiceId: invoice.id,
+              bypassLocalMap: options?.bypassLocalMap,
+            });
       const fbrDi = data.fbrDi ?? data.result.fbrDi ?? null;
       const source = resolveFbrDiSource(fbrDi);
       const origin = fbrDiOriginBanner(source);
@@ -257,6 +275,16 @@ export function InvoiceDetailPage() {
                   Retry FBR submit
                 </Button>
               ) : null}
+              {canForceFbrAnyway ? (
+                <Button
+                  isLoading={fbrBusy}
+                  onClick={() => void runFbrSync("retry", { bypassLocalMap: true })}
+                  type="button"
+                  variant="secondary"
+                >
+                  Submit to FBR anyway
+                </Button>
+              ) : null}
               {useFbrDi && invoice.status !== "DRAFT" ? (
                 <span className="text-sm text-muted-foreground">{fbrStatusLabel}</span>
               ) : null}
@@ -366,6 +394,24 @@ export function InvoiceDetailPage() {
                       {fbrFlash.fbrDi.mapIssues.map((i) => `${i.path}: ${i.message}`).join("; ")}
                     </span>
                   ) : null}
+                  {resolveFbrDiSource(fbrFlash.fbrDi) === "LOCAL_MAP" &&
+                  fbrFlash.fbrDi.requestJson != null &&
+                  canRetryFbr ? (
+                    <span className="mt-2 block">
+                      <Button
+                        isLoading={fbrBusy}
+                        onClick={() => void runFbrSync("retry", { bypassLocalMap: true })}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        Submit to FBR anyway
+                      </Button>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Skips BooksWise validation and posts this request JSON to FBR.
+                      </span>
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
             </span>
@@ -424,6 +470,22 @@ export function InvoiceDetailPage() {
                   {JSON.stringify(invoice.fbrLastResponseBody ?? null, null, 2)}
                 </pre>
               </span>
+              {invoice.fbrLastReachedGateway === false && canRetryFbr ? (
+                <span className="mt-2 block">
+                  <Button
+                    isLoading={fbrBusy}
+                    onClick={() => void runFbrSync("retry", { bypassLocalMap: true })}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    Submit to FBR anyway
+                  </Button>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Skips BooksWise validation and posts this request JSON to FBR.
+                  </span>
+                </span>
+              ) : null}
             </span>
           }
           title={

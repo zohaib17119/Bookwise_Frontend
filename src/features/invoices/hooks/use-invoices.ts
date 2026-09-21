@@ -138,8 +138,14 @@ export function useSubmitInvoiceCompliance(companyId: string | undefined) {
 
 export function useSubmitInvoiceFbrSync(companyId: string | undefined) {
   return useMutation({
-    mutationFn: (invoiceId: string) => submitInvoiceFbrSync(companyId!, invoiceId),
-    onSuccess: async (_data, invoiceId) => {
+    mutationFn: ({
+      invoiceId,
+      bypassLocalMap,
+    }: {
+      invoiceId: string;
+      bypassLocalMap?: boolean;
+    }) => submitInvoiceFbrSync(companyId!, invoiceId, { bypassLocalMap }),
+    onSuccess: async (_data, { invoiceId }) => {
       if (!companyId) return;
       await Promise.all([
         invalidateInvoiceQueries(companyId),
@@ -153,8 +159,14 @@ export function useSubmitInvoiceFbrSync(companyId: string | undefined) {
 
 export function useRetryInvoiceFbrSubmit(companyId: string | undefined) {
   return useMutation({
-    mutationFn: (invoiceId: string) => retryInvoiceFbrSubmit(companyId!, invoiceId),
-    onSuccess: async (_data, invoiceId) => {
+    mutationFn: ({
+      invoiceId,
+      bypassLocalMap,
+    }: {
+      invoiceId: string;
+      bypassLocalMap?: boolean;
+    }) => retryInvoiceFbrSubmit(companyId!, invoiceId, { bypassLocalMap }),
+    onSuccess: async (_data, { invoiceId }) => {
       if (!companyId) return;
       await Promise.all([
         invalidateInvoiceQueries(companyId),
