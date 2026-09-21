@@ -203,8 +203,8 @@ export function InvestorsPage() {
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <Checkbox
                 checked={includeInactive}
-                onCheckedChange={(checked) => {
-                  setIncludeInactive(Boolean(checked));
+                onChange={(event) => {
+                  setIncludeInactive(event.target.checked);
                   setPage(1);
                 }}
               />

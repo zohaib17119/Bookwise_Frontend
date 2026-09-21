@@ -6,7 +6,7 @@ export const investorFormSchema = z.object({
   email: z.string().trim().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().trim().max(50).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean(),
 });
 
 export type InvestorFormValues = z.infer<typeof investorFormSchema>;

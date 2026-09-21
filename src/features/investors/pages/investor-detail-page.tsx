@@ -70,8 +70,8 @@ export function InvestorDetailPage() {
 
   useEffect(() => {
     const defaultReceive =
-      mappingQuery.data?.defaultCustomerReceiveAccountId ||
-      mappingQuery.data?.cashBankAccountId ||
+      mappingQuery.data?.defaultCustomerReceive?.accountId ||
+      mappingQuery.data?.cashBank?.accountId ||
       "";
     if (!defaultReceive || form.getValues("paymentAccountId")) return;
     if (cashAccounts.some((account) => account.id === defaultReceive)) {

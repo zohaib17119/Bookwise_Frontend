@@ -116,7 +116,7 @@ export function InvestorFormDrawer({
       <label className="flex items-center gap-2 text-sm">
         <Checkbox
           checked={form.watch("isActive")}
-          onCheckedChange={(checked) => form.setValue("isActive", Boolean(checked))}
+          onChange={(event) => form.setValue("isActive", event.target.checked)}
         />
         Active
       </label>
