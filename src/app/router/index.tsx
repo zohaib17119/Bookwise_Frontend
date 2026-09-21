@@ -29,6 +29,8 @@ import { CompanyCreatePage } from "@/features/companies/pages/company-create-pag
 import { CompanyDetailPage } from "@/features/companies/pages/company-detail-page";
 import { CompanyListPage } from "@/features/companies/pages/company-list-page";
 import { CustomersPage } from "@/features/customers/pages/customers-page";
+import { InvestorDetailPage } from "@/features/investors/pages/investor-detail-page";
+import { InvestorsPage } from "@/features/investors/pages/investors-page";
 import { CustomerPaymentDetailPage } from "@/features/customerPayments/pages/customer-payment-detail-page";
 import { CustomerPaymentFormPage } from "@/features/customerPayments/pages/customer-payment-form-page";
 import { CustomerPaymentsPage } from "@/features/customerPayments/pages/customer-payments-page";
@@ -136,6 +138,8 @@ const router = createBrowserRouter([
                   { path: "dashboard", element: <DashboardPage /> },
                   { path: "accounts", element: <AccountsPage /> },
                   { path: "customers", element: <CustomersPage /> },
+                  { path: "investors", element: <InvestorsPage /> },
+                  { path: "investors/:investorId", element: <InvestorDetailPage /> },
                   { path: "vendors", element: <VendorsPage /> },
                   { path: "items", element: <ItemsPage /> },
                   { path: "items/hs-codes", element: <HsCodesPage /> },

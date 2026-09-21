@@ -39,7 +39,7 @@ export function useFbrRefUoms(companyId: string | undefined, enabled = true) {
 export function useFbrRefSaleTypes(companyId: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ["companies", companyId, "fbr-ref", "sale-types"],
-    queryFn: () => listFbrRefSaleTypes(companyId!, { limit: 200 }),
+    queryFn: () => listFbrRefSaleTypes(companyId!, { limit: 300 }),
     enabled: Boolean(companyId) && enabled,
     staleTime: 60_000,
   });

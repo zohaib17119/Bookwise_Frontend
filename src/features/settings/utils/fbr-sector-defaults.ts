@@ -9,6 +9,38 @@ export const FBR_SALE_TYPE_SERVICES = "Services";
 export const FBR_SALE_TYPE_STEEL = "Steel Melting and re-rolling";
 export const FBR_SALE_TYPE_TELECOM = "Telecommunication services";
 
+/** Full SN001–SN028 catalog for Settings scenario Select. */
+export const ALL_FBR_SCENARIO_IDS = [
+  "SN001",
+  "SN002",
+  "SN003",
+  "SN004",
+  "SN005",
+  "SN006",
+  "SN007",
+  "SN008",
+  "SN009",
+  "SN010",
+  "SN011",
+  "SN012",
+  "SN013",
+  "SN014",
+  "SN015",
+  "SN016",
+  "SN017",
+  "SN018",
+  "SN019",
+  "SN020",
+  "SN021",
+  "SN022",
+  "SN023",
+  "SN024",
+  "SN025",
+  "SN026",
+  "SN027",
+  "SN028",
+] as const;
+
 const BASE_GOODS_SCENARIOS = [
   "SN001",
   "SN002",

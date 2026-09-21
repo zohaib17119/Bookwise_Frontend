@@ -307,16 +307,16 @@ export function InvoiceDetailPage() {
                 </Button>
               ) : null}
               {!isAdjustmentNote ? (
-                <Button asChild variant="secondary">
-                  <Link to={`/app/company/${companyId}/invoices/${invoice.id}/edit`}>Edit invoice</Link>
-                </Button>
+              <Button asChild variant="secondary">
+                <Link to={`/app/company/${companyId}/invoices/${invoice.id}/edit`}>Edit invoice</Link>
+              </Button>
               ) : null}
               {!isAdjustmentNote ? (
-                <Button asChild variant="secondary">
+              <Button asChild variant="secondary">
                   <Link to={`/app/company/${companyId}/customer-payments/new?customerId=${invoice.customerId}`}>
                     Receive payment
                   </Link>
-                </Button>
+              </Button>
               ) : null}
               <Button onClick={() => setDeleteOpen(true)} variant="ghost">Delete</Button>
             </div>

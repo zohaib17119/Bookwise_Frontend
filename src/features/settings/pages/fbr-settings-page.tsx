@@ -14,9 +14,13 @@ import { FbrMonitoringPanel } from "@/features/settings/components/fbr-monitorin
 import { FbrSetupGuide } from "@/features/settings/components/fbr-setup-guide";
 import {
   useFbrRefProvinces,
+  useFbrRefSaleTypes,
   useSyncFbrReference,
 } from "@/features/settings/hooks/use-fbr-reference";
-import { resolveFbrSectorDefaults } from "@/features/settings/utils/fbr-sector-defaults";
+import {
+  ALL_FBR_SCENARIO_IDS,
+  resolveFbrSectorDefaults,
+} from "@/features/settings/utils/fbr-sector-defaults";
 import { normalizeFbrNtnCnicInput } from "@/features/customers/schemas/customer.schema";
 
 type FbrConfig = {
@@ -33,6 +37,7 @@ type FbrConfig = {
   fbrBusinessSector?: string | null;
   defaultSaleType?: string | null;
   suggestedScenarioIds?: string[];
+  allScenarioIds?: string[];
   hasSandboxToken?: boolean;
   hasProductionToken?: boolean;
   hasTokenForEnvironment?: boolean;
@@ -96,6 +101,7 @@ const emptyConfig: FbrConfig = {
   fbrBusinessSector: "",
   defaultSaleType: "",
   suggestedScenarioIds: [],
+  allScenarioIds: [...ALL_FBR_SCENARIO_IDS],
   hasSandboxToken: false,
   hasProductionToken: false,
   hasTokenForEnvironment: false,
@@ -147,6 +153,7 @@ export function FbrSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const provincesQuery = useFbrRefProvinces(companyId, "", Boolean(companyId));
+  const saleTypesQuery = useFbrRefSaleTypes(companyId, Boolean(companyId));
   const syncReferenceMutation = useSyncFbrReference(companyId);
 
   const applyConfig = (next: FbrConfig) => {
@@ -164,6 +171,9 @@ export function FbrSettingsPage() {
       fbrBusinessSector: next.fbrBusinessSector ?? "",
       defaultSaleType: next.defaultSaleType ?? "",
       suggestedScenarioIds: next.suggestedScenarioIds ?? [],
+      allScenarioIds: next.allScenarioIds?.length
+        ? next.allScenarioIds
+        : [...ALL_FBR_SCENARIO_IDS],
       hasSandboxToken: Boolean(next.hasSandboxToken),
       hasProductionToken: Boolean(next.hasProductionToken),
       hasTokenForEnvironment: Boolean(next.hasTokenForEnvironment),
@@ -401,32 +411,51 @@ export function FbrSettingsPage() {
             </Select>
           </FormField>
           <FormField
-            helperText="Pre-filled on new items when Digital Invoicing is on. Exact FBR saleType string."
+            helperText="Pre-filled on new items when Digital Invoicing is on. Full FBR saleType list (synced + BooksWise catalog)."
             label="Default sale type"
           >
-            <Input
+            <Select
               onChange={(event) =>
                 setConfig((current) => ({ ...current, defaultSaleType: event.target.value }))
               }
-              placeholder="e.g. Goods at standard rate (default)"
               value={config.defaultSaleType ?? ""}
-            />
+            >
+              <option value="">Select sale type…</option>
+              {(saleTypesQuery.data ?? []).map((row) => (
+                <option key={row.id ?? row.description} value={row.description}>
+                  {row.description}
+                </option>
+              ))}
+              {config.defaultSaleType &&
+              !(saleTypesQuery.data ?? []).some((row) => row.description === config.defaultSaleType) ? (
+                <option value={config.defaultSaleType}>{config.defaultSaleType}</option>
+              ) : null}
+            </Select>
           </FormField>
           <FormField
             helperText={
               (config.suggestedScenarioIds?.length ?? 0) > 0
-                ? `Suggested: ${(config.suggestedScenarioIds ?? []).slice(0, 8).join(", ")}`
-                : "Required for Sandbox posts (e.g. SN001)."
+                ? `Suggested for your activity/sector: ${config.suggestedScenarioIds!.join(", ")}`
+                : "Full SN001–SN028 list. Required for Sandbox posts."
             }
             label="Default scenario ID"
           >
-            <Input
+            <Select
               onChange={(event) =>
                 setConfig((current) => ({ ...current, defaultScenarioId: event.target.value }))
               }
-              placeholder="e.g. SN001"
               value={config.defaultScenarioId ?? ""}
-            />
+            >
+              <option value="">Select scenario…</option>
+              {(config.allScenarioIds?.length
+                ? config.allScenarioIds
+                : [...ALL_FBR_SCENARIO_IDS]
+              ).map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </Select>
           </FormField>
         </div>
 

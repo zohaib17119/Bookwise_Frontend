@@ -61,6 +61,12 @@ export const companyNavigationGroups: CompanyNavigationGroup[] = [
         permissionKeys: ["customers.view", "customers.read", "customers.manage"],
       },
       {
+        label: "Investors",
+        segment: "investors",
+        icon: Landmark,
+        permissionKeys: ["investors.view", "investors.read", "investors.manage"],
+      },
+      {
         label: "Estimates",
         segment: "estimates",
         icon: FileClock,
