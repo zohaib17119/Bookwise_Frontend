@@ -193,6 +193,7 @@ export function ItemFormDrawer({
   const saleTypeRatesQuery = useFbrSaleTypeRates(
     companyId,
     fbrSaleType,
+    taxRatePercentLabel || undefined,
     open && requireFbrDi && Boolean(fbrSaleType.trim()),
   );
 
@@ -292,6 +293,7 @@ export function ItemFormDrawer({
       setSelectedRateId(null);
       return;
     }
+    const preferredId = saleTypeRatesQuery.data?.preferredRateId ?? null;
     const taxNeedle = taxRatePercentLabel.replace(/%/g, "").trim();
     const matchedByTax = taxNeedle
       ? rates.find((r) => {
@@ -299,13 +301,31 @@ export function ItemFormDrawer({
           return desc === taxNeedle || desc.startsWith(taxNeedle) || desc.includes(taxNeedle);
         })
       : undefined;
+    const withSchedules = rates.find((r) => (r.scheduleCount ?? 0) > 0);
+    const preferred =
+      (preferredId != null ? rates.find((r) => r.rateId === preferredId) : undefined) ||
+      (matchedByTax && (matchedByTax.scheduleCount ?? 1) > 0 ? matchedByTax : undefined) ||
+      withSchedules ||
+      matchedByTax ||
+      rates[0];
     setSelectedRateId((current) => {
       if (current != null && rates.some((r) => r.rateId === current)) {
-        if (!matchedByTax || matchedByTax.rateId === current) return current;
+        const currentRow = rates.find((r) => r.rateId === current);
+        // Keep selection if it already has schedules, or SRO is not forced by tax.
+        if ((currentRow?.scheduleCount ?? 0) > 0) return current;
+        if (!taxForcesSro) return current;
       }
-      return matchedByTax?.rateId ?? rates[0].rateId;
+      return preferred.rateId;
     });
-  }, [open, requireFbrDi, saleTypeRatesQuery.data?.items, fbrSaleType, taxRatePercentLabel]);
+  }, [
+    open,
+    requireFbrDi,
+    saleTypeRatesQuery.data?.items,
+    saleTypeRatesQuery.data?.preferredRateId,
+    fbrSaleType,
+    taxRatePercentLabel,
+    taxForcesSro,
+  ]);
 
   useEffect(() => {
     if (!open || !requireFbrDi) return;
@@ -316,11 +336,23 @@ export function ItemFormDrawer({
     }
     const currentDesc = form.getValues("fbrSroScheduleNo")?.trim();
     const match = schedules.find((s) => s.description === currentDesc);
-    setSelectedSroId(match?.sroId ?? schedules[0].sroId);
-    if (!match && schedules[0]) {
-      form.setValue("fbrSroScheduleNo", schedules[0].description, { shouldValidate: true });
+    const next = match ?? schedules[0];
+    setSelectedSroId(next.sroId);
+    if (!match) {
+      form.setValue("fbrSroScheduleNo", next.description, { shouldValidate: true });
     }
   }, [form, open, requireFbrDi, sroSchedulesQuery.data?.items]);
+
+  useEffect(() => {
+    if (!open || !requireFbrDi) return;
+    const items = sroItemsQuery.data?.items ?? [];
+    if (!items.length) return;
+    const current = form.getValues("fbrSroItemSerialNo")?.trim();
+    const stillValid = items.some((i) => i.serialNo === current);
+    if (!current || !stillValid) {
+      form.setValue("fbrSroItemSerialNo", items[0].serialNo, { shouldValidate: true });
+    }
+  }, [form, open, requireFbrDi, sroItemsQuery.data?.items, selectedSroId]);
 
   useEffect(() => {
     if (!open || !showFbrFields || fbrHsPickerOpen) return;
@@ -653,6 +685,9 @@ export function ItemFormDrawer({
                             {(saleTypeRatesQuery.data?.items ?? []).map((rate) => (
                               <option key={rate.rateId} value={rate.rateId}>
                                 {rate.rateDescription || rate.rateId}
+                                {typeof rate.scheduleCount === "number"
+                                  ? ` (${rate.scheduleCount} SRO)`
+                                  : ""}
                               </option>
                             ))}
                           </Select>

@@ -65,11 +65,16 @@ export function useFbrHsUoms(
 export function useFbrSaleTypeRates(
   companyId: string | undefined,
   saleType: string,
+  rateHint?: string,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ["companies", companyId, "fbr-ref", "sale-type-rates", saleType],
-    queryFn: () => listFbrSaleTypeRates(companyId!, { saleType }),
+    queryKey: ["companies", companyId, "fbr-ref", "sale-type-rates", saleType, rateHint ?? ""],
+    queryFn: () =>
+      listFbrSaleTypeRates(companyId!, {
+        saleType,
+        rateHint: rateHint || undefined,
+      }),
     enabled: Boolean(companyId) && Boolean(saleType.trim()) && enabled,
     staleTime: 60_000,
   });
