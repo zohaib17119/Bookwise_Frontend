@@ -37,36 +37,34 @@ export function buildItemSchema(
   requireFixedNotifiedRetail = false,
 ) {
   if (!requireFbrDi) return itemSchema;
-  let base = itemSchema.extend({
+  const withDi = itemSchema.extend({
     hsCodeCategoryId: z.string().min(1, "HS code is required for FBR Digital Invoicing"),
     fbrUom: z.string().trim().min(1, "FBR UoM is required"),
     fbrSaleType: z.string().trim().min(1, "FBR sale type is required"),
   });
-  if (requireSro) {
-    base = base.extend({
-      fbrSroScheduleNo: z
-        .string()
-        .trim()
-        .min(1, "SRO schedule is required for this sale type / scenario"),
-      fbrSroItemSerialNo: z
-        .string()
-        .trim()
-        .min(1, "SRO item serial is required for this sale type / scenario"),
-    });
-  }
-  if (requireFixedNotifiedRetail) {
-    base = base.extend({
-      fbrFixedNotifiedValueOrRetailPrice: z
-        .string()
-        .trim()
-        .min(1, "Fixed / notified / retail price is required for 3rd Schedule Goods")
-        .refine((v) => {
-          const n = Number(v);
-          return Number.isFinite(n) && n > 0;
-        }, "Must be greater than 0 (FBR 0300)"),
-    });
-  }
-  return base;
+  const withSro = requireSro
+    ? withDi.extend({
+        fbrSroScheduleNo: z
+          .string()
+          .trim()
+          .min(1, "SRO schedule is required for this sale type / scenario"),
+        fbrSroItemSerialNo: z
+          .string()
+          .trim()
+          .min(1, "SRO item serial is required for this sale type / scenario"),
+      })
+    : withDi;
+  if (!requireFixedNotifiedRetail) return withSro;
+  return withSro.extend({
+    fbrFixedNotifiedValueOrRetailPrice: z
+      .string()
+      .trim()
+      .min(1, "Fixed / notified / retail price is required for 3rd Schedule Goods")
+      .refine((v) => {
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0;
+      }, "Must be greater than 0 (FBR 0300)"),
+  });
 }
 
 export type ItemFormInput = z.input<typeof itemSchema>;
