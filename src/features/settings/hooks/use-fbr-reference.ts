@@ -78,11 +78,23 @@ export function useFbrSaleTypeRates(
 export function useFbrSroSchedules(
   companyId: string | undefined,
   rateId: number | null,
+  rateDescription?: string,
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ["companies", companyId, "fbr-ref", "sro-schedules", rateId],
-    queryFn: () => listFbrSroSchedules(companyId!, { rateId: rateId! }),
+    queryKey: [
+      "companies",
+      companyId,
+      "fbr-ref",
+      "sro-schedules",
+      rateId,
+      rateDescription ?? "",
+    ],
+    queryFn: () =>
+      listFbrSroSchedules(companyId!, {
+        rateId: rateId!,
+        rateDescription: rateDescription || undefined,
+      }),
     enabled: Boolean(companyId) && rateId != null && rateId > 0 && enabled,
     staleTime: 60_000,
   });

@@ -169,14 +169,43 @@ export function ItemFormDrawer({
   const fbrSaleType = form.watch("fbrSaleType") ?? "";
   const fbrSroScheduleNo = form.watch("fbrSroScheduleNo") ?? "";
 
+  const selectedTaxRate = useMemo(
+    () => taxRates.find((rate) => rate.id === taxRateId) ?? null,
+    [taxRateId, taxRates],
+  );
+  const taxRatePercentLabel = useMemo(() => {
+    if (!selectedTaxRate) return "";
+    const raw = String(selectedTaxRate.ratePercent ?? "").trim();
+    if (!raw) return "";
+    if (raw.includes("%")) return raw;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return raw;
+    return `${Number.isInteger(n) ? String(n) : String(n)}%`;
+  }, [selectedTaxRate]);
+  const taxForcesSro = useMemo(() => {
+    if (!taxRatePercentLabel) return false;
+    const normalized = taxRatePercentLabel.replace(/%/g, "").trim();
+    const n = Number(normalized);
+    if (!Number.isFinite(n)) return true;
+    return Math.abs(n - 18) >= 1e-9;
+  }, [taxRatePercentLabel]);
+
   const saleTypeRatesQuery = useFbrSaleTypeRates(
     companyId,
     fbrSaleType,
     open && requireFbrDi && Boolean(fbrSaleType.trim()),
   );
+
+  const selectedRateDescription = useMemo(() => {
+    const rates = saleTypeRatesQuery.data?.items ?? [];
+    const match = rates.find((r) => r.rateId === selectedRateId);
+    return match?.rateDescription || taxRatePercentLabel || "";
+  }, [saleTypeRatesQuery.data?.items, selectedRateId, taxRatePercentLabel]);
+
   const sroSchedulesQuery = useFbrSroSchedules(
     companyId,
     selectedRateId,
+    selectedRateDescription || taxRatePercentLabel,
     open && requireFbrDi && selectedRateId != null,
   );
   const sroItemsQuery = useFbrSroItems(
@@ -188,8 +217,10 @@ export function ItemFormDrawer({
   const sroRequired =
     requireFbrDi &&
     Boolean(
-      sroSchedulesQuery.data?.required ||
+      taxForcesSro ||
+        sroSchedulesQuery.data?.required ||
         sroSchedulesQuery.data?.applicable ||
+        sroSchedulesQuery.data?.rateForcesSro ||
         (sroSchedulesQuery.data?.items?.length ?? 0) > 0 ||
         saleTypeRatesQuery.data?.scenarioRequirement?.sroRequired,
     );
@@ -261,10 +292,20 @@ export function ItemFormDrawer({
       setSelectedRateId(null);
       return;
     }
-    setSelectedRateId((current) =>
-      current != null && rates.some((r) => r.rateId === current) ? current : rates[0].rateId,
-    );
-  }, [open, requireFbrDi, saleTypeRatesQuery.data?.items, fbrSaleType]);
+    const taxNeedle = taxRatePercentLabel.replace(/%/g, "").trim();
+    const matchedByTax =
+      taxNeedle &&
+      rates.find((r) => {
+        const desc = (r.rateDescription || "").replace(/%/g, "").trim();
+        return desc === taxNeedle || desc.startsWith(`${taxNeedle}`) || desc.includes(taxNeedle);
+      });
+    setSelectedRateId((current) => {
+      if (current != null && rates.some((r) => r.rateId === current)) {
+        if (!matchedByTax || matchedByTax.rateId === current) return current;
+      }
+      return matchedByTax?.rateId ?? rates[0].rateId;
+    });
+  }, [open, requireFbrDi, saleTypeRatesQuery.data?.items, fbrSaleType, taxRatePercentLabel]);
 
   useEffect(() => {
     if (!open || !requireFbrDi) return;
@@ -587,11 +628,15 @@ export function ItemFormDrawer({
                       ))}
                     </Select>
                   </FormField>
-                  {requireFbrDi && sroRequired ? (
+                  {requireFbrDi && fbrSaleType.trim() ? (
                     <>
-                      {(saleTypeRatesQuery.data?.items?.length ?? 0) > 1 ? (
+                      {(saleTypeRatesQuery.data?.items?.length ?? 0) > 0 ? (
                         <FormField
-                          helperText="PDI rate used to load SRO schedules for this sale type."
+                          helperText={
+                            taxRatePercentLabel
+                              ? `Matched to item tax ${taxRatePercentLabel} when possible. Non-18% rates require SRO (FBR 0077).`
+                              : "PDI rate used to load SRO schedules for this sale type."
+                          }
                           label="FBR rate (for SRO)"
                         >
                           <Select
@@ -613,51 +658,62 @@ export function ItemFormDrawer({
                           </Select>
                         </FormField>
                       ) : null}
-                      <FormField
-                        error={form.formState.errors.fbrSroScheduleNo?.message}
-                        helperText="Required when FBR returns SRO schedules for the selected rate (or SN024)."
-                        label="SRO schedule"
-                      >
-                        <Select
-                          value={fbrSroScheduleNo}
-                          onChange={(event) => {
-                            const desc = event.target.value;
-                            form.setValue("fbrSroScheduleNo", desc, { shouldValidate: true });
-                            form.setValue("fbrSroItemSerialNo", "");
-                            const match = (sroSchedulesQuery.data?.items ?? []).find(
-                              (s) => s.description === desc,
-                            );
-                            setSelectedSroId(match?.sroId ?? null);
-                          }}
-                        >
-                          <option value="">Select SRO schedule…</option>
-                          {(sroSchedulesQuery.data?.items ?? []).map((schedule) => (
-                            <option key={schedule.sroId} value={schedule.description}>
-                              {schedule.description}
-                            </option>
-                          ))}
-                        </Select>
-                      </FormField>
-                      <FormField
-                        error={form.formState.errors.fbrSroItemSerialNo?.message}
-                        helperText="SRO item serial number (sroItemSerialNo) from PDI."
-                        label="SRO item serial"
-                      >
-                        <Select
-                          {...form.register("fbrSroItemSerialNo")}
-                          value={form.watch("fbrSroItemSerialNo") ?? ""}
-                        >
-                          <option value="">Select SRO item…</option>
-                          {(sroItemsQuery.data?.items ?? []).map((sroItem) => (
-                            <option key={`${sroItem.sroItemId}-${sroItem.serialNo}`} value={sroItem.serialNo}>
-                              {sroItem.serialNo}
-                              {sroItem.description && sroItem.description !== sroItem.serialNo
-                                ? ` — ${sroItem.description}`
-                                : ""}
-                            </option>
-                          ))}
-                        </Select>
-                      </FormField>
+                      {sroRequired ? (
+                        <>
+                          <FormField
+                            error={form.formState.errors.fbrSroScheduleNo?.message}
+                            helperText={
+                              (sroSchedulesQuery.data?.items?.length ?? 0) === 0
+                                ? "Required for non-18% rate / SN024 (FBR 0077). PDI returned no schedules for this rate/province — check sale type, tax rate, or seller province."
+                                : "Required when rate is not 18%, PDI returns schedules, or scenario SN024."
+                            }
+                            label="SRO schedule"
+                          >
+                            <Select
+                              value={fbrSroScheduleNo}
+                              onChange={(event) => {
+                                const desc = event.target.value;
+                                form.setValue("fbrSroScheduleNo", desc, { shouldValidate: true });
+                                form.setValue("fbrSroItemSerialNo", "");
+                                const match = (sroSchedulesQuery.data?.items ?? []).find(
+                                  (s) => s.description === desc,
+                                );
+                                setSelectedSroId(match?.sroId ?? null);
+                              }}
+                            >
+                              <option value="">Select SRO schedule…</option>
+                              {(sroSchedulesQuery.data?.items ?? []).map((schedule) => (
+                                <option key={schedule.sroId} value={schedule.description}>
+                                  {schedule.description}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormField>
+                          <FormField
+                            error={form.formState.errors.fbrSroItemSerialNo?.message}
+                            helperText="SRO item serial number (sroItemSerialNo) from PDI."
+                            label="SRO item serial"
+                          >
+                            <Select
+                              {...form.register("fbrSroItemSerialNo")}
+                              value={form.watch("fbrSroItemSerialNo") ?? ""}
+                            >
+                              <option value="">Select SRO item…</option>
+                              {(sroItemsQuery.data?.items ?? []).map((sroItem) => (
+                                <option
+                                  key={`${sroItem.sroItemId}-${sroItem.serialNo}`}
+                                  value={sroItem.serialNo}
+                                >
+                                  {sroItem.serialNo}
+                                  {sroItem.description && sroItem.description !== sroItem.serialNo
+                                    ? ` — ${sroItem.description}`
+                                    : ""}
+                                </option>
+                              ))}
+                            </Select>
+                          </FormField>
+                        </>
+                      ) : null}
                     </>
                   ) : null}
                 </>

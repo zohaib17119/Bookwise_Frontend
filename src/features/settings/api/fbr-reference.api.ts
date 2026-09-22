@@ -103,7 +103,7 @@ export async function listFbrSaleTypeRates(
 
 export async function listFbrSroSchedules(
   companyId: string,
-  params: { rateId: number; date?: string },
+  params: { rateId: number; date?: string; rateDescription?: string },
 ) {
   const { data } = await apiClient.get<{
     items: FbrSroSchedule[];
@@ -111,6 +111,7 @@ export async function listFbrSroSchedules(
     applicable?: boolean;
     required?: boolean;
     scenarioForcesSro?: boolean;
+    rateForcesSro?: boolean;
   }>(`/companies/${companyId}/fbr/reference/sro-schedules`, { params });
   return (
     data ?? {
@@ -119,6 +120,7 @@ export async function listFbrSroSchedules(
       applicable: false,
       required: false,
       scenarioForcesSro: false,
+      rateForcesSro: false,
     }
   );
 }
