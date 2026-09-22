@@ -293,12 +293,12 @@ export function ItemFormDrawer({
       return;
     }
     const taxNeedle = taxRatePercentLabel.replace(/%/g, "").trim();
-    const matchedByTax =
-      taxNeedle &&
-      rates.find((r) => {
-        const desc = (r.rateDescription || "").replace(/%/g, "").trim();
-        return desc === taxNeedle || desc.startsWith(`${taxNeedle}`) || desc.includes(taxNeedle);
-      });
+    const matchedByTax = taxNeedle
+      ? rates.find((r) => {
+          const desc = (r.rateDescription || "").replace(/%/g, "").trim();
+          return desc === taxNeedle || desc.startsWith(taxNeedle) || desc.includes(taxNeedle);
+        })
+      : undefined;
     setSelectedRateId((current) => {
       if (current != null && rates.some((r) => r.rateId === current)) {
         if (!matchedByTax || matchedByTax.rateId === current) return current;
