@@ -698,9 +698,11 @@ export function ItemFormDrawer({
                           <FormField
                             error={form.formState.errors.fbrSroScheduleNo?.message}
                             helperText={
-                              (sroSchedulesQuery.data?.items?.length ?? 0) === 0
-                                ? "Required for non-18% rate / SN024 (FBR 0077). PDI returned no schedules for this rate/province — check sale type, tax rate, or seller province."
-                                : "Required when rate is not 18%, PDI returns schedules, or scenario SN024."
+                              sroSchedulesQuery.isError
+                                ? "SRO schedules API failed — check FBR token / DI enabled / Network tab."
+                                : (sroSchedulesQuery.data?.items?.length ?? 0) === 0
+                                  ? "Required for non-18% rate (FBR 0077). PDI returned no schedules for this rate + seller province. Check Settings → FBR seller province, or try another FBR rate."
+                                  : "Required when rate is not 18%, PDI returns schedules, or scenario SN024."
                             }
                             label="SRO schedule"
                           >
