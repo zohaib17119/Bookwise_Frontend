@@ -17,6 +17,7 @@ export interface Item {
   fbrSaleType?: string | null;
   fbrSroScheduleNo?: string | null;
   fbrSroItemSerialNo?: string | null;
+  fbrFixedNotifiedValueOrRetailPrice?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;
@@ -53,6 +54,7 @@ export interface ItemPayload {
   fbrSaleType?: string | null;
   fbrSroScheduleNo?: string | null;
   fbrSroItemSerialNo?: string | null;
+  fbrFixedNotifiedValueOrRetailPrice?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;

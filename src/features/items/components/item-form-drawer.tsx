@@ -145,6 +145,7 @@ export function ItemFormDrawer({
       fbrSaleType: "",
       fbrSroScheduleNo: "",
       fbrSroItemSerialNo: "",
+      fbrFixedNotifiedValueOrRetailPrice: "",
       salesPrice: "0",
       purchaseCost: "0",
       incomeAccountId: "",
@@ -226,14 +227,24 @@ export function ItemFormDrawer({
         saleTypeRatesQuery.data?.scenarioRequirement?.sroRequired,
     );
 
+  const retailPriceRequired =
+    requireFbrDi && fbrSaleType.trim().toLowerCase() === "3rd schedule goods";
+
   const schema = useMemo(
-    () => buildItemSchema(requireFbrDi, sroRequired),
-    [requireFbrDi, sroRequired],
+    () => buildItemSchema(requireFbrDi, sroRequired, retailPriceRequired),
+    [requireFbrDi, sroRequired, retailPriceRequired],
   );
 
   useEffect(() => {
     form.clearErrors(["fbrSroScheduleNo", "fbrSroItemSerialNo"]);
   }, [form, sroRequired]);
+
+  useEffect(() => {
+    form.clearErrors(["fbrFixedNotifiedValueOrRetailPrice"]);
+    if (!retailPriceRequired) {
+      form.setValue("fbrFixedNotifiedValueOrRetailPrice", "");
+    }
+  }, [form, retailPriceRequired]);
 
   const hasAccountOverrides = Boolean(
     item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
@@ -261,6 +272,7 @@ export function ItemFormDrawer({
       fbrSaleType: item?.fbrSaleType ?? defaultSale,
       fbrSroScheduleNo: item?.fbrSroScheduleNo ?? "",
       fbrSroItemSerialNo: item?.fbrSroItemSerialNo ?? "",
+      fbrFixedNotifiedValueOrRetailPrice: item?.fbrFixedNotifiedValueOrRetailPrice ?? "",
       salesPrice: item?.salesPrice ?? "0",
       purchaseCost: item?.purchaseCost ?? "0",
       incomeAccountId: item?.incomeAccountId ?? "",
@@ -521,6 +533,9 @@ export function ItemFormDrawer({
                   payload.fbrSroScheduleNo = "";
                   payload.fbrSroItemSerialNo = "";
                 }
+                if (!retailPriceRequired) {
+                  payload.fbrFixedNotifiedValueOrRetailPrice = "";
+                }
                 await onSubmit(payload);
               })}
               type="button"
@@ -648,6 +663,9 @@ export function ItemFormDrawer({
                         form.setValue("fbrSaleType", event.target.value, { shouldValidate: true });
                         form.setValue("fbrSroScheduleNo", "");
                         form.setValue("fbrSroItemSerialNo", "");
+                        if (event.target.value.trim().toLowerCase() !== "3rd schedule goods") {
+                          form.setValue("fbrFixedNotifiedValueOrRetailPrice", "");
+                        }
                         setSelectedRateId(null);
                         setSelectedSroId(null);
                       }}
@@ -660,6 +678,19 @@ export function ItemFormDrawer({
                       ))}
                     </Select>
                   </FormField>
+                  {retailPriceRequired ? (
+                    <FormField
+                      error={form.formState.errors.fbrFixedNotifiedValueOrRetailPrice?.message}
+                      helperText="FBR DI fixedNotifiedValueOrRetailPrice — must be greater than 0 for 3rd Schedule (FBR 0300). Tax on DI uses this amount × rate."
+                      label="Fixed / notified / retail price"
+                    >
+                      <Input
+                        inputMode="decimal"
+                        placeholder="e.g. 2000"
+                        {...form.register("fbrFixedNotifiedValueOrRetailPrice")}
+                      />
+                    </FormField>
+                  ) : null}
                   {requireFbrDi && fbrSaleType.trim() ? (
                     <>
                       {(saleTypeRatesQuery.data?.items?.length ?? 0) > 0 ? (

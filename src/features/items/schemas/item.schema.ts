@@ -16,6 +16,7 @@ export const itemSchema = z.object({
   fbrSaleType: optionalString,
   fbrSroScheduleNo: optionalString,
   fbrSroItemSerialNo: optionalString,
+  fbrFixedNotifiedValueOrRetailPrice: optionalDecimalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,
   incomeAccountId: optionalString,
@@ -30,18 +31,42 @@ export const itemSchema = z.object({
   isActive: z.boolean(),
 });
 
-export function buildItemSchema(requireFbrDi: boolean, requireSro = false) {
+export function buildItemSchema(
+  requireFbrDi: boolean,
+  requireSro = false,
+  requireFixedNotifiedRetail = false,
+) {
   if (!requireFbrDi) return itemSchema;
-  const base = itemSchema.extend({
+  let base = itemSchema.extend({
     hsCodeCategoryId: z.string().min(1, "HS code is required for FBR Digital Invoicing"),
     fbrUom: z.string().trim().min(1, "FBR UoM is required"),
     fbrSaleType: z.string().trim().min(1, "FBR sale type is required"),
   });
-  if (!requireSro) return base;
-  return base.extend({
-    fbrSroScheduleNo: z.string().trim().min(1, "SRO schedule is required for this sale type / scenario"),
-    fbrSroItemSerialNo: z.string().trim().min(1, "SRO item serial is required for this sale type / scenario"),
-  });
+  if (requireSro) {
+    base = base.extend({
+      fbrSroScheduleNo: z
+        .string()
+        .trim()
+        .min(1, "SRO schedule is required for this sale type / scenario"),
+      fbrSroItemSerialNo: z
+        .string()
+        .trim()
+        .min(1, "SRO item serial is required for this sale type / scenario"),
+    });
+  }
+  if (requireFixedNotifiedRetail) {
+    base = base.extend({
+      fbrFixedNotifiedValueOrRetailPrice: z
+        .string()
+        .trim()
+        .min(1, "Fixed / notified / retail price is required for 3rd Schedule Goods")
+        .refine((v) => {
+          const n = Number(v);
+          return Number.isFinite(n) && n > 0;
+        }, "Must be greater than 0 (FBR 0300)"),
+    });
+  }
+  return base;
 }
 
 export type ItemFormInput = z.input<typeof itemSchema>;

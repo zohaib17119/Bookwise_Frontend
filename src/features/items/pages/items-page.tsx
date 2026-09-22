@@ -310,6 +310,9 @@ export function ItemsPage() {
             fbrSaleType: values.fbrSaleType || null,
             fbrSroScheduleNo: values.fbrSroScheduleNo || null,
             fbrSroItemSerialNo: values.fbrSroItemSerialNo || null,
+            fbrFixedNotifiedValueOrRetailPrice: values.fbrFixedNotifiedValueOrRetailPrice?.trim()
+              ? values.fbrFixedNotifiedValueOrRetailPrice.trim()
+              : null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,
