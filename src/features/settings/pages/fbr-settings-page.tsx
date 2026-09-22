@@ -23,6 +23,13 @@ import {
 } from "@/features/settings/utils/fbr-sector-defaults";
 import { normalizeFbrNtnCnicInput } from "@/features/customers/schemas/customer.schema";
 
+type FbrScenarioRequirement = {
+  scenarioId: string;
+  description: string;
+  allowedSaleTypes: string[];
+  sroRequired: boolean;
+};
+
 type FbrConfig = {
   environment: "SANDBOX" | "PRODUCTION";
   isEnabled: boolean;
@@ -38,6 +45,8 @@ type FbrConfig = {
   defaultSaleType?: string | null;
   suggestedScenarioIds?: string[];
   allScenarioIds?: string[];
+  scenarioRequirements?: FbrScenarioRequirement[];
+  currentScenarioRequirement?: FbrScenarioRequirement | null;
   hasSandboxToken?: boolean;
   hasProductionToken?: boolean;
   hasTokenForEnvironment?: boolean;
@@ -102,6 +111,8 @@ const emptyConfig: FbrConfig = {
   defaultSaleType: "",
   suggestedScenarioIds: [],
   allScenarioIds: [...ALL_FBR_SCENARIO_IDS],
+  scenarioRequirements: [],
+  currentScenarioRequirement: null,
   hasSandboxToken: false,
   hasProductionToken: false,
   hasTokenForEnvironment: false,
@@ -174,6 +185,8 @@ export function FbrSettingsPage() {
       allScenarioIds: next.allScenarioIds?.length
         ? next.allScenarioIds
         : [...ALL_FBR_SCENARIO_IDS],
+      scenarioRequirements: next.scenarioRequirements ?? [],
+      currentScenarioRequirement: next.currentScenarioRequirement ?? null,
       hasSandboxToken: Boolean(next.hasSandboxToken),
       hasProductionToken: Boolean(next.hasProductionToken),
       hasTokenForEnvironment: Boolean(next.hasTokenForEnvironment),
@@ -433,16 +446,33 @@ export function FbrSettingsPage() {
             </Select>
           </FormField>
           <FormField
-            helperText={
-              (config.suggestedScenarioIds?.length ?? 0) > 0
+            helperText={(() => {
+              const req =
+                config.currentScenarioRequirement ??
+                config.scenarioRequirements?.find((r) => r.scenarioId === config.defaultScenarioId);
+              if (req) {
+                const sales = req.allowedSaleTypes.slice(0, 3).join("; ");
+                const sro = req.sroRequired ? " SRO schedule + item serial required." : "";
+                return `${req.description}. Allowed sale type(s): ${sales}.${sro}`;
+              }
+              return (config.suggestedScenarioIds?.length ?? 0) > 0
                 ? `Suggested for your activity/sector: ${config.suggestedScenarioIds!.join(", ")}`
-                : "Full SN001–SN028 list. Required for Sandbox posts."
-            }
+                : "Full SN001–SN028 list. Required for Sandbox posts.";
+            })()}
             label="Default scenario ID"
           >
             <Select
               onChange={(event) =>
-                setConfig((current) => ({ ...current, defaultScenarioId: event.target.value }))
+                setConfig((current) => {
+                  const id = event.target.value;
+                  const req =
+                    current.scenarioRequirements?.find((row) => row.scenarioId === id) ?? null;
+                  return {
+                    ...current,
+                    defaultScenarioId: id,
+                    currentScenarioRequirement: req,
+                  };
+                })
               }
               value={config.defaultScenarioId ?? ""}
             >

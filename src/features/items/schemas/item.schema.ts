@@ -14,6 +14,8 @@ export const itemSchema = z.object({
   hsCodeCategoryId: optionalString,
   fbrUom: optionalString,
   fbrSaleType: optionalString,
+  fbrSroScheduleNo: optionalString,
+  fbrSroItemSerialNo: optionalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,
   incomeAccountId: optionalString,
@@ -28,12 +30,17 @@ export const itemSchema = z.object({
   isActive: z.boolean(),
 });
 
-export function buildItemSchema(requireFbrDi: boolean) {
+export function buildItemSchema(requireFbrDi: boolean, requireSro = false) {
   if (!requireFbrDi) return itemSchema;
-  return itemSchema.extend({
+  const base = itemSchema.extend({
     hsCodeCategoryId: z.string().min(1, "HS code is required for FBR Digital Invoicing"),
     fbrUom: z.string().trim().min(1, "FBR UoM is required"),
     fbrSaleType: z.string().trim().min(1, "FBR sale type is required"),
+  });
+  if (!requireSro) return base;
+  return base.extend({
+    fbrSroScheduleNo: z.string().trim().min(1, "SRO schedule is required for this sale type / scenario"),
+    fbrSroItemSerialNo: z.string().trim().min(1, "SRO item serial is required for this sale type / scenario"),
   });
 }
 

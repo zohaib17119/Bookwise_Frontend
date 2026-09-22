@@ -69,6 +69,71 @@ export async function listFbrHsUoms(
   return data ?? { items: [], mocked: false };
 }
 
+export type FbrSaleTypeRate = { rateId: number; rateDescription: string };
+export type FbrSroSchedule = { sroId: number; description: string };
+export type FbrSroItem = { sroItemId: number; serialNo: string; description: string };
+export type FbrScenarioRequirement = {
+  scenarioId: string;
+  description: string;
+  allowedSaleTypes: string[];
+  sroRequired: boolean;
+};
+
+export async function listFbrSaleTypeRates(
+  companyId: string,
+  params: { saleType: string; date?: string },
+) {
+  const { data } = await apiClient.get<{
+    items: FbrSaleTypeRate[];
+    mocked?: boolean;
+    transTypeId?: number;
+    provinceCode?: number;
+    scenarioRequirement?: FbrScenarioRequirement | null;
+    scenarioRequirements?: FbrScenarioRequirement[];
+  }>(`/companies/${companyId}/fbr/reference/sale-type-rates`, { params });
+  return (
+    data ?? {
+      items: [],
+      mocked: false,
+      scenarioRequirement: null,
+      scenarioRequirements: [],
+    }
+  );
+}
+
+export async function listFbrSroSchedules(
+  companyId: string,
+  params: { rateId: number; date?: string },
+) {
+  const { data } = await apiClient.get<{
+    items: FbrSroSchedule[];
+    mocked?: boolean;
+    applicable?: boolean;
+    required?: boolean;
+    scenarioForcesSro?: boolean;
+  }>(`/companies/${companyId}/fbr/reference/sro-schedules`, { params });
+  return (
+    data ?? {
+      items: [],
+      mocked: false,
+      applicable: false,
+      required: false,
+      scenarioForcesSro: false,
+    }
+  );
+}
+
+export async function listFbrSroItems(
+  companyId: string,
+  params: { sroId: number; date?: string },
+) {
+  const { data } = await apiClient.get<{ items: FbrSroItem[]; mocked?: boolean }>(
+    `/companies/${companyId}/fbr/reference/sro-items`,
+    { params },
+  );
+  return data ?? { items: [], mocked: false };
+}
+
 export async function adoptFbrHsCode(
   companyId: string,
   payload: { hsCode: string; description?: string },

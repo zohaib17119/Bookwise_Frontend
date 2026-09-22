@@ -308,6 +308,8 @@ export function ItemsPage() {
             hsCodeCategoryId: values.hsCodeCategoryId || null,
             fbrUom: values.fbrUom || null,
             fbrSaleType: values.fbrSaleType || null,
+            fbrSroScheduleNo: values.fbrSroScheduleNo || null,
+            fbrSroItemSerialNo: values.fbrSroItemSerialNo || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

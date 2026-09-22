@@ -15,6 +15,8 @@ export interface Item {
   hsCodeCategoryId?: string | null;
   fbrUom?: string | null;
   fbrSaleType?: string | null;
+  fbrSroScheduleNo?: string | null;
+  fbrSroItemSerialNo?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;
@@ -49,6 +51,8 @@ export interface ItemPayload {
   hsCodeCategoryId?: string | null;
   fbrUom?: string | null;
   fbrSaleType?: string | null;
+  fbrSroScheduleNo?: string | null;
+  fbrSroItemSerialNo?: string | null;
   salesPrice?: string | null;
   purchaseCost?: string | null;
   incomeAccountId?: string | null;

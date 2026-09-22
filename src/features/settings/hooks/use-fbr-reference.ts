@@ -6,6 +6,9 @@ import {
   listFbrRefProvinces,
   listFbrRefSaleTypes,
   listFbrRefUoms,
+  listFbrSaleTypeRates,
+  listFbrSroItems,
+  listFbrSroSchedules,
   syncFbrReference,
 } from "@/features/settings/api/fbr-reference.api";
 
@@ -55,6 +58,45 @@ export function useFbrHsUoms(
     queryKey: ["companies", companyId, "fbr-ref", "hs-uom", hsCode, annexureId ?? null],
     queryFn: () => listFbrHsUoms(companyId!, { hsCode, annexureId }),
     enabled: Boolean(companyId) && Boolean(hsCode.trim()) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useFbrSaleTypeRates(
+  companyId: string | undefined,
+  saleType: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["companies", companyId, "fbr-ref", "sale-type-rates", saleType],
+    queryFn: () => listFbrSaleTypeRates(companyId!, { saleType }),
+    enabled: Boolean(companyId) && Boolean(saleType.trim()) && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useFbrSroSchedules(
+  companyId: string | undefined,
+  rateId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["companies", companyId, "fbr-ref", "sro-schedules", rateId],
+    queryFn: () => listFbrSroSchedules(companyId!, { rateId: rateId! }),
+    enabled: Boolean(companyId) && rateId != null && rateId > 0 && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useFbrSroItems(
+  companyId: string | undefined,
+  sroId: number | null,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ["companies", companyId, "fbr-ref", "sro-items", sroId],
+    queryFn: () => listFbrSroItems(companyId!, { sroId: sroId! }),
+    enabled: Boolean(companyId) && sroId != null && sroId > 0 && enabled,
     staleTime: 60_000,
   });
 }
