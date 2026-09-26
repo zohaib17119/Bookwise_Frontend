@@ -19,7 +19,7 @@ import type { ApiError } from "@/lib/api/types";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
 import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
-import { exclToIncl, inclToExcl } from "@/features/shared/utils/document-calculations";
+import { exclToIncl, inclToExcl, isThirdScheduleSaleType, taxFromInclusiveRetailPrice } from "@/features/shared/utils/document-calculations";
 import { toEditableDecimalString } from "@/features/shared/utils/decimal-string";
 
 const DOCUMENT_TERMS_DAYS = [0, 15, 30, 45, 60, 90] as const;
@@ -133,9 +133,17 @@ export default function InvoiceEditorPage({
       } else {
         form.setValue(`lines.${index}.taxRateId`, "", setLineValueOptions);
       }
+      form.setValue(`lines.${index}.fbrSaleType`, item.fbrSaleType ?? "", setLineValueOptions);
+      form.setValue(
+        `lines.${index}.fbrFixedNotifiedValueOrRetailPrice`,
+        item.fbrFixedNotifiedValueOrRetailPrice ?? "",
+        setLineValueOptions,
+      );
     } else {
       // Clear fields if no item selected
       form.setValue(`lines.${index}.itemId`, itemId, setLineValueOptions);
+      form.setValue(`lines.${index}.fbrSaleType`, "", setLineValueOptions);
+      form.setValue(`lines.${index}.fbrFixedNotifiedValueOrRetailPrice`, "", setLineValueOptions);
     }
   };
 
@@ -157,7 +165,12 @@ export default function InvoiceEditorPage({
         taxRate = Number(line.taxRate);
       }
 
-      totalTax += lineAmount * (taxRate / 100);
+      const retail = Number(line.fbrFixedNotifiedValueOrRetailPrice) || 0;
+      if (isThirdScheduleSaleType(line.fbrSaleType) && retail > 0 && taxRate > 0) {
+        totalTax += taxFromInclusiveRetailPrice(retail, taxRate) * (qty || 1);
+      } else {
+        totalTax += lineAmount * (taxRate / 100);
+      }
     });
 
     let discountAmount = 0;
@@ -300,6 +313,8 @@ export default function InvoiceEditorPage({
         taxCodeId: "",
         taxRate: "",
         itemName: "",
+        fbrSaleType: "",
+        fbrFixedNotifiedValueOrRetailPrice: "",
       },
     ]);
   };
@@ -324,6 +339,8 @@ export default function InvoiceEditorPage({
         taxCodeId: "",
         taxRate: "",
         itemName: "",
+        fbrSaleType: "",
+        fbrFixedNotifiedValueOrRetailPrice: "",
       },
     ]);
   };
@@ -578,10 +595,20 @@ export default function InvoiceEditorPage({
                   ? getTaxRateFromCode(line.taxRateId)
                   : Number(line.taxRate || 0);
                 const unitEx = Number(line.unitPrice) || 0;
-                const unitIncl = exclToIncl(unitEx, lineTaxRate);
                 const qty = Number(line.quantity) || 0;
                 const lineExAmount = qty * unitEx;
-                const lineInclAmount = exclToIncl(lineExAmount, lineTaxRate);
+                const retailUnit = Number(line.fbrFixedNotifiedValueOrRetailPrice) || 0;
+                const thirdSchedule =
+                  isThirdScheduleSaleType(line.fbrSaleType) && retailUnit > 0 && lineTaxRate > 0;
+                const lineTaxAmount = thirdSchedule
+                  ? taxFromInclusiveRetailPrice(retailUnit, lineTaxRate) * (qty || 1)
+                  : lineExAmount * (lineTaxRate / 100);
+                const unitIncl = thirdSchedule
+                  ? unitEx + (qty > 0 ? lineTaxAmount / qty : 0)
+                  : exclToIncl(unitEx, lineTaxRate);
+                const lineInclAmount = thirdSchedule
+                  ? lineExAmount + lineTaxAmount
+                  : exclToIncl(lineExAmount, lineTaxRate);
 
                 return (
                 <tr key={index}>
@@ -616,6 +643,12 @@ export default function InvoiceEditorPage({
                       placeholder="Select Item"
                       value={line.itemId || ""}
                     />
+                    {thirdSchedule ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Retail (incl. tax): {formatCurrency(formatMoneyAmount(retailUnit), currency)}
+                        {" · "}tax on MRP, not sell price
+                      </p>
+                    ) : null}
                   </td>
 
                   <td className="border p-2">

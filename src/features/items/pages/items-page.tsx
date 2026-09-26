@@ -313,6 +313,9 @@ export function ItemsPage() {
             fbrFixedNotifiedValueOrRetailPrice: values.fbrFixedNotifiedValueOrRetailPrice?.trim()
               ? values.fbrFixedNotifiedValueOrRetailPrice.trim()
               : null,
+            fbrQtyPerSellingUnit: values.fbrQtyPerSellingUnit?.trim()
+              ? values.fbrQtyPerSellingUnit.trim()
+              : null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",
             incomeAccountId: values.incomeAccountId || undefined,

@@ -12,6 +12,7 @@ export const investorFormSchema = z.object({
 export type InvestorFormValues = z.infer<typeof investorFormSchema>;
 
 export const investmentFormSchema = z.object({
+  movementType: z.enum(["CONTRIBUTION", "WITHDRAWAL"]),
   investmentDate: z.string().trim().min(1, "Date is required"),
   amount: z
     .string()
@@ -23,3 +24,9 @@ export const investmentFormSchema = z.object({
 });
 
 export type InvestmentFormValues = z.infer<typeof investmentFormSchema>;
+
+export const investmentEditFormSchema = investmentFormSchema.extend({
+  updateReason: z.string().trim().min(1, "Update reason is required").max(500),
+});
+
+export type InvestmentEditFormValues = z.infer<typeof investmentEditFormSchema>;

@@ -146,6 +146,7 @@ export function ItemFormDrawer({
       fbrSroScheduleNo: "",
       fbrSroItemSerialNo: "",
       fbrFixedNotifiedValueOrRetailPrice: "",
+      fbrQtyPerSellingUnit: "",
       salesPrice: "0",
       purchaseCost: "0",
       incomeAccountId: "",
@@ -230,9 +231,17 @@ export function ItemFormDrawer({
   const retailPriceRequired =
     requireFbrDi && fbrSaleType.trim().toLowerCase() === "3rd schedule goods";
 
+  const selectedUnitName = form.watch("unitName") ?? "";
+  const selectedFbrUom = form.watch("fbrUom") ?? "";
+  const qtyFactorRequired =
+    requireFbrDi &&
+    Boolean(selectedUnitName.trim()) &&
+    Boolean(selectedFbrUom.trim()) &&
+    selectedUnitName.trim().toLowerCase() !== selectedFbrUom.trim().toLowerCase();
+
   const schema = useMemo(
-    () => buildItemSchema(requireFbrDi, sroRequired, retailPriceRequired),
-    [requireFbrDi, sroRequired, retailPriceRequired],
+    () => buildItemSchema(requireFbrDi, sroRequired, retailPriceRequired, qtyFactorRequired),
+    [requireFbrDi, sroRequired, retailPriceRequired, qtyFactorRequired],
   );
 
   useEffect(() => {
@@ -245,6 +254,13 @@ export function ItemFormDrawer({
       form.setValue("fbrFixedNotifiedValueOrRetailPrice", "");
     }
   }, [form, retailPriceRequired]);
+
+  useEffect(() => {
+    form.clearErrors(["fbrQtyPerSellingUnit"]);
+    if (!qtyFactorRequired) {
+      form.setValue("fbrQtyPerSellingUnit", "");
+    }
+  }, [form, qtyFactorRequired]);
 
   const hasAccountOverrides = Boolean(
     item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
@@ -273,6 +289,7 @@ export function ItemFormDrawer({
       fbrSroScheduleNo: item?.fbrSroScheduleNo ?? "",
       fbrSroItemSerialNo: item?.fbrSroItemSerialNo ?? "",
       fbrFixedNotifiedValueOrRetailPrice: item?.fbrFixedNotifiedValueOrRetailPrice ?? "",
+      fbrQtyPerSellingUnit: item?.fbrQtyPerSellingUnit ?? "",
       salesPrice: item?.salesPrice ?? "0",
       purchaseCost: item?.purchaseCost ?? "0",
       incomeAccountId: item?.incomeAccountId ?? "",
@@ -536,6 +553,9 @@ export function ItemFormDrawer({
                 if (!retailPriceRequired) {
                   payload.fbrFixedNotifiedValueOrRetailPrice = "";
                 }
+                if (!qtyFactorRequired) {
+                  payload.fbrQtyPerSellingUnit = "";
+                }
                 await onSubmit(payload);
               })}
               type="button"
@@ -652,6 +672,19 @@ export function ItemFormDrawer({
                         ))}
                     </Select>
                   </FormField>
+                  {qtyFactorRequired ? (
+                    <FormField
+                      error={form.formState.errors.fbrQtyPerSellingUnit?.message}
+                      helperText={`How many ${selectedFbrUom || "FBR UoM"} equal 1 ${selectedUnitName || "selling unit"}? Example: 1 pc = 0.20 KG → enter 0.20. Invoice keeps selling qty; FBR DI gets qty × this factor.`}
+                      label="FBR qty per 1 selling unit"
+                    >
+                      <Input
+                        inputMode="decimal"
+                        placeholder="e.g. 0.20"
+                        {...form.register("fbrQtyPerSellingUnit")}
+                      />
+                    </FormField>
+                  ) : null}
                   <FormField
                     error={form.formState.errors.fbrSaleType?.message}
                     helperText="Default FBR saleType for invoice lines."
@@ -681,7 +714,7 @@ export function ItemFormDrawer({
                   {retailPriceRequired ? (
                     <FormField
                       error={form.formState.errors.fbrFixedNotifiedValueOrRetailPrice?.message}
-                      helperText="FBR DI fixedNotifiedValueOrRetailPrice — must be greater than 0 for 3rd Schedule (FBR 0300). Tax on DI uses this amount × rate."
+                      helperText="Tax-inclusive MRP / notified retail (FBR fixedNotifiedValueOrRetailPrice). Invoice tax is extracted from this amount, not the sell price."
                       label="Fixed / notified / retail price"
                     >
                       <Input

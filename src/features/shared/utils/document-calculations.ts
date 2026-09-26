@@ -50,6 +50,22 @@ export function inclToExcl(incl: number, ratePercent: number) {
   return incl / (1 + ratePercent / 100);
 }
 
+/**
+ * Tax extracted from tax-inclusive retail (3rd Schedule MRP).
+ * Example: 118 @ 18% → 18.
+ */
+export function taxFromInclusiveRetailPrice(inclusive: number, ratePercent: number): number {
+  const incl = Math.abs(Number(inclusive));
+  const rate = Number(ratePercent);
+  if (!Number.isFinite(incl) || incl <= 0) return 0;
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return money2((incl * rate) / (100 + rate));
+}
+
+export function isThirdScheduleSaleType(saleType: string | null | undefined): boolean {
+  return (saleType ?? "").trim().toLowerCase() === "3rd schedule goods";
+}
+
 export function getLineDiscountedAmount(line: DocumentLineInput) {
   const baseAmount = getLineBaseAmount(line);
   const discount = getDiscountAmount(

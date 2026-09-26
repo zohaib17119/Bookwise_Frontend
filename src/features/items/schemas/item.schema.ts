@@ -17,6 +17,7 @@ export const itemSchema = z.object({
   fbrSroScheduleNo: optionalString,
   fbrSroItemSerialNo: optionalString,
   fbrFixedNotifiedValueOrRetailPrice: optionalDecimalString,
+  fbrQtyPerSellingUnit: optionalDecimalString,
   salesPrice: optionalDecimalString,
   purchaseCost: optionalDecimalString,
   incomeAccountId: optionalString,
@@ -35,6 +36,7 @@ export function buildItemSchema(
   requireFbrDi: boolean,
   requireSro = false,
   requireFixedNotifiedRetail = false,
+  requireQtyFactor = false,
 ) {
   if (!requireFbrDi) return itemSchema;
   const withDi = itemSchema.extend({
@@ -54,16 +56,28 @@ export function buildItemSchema(
           .min(1, "SRO item serial is required for this sale type / scenario"),
       })
     : withDi;
-  if (!requireFixedNotifiedRetail) return withSro;
-  return withSro.extend({
-    fbrFixedNotifiedValueOrRetailPrice: z
+  const withRetail = requireFixedNotifiedRetail
+    ? withSro.extend({
+        fbrFixedNotifiedValueOrRetailPrice: z
+          .string()
+          .trim()
+          .min(1, "Fixed / notified / retail price is required for 3rd Schedule Goods")
+          .refine((v) => {
+            const n = Number(v);
+            return Number.isFinite(n) && n > 0;
+          }, "Must be greater than 0 (FBR 0300)"),
+      })
+    : withSro;
+  if (!requireQtyFactor) return withRetail;
+  return withRetail.extend({
+    fbrQtyPerSellingUnit: z
       .string()
       .trim()
-      .min(1, "Fixed / notified / retail price is required for 3rd Schedule Goods")
+      .min(1, "FBR quantity per selling unit is required when UoM differs")
       .refine((v) => {
         const n = Number(v);
         return Number.isFinite(n) && n > 0;
-      }, "Must be greater than 0 (FBR 0300)"),
+      }, "Must be greater than 0 (e.g. 0.20 KG per piece)"),
   });
 }
 

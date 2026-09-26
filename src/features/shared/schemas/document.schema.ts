@@ -62,6 +62,8 @@ export const lineItemSchema = z.object({
   itemName: z.string().max(500).optional().or(z.literal("")),
   unitName: z.string().max(50).optional().or(z.literal("")),
   expenseAccountId: optionalString,
+  fbrSaleType: optionalString,
+  fbrFixedNotifiedValueOrRetailPrice: moneyStringSchema,
 });
 
 export const documentBaseSchema = z.object({

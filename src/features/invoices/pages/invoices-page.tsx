@@ -217,6 +217,8 @@ export function InvoicesPage() {
         const status = invoice.status ?? "";
         if (status === "PAID") return <DocumentStatusBadge status="PAID" />;
         if (status === "PARTIALLY_PAID") return <DocumentStatusBadge status="PARTIALLY_PAID" />;
+        if (status === "CANCELLED") return <DocumentStatusBadge status="CANCELLED" />;
+        if (status === "VOID") return <DocumentStatusBadge status="VOID" />;
         if (status === "ISSUED" || status === "OVERDUE") {
           return (
             <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.08em] text-amber-800">
@@ -224,7 +226,14 @@ export function InvoicesPage() {
             </span>
           );
         }
-        return <span className="text-muted-foreground"><DocumentStatusBadge status={"DRAFT"} /></span>;
+        if (status === "DRAFT") {
+          return (
+            <span className="text-muted-foreground">
+              <DocumentStatusBadge status="DRAFT" />
+            </span>
+          );
+        }
+        return <DocumentStatusBadge status={status} />;
       },
     },
     zatca: {

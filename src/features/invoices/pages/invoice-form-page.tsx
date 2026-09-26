@@ -214,6 +214,11 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                   taxRateId,
                   taxRate: line.taxRate != null ? toEditableDecimalString(line.taxRate) : "",
                   itemName: line.itemName ?? "",
+                  fbrSaleType: line.fbrSaleType ?? "",
+                  fbrFixedNotifiedValueOrRetailPrice:
+                    line.fbrFixedNotifiedValueOrRetailPrice != null
+                      ? toEditableDecimalString(line.fbrFixedNotifiedValueOrRetailPrice)
+                      : "",
                 };
               }) ?? [],
           }
@@ -263,6 +268,8 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
                 taxRateId: "",
                 taxRate: "",
                 itemName: "",
+                fbrSaleType: "",
+                fbrFixedNotifiedValueOrRetailPrice: "",
               },
             ],
           },
@@ -318,6 +325,12 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
     form.setValue(`lines.${lineIndex}.description`, item.description || item.name, lineOpts);
     form.setValue(`lines.${lineIndex}.unitPrice`, toEditableDecimalString(price), lineOpts);
     form.setValue(`lines.${lineIndex}.taxRateId`, item.taxRateId ?? "", lineOpts);
+    form.setValue(`lines.${lineIndex}.fbrSaleType`, item.fbrSaleType ?? "", lineOpts);
+    form.setValue(
+      `lines.${lineIndex}.fbrFixedNotifiedValueOrRetailPrice`,
+      item.fbrFixedNotifiedValueOrRetailPrice ?? "",
+      lineOpts,
+    );
   };
 
   if (!canManage) {

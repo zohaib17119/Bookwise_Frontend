@@ -6,6 +6,7 @@ import type {
   InvestorInvestment,
   InvestorListParams,
   InvestorPayload,
+  UpdateInvestmentPayload,
 } from "@/features/investors/types/investor.types";
 
 function buildQuery(params: InvestorListParams) {
@@ -85,6 +86,19 @@ export async function createInvestorInvestment(
 ) {
   const { data } = await apiClient.post<InvestorInvestment>(
     `/companies/${companyId}/investors/${investorId}/investments`,
+    payload,
+  );
+  return data;
+}
+
+export async function updateInvestorInvestment(
+  companyId: string,
+  investorId: string,
+  investmentId: string,
+  payload: UpdateInvestmentPayload,
+) {
+  const { data } = await apiClient.patch<InvestorInvestment>(
+    `/companies/${companyId}/investors/${investorId}/investments/${investmentId}`,
     payload,
   );
   return data;

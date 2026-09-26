@@ -8,11 +8,13 @@ import {
   getInvestorsPaginated,
   getNextInvestorCode,
   updateInvestor,
+  updateInvestorInvestment,
 } from "@/features/investors/api/investors.api";
 import type {
   CreateInvestmentPayload,
   InvestorListParams,
   InvestorPayload,
+  UpdateInvestmentPayload,
 } from "@/features/investors/types/investor.types";
 import { queryClient } from "@/lib/query/query-client";
 
@@ -107,6 +109,24 @@ export function useCreateInvestorInvestment(
   return useMutation({
     mutationFn: (payload: CreateInvestmentPayload) =>
       createInvestorInvestment(companyId!, investorId!, payload),
+    onSuccess: async () => {
+      if (companyId) await invalidateInvestorQueries(companyId, investorId ?? undefined);
+    },
+  });
+}
+
+export function useUpdateInvestorInvestment(
+  companyId: string | undefined,
+  investorId: string | null,
+) {
+  return useMutation({
+    mutationFn: ({
+      investmentId,
+      payload,
+    }: {
+      investmentId: string;
+      payload: UpdateInvestmentPayload;
+    }) => updateInvestorInvestment(companyId!, investorId!, investmentId, payload),
     onSuccess: async () => {
       if (companyId) await invalidateInvestorQueries(companyId, investorId ?? undefined);
     },

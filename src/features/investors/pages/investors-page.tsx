@@ -78,12 +78,21 @@ export function InvestorsPage() {
     },
     {
       key: "total",
-      header: "Total invested",
-      render: (investor) => formatCurrency(investor.totalInvested, currency),
+      header: "Net invested",
+      render: (investor) => (
+        <div>
+          <p className="font-medium">{formatCurrency(investor.netInvested ?? investor.totalInvested, currency)}</p>
+          <p className="text-xs text-muted-foreground">
+            In {formatCurrency(investor.totalInvested, currency)}
+            {" · "}
+            Out {formatCurrency(investor.totalWithdrawn ?? "0", currency)}
+          </p>
+        </div>
+      ),
     },
     {
       key: "count",
-      header: "Investments",
+      header: "Records",
       render: (investor) => String(investor.investmentCount),
     },
     {

@@ -35,6 +35,7 @@ export interface InvoiceLine extends DocumentLineInput {
   fbrHsCode?: string | null;
   fbrUom?: string | null;
   fbrSaleType?: string | null;
+  fbrFixedNotifiedValueOrRetailPrice?: string | null;
 }
 
 export type InvoiceDocumentType = "TAX_INVOICE" | "CREDIT_NOTE" | "DEBIT_NOTE";
