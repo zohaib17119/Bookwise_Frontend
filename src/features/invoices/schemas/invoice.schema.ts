@@ -123,7 +123,13 @@ export const invoiceSchema = documentBaseSchema
     whtType: z.enum(["INCOME", "SALES_TAX"]).optional().or(z.literal("")),
     whtRate: whtRateSchema,
     whtBase: whtBaseSchema,
-    lines: z.array(lineItemSchema).min(1, "At least one line item is required"),
+    lines: z
+      .array(
+        lineItemSchema.extend({
+          description: z.string().trim().max(500),
+        }),
+      )
+      .min(1, "At least one line item is required"),
   })
   .superRefine(refineDualWht);
 

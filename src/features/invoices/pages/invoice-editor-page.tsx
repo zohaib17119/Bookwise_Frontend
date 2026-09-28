@@ -119,7 +119,7 @@ export default function InvoiceEditorPage({
     if (item) {
       // Auto-populate from item
       form.setValue(`lines.${index}.itemId`, itemId, setLineValueOptions);
-      form.setValue(`lines.${index}.description`, item.description || item.name, setLineValueOptions);
+      form.setValue(`lines.${index}.description`, item.description?.trim() || "", setLineValueOptions);
       form.setValue(
         `lines.${index}.unitPrice`,
         String(documentItemPrice(item.salesPrice)),

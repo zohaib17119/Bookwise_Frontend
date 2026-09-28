@@ -322,7 +322,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
     );
     form.setValue(`lines.${lineIndex}.itemId`, item.id, lineOpts);
     form.setValue(`lines.${lineIndex}.itemName`, item.name || "", lineOpts);
-    form.setValue(`lines.${lineIndex}.description`, item.description || item.name, lineOpts);
+    form.setValue(`lines.${lineIndex}.description`, item.description?.trim() || "", lineOpts);
     form.setValue(`lines.${lineIndex}.unitPrice`, toEditableDecimalString(price), lineOpts);
     form.setValue(`lines.${lineIndex}.taxRateId`, item.taxRateId ?? "", lineOpts);
     form.setValue(`lines.${lineIndex}.fbrSaleType`, item.fbrSaleType ?? "", lineOpts);
