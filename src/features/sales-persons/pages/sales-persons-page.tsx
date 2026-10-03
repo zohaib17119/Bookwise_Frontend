@@ -177,7 +177,7 @@ export function SalesPersonsPage() {
 
       <ConfirmDeleteDialog
         description={`Delete sales person “${deleteTarget?.name ?? ""}”? Existing invoices keep the historical name.`}
-        isOpen={Boolean(deleteTarget)}
+        open={Boolean(deleteTarget)}
         isPending={deleteMutation.isPending}
         onClose={() => {
           setDeleteTarget(null);
