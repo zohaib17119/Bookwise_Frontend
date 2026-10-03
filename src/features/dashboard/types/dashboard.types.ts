@@ -114,6 +114,7 @@ export interface DashboardOverview {
 export interface DashboardQueryParams {
   fromDate?: string;
   toDate?: string;
+  salesPersonIds?: string[];
 }
 
 export type DashboardPeriodPreset = 7 | 30 | 90;

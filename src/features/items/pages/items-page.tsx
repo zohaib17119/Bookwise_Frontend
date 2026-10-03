@@ -24,6 +24,7 @@ import {
   useUpdateItem,
 } from "@/features/items/hooks/use-items";
 import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import { useItemCategories } from "@/features/items/hooks/use-item-categories";
 import { ItemsModuleNav } from "@/features/items/components/items-module-nav";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
@@ -58,6 +59,7 @@ export function ItemsPage() {
   const vendorsQuery = useVendorOptions(companyId);
   const taxRatesQuery = useTaxRates(companyId);
   const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
+  const itemCategoriesQuery = useItemCategories(companyId);
   const createMutation = useCreateItem(companyId);
   const updateMutation = useUpdateItem(companyId, selectedItem?.id ?? null);
   const deleteMutation = useDeleteItem(companyId);
@@ -118,6 +120,11 @@ export function ItemsPage() {
           {item.taxable ? <BadgeDollarSign className="h-4 w-4 text-primary" /> : null}
         </div>
       ),
+    },
+    {
+      key: "category",
+      header: "Category",
+      render: (item) => item.itemCategoryName || "—",
     },
     {
       key: "pricing",
@@ -290,6 +297,7 @@ export function ItemsPage() {
         baseCurrencyCode={getCompanyBaseCurrency(company)}
         error={activeMutation.error}
         hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
+        itemCategories={itemCategoriesQuery.data ?? []}
         isPending={activeMutation.isPending}
         item={selectedItem}
         mode={drawerMode}
@@ -305,6 +313,7 @@ export function ItemsPage() {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
+            itemCategoryId: values.itemCategoryId || null,
             hsCodeCategoryId: values.hsCodeCategoryId || null,
             fbrUom: values.fbrUom || null,
             fbrSaleType: values.fbrSaleType || null,

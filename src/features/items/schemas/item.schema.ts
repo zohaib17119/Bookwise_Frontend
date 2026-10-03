@@ -11,6 +11,7 @@ export const itemSchema = z.object({
   sku: optionalString,
   barcode: optionalString,
   unitName: optionalString,
+  itemCategoryId: optionalString,
   hsCodeCategoryId: optionalString,
   fbrUom: optionalString,
   fbrSaleType: optionalString,

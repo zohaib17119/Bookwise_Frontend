@@ -33,6 +33,7 @@ import {
   getPeriodRangeFromPreset,
   type DashboardQueryParams,
 } from "@/features/dashboard/types/dashboard.types";
+import { useSalesPersons } from "@/features/sales-persons/hooks/use-sales-persons";
 import { useLowStockCount } from "@/features/inventory/hooks/use-inventory";
 import { taxBalanceHint } from "@/features/shared/utils/wht-labels";
 import { formatCurrency, formatNumber, formatPercent, formatShortDateRange } from "@/lib/utils/format";
@@ -41,13 +42,21 @@ export function DashboardPage() {
   const { companyId, company, currency, permissions } = useActiveCompany();
   const user = useAuthStore((state) => state.user);
   const [dateRange, setDateRange] = useState<DashboardQueryParams>(() => getPeriodRangeFromPreset(30));
+  const [selectedSalesPersonIds, setSelectedSalesPersonIds] = useState<string[]>([]);
   const [lowStockAlertDismissed, setLowStockAlertDismissed] = useState(false);
   const [shortageAlertDismissed, setShortageAlertDismissed] = useState(false);
   const [cashPanelOpen, setCashPanelOpen] = useState(false);
   const patchAccount = usePatchAccount(companyId);
   const canManageAccounts = canManageEntity(permissions, "accounts");
+  const salesPersonsQuery = useSalesPersons(companyId);
 
-  const periodParams = dateRange;
+  const periodParams = useMemo(
+    () => ({
+      ...dateRange,
+      salesPersonIds: selectedSalesPersonIds.length ? selectedSalesPersonIds : undefined,
+    }),
+    [dateRange, selectedSalesPersonIds],
+  );
   const periodLabel = useMemo(() => {
     if (!dateRange.fromDate || !dateRange.toDate) return "";
     return formatShortDateRange(dateRange.fromDate, dateRange.toDate);
@@ -97,8 +106,11 @@ export function DashboardPage() {
         fromDate={dashboard?.period.fromDate ?? periodParams.fromDate ?? ""}
         onFromDateChange={(value) => setDateRange((prev) => ({ ...prev, fromDate: value }))}
         onToDateChange={(value) => setDateRange((prev) => ({ ...prev, toDate: value }))}
+        onSalesPersonIdsChange={setSelectedSalesPersonIds}
         previousFromDate={dashboard?.period.previousFromDate ?? ""}
         previousToDate={dashboard?.period.previousToDate ?? ""}
+        salesPersons={salesPersonsQuery.data ?? []}
+        selectedSalesPersonIds={selectedSalesPersonIds}
         toDate={dashboard?.period.toDate ?? periodParams.toDate ?? ""}
         userName={user?.fullName ?? user?.name}
       />

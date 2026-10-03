@@ -49,9 +49,11 @@ import { DebitNotesPage } from "@/features/debitNotes/pages/debit-notes-page";
 import { InvoiceDetailPage } from "@/features/invoices/pages/invoice-detail-page";
 import { InvoiceFormPage } from "@/features/invoices/pages/invoice-form-page";
 import { InvoicesPage } from "@/features/invoices/pages/invoices-page";
+import { SalesPersonsPage } from "@/features/sales-persons/pages/sales-persons-page";
 import { AcceptInvitePage } from "@/features/invites/pages/accept-invite-page";
 import { ItemsPage } from "@/features/items/pages/items-page";
 import { HsCodesPage } from "@/features/items/pages/hs-codes-page";
+import { ItemCategoriesPage } from "@/features/items/pages/item-categories-page";
 import { JournalDetailPage } from "@/features/journals/pages/journal-detail-page";
 import { JournalFormPage } from "@/features/journals/pages/journal-form-page";
 import { JournalsPage } from "@/features/journals/pages/journals-page";
@@ -142,12 +144,14 @@ const router = createBrowserRouter([
                   { path: "investors/:investorId", element: <InvestorDetailPage /> },
                   { path: "vendors", element: <VendorsPage /> },
                   { path: "items", element: <ItemsPage /> },
+                  { path: "items/categories", element: <ItemCategoriesPage /> },
                   { path: "items/hs-codes", element: <HsCodesPage /> },
                   { path: "estimates", element: <EstimatesPage /> },
                   { path: "estimates/new", element: <EstimateFormPage mode="create" /> },
                   { path: "estimates/:estimateId", element: <EstimateDetailPage /> },
                   { path: "estimates/:estimateId/edit", element: <EstimateFormPage mode="edit" /> },
                   { path: "invoices", element: <InvoicesPage /> },
+                  { path: "invoices/sales-persons", element: <SalesPersonsPage /> },
                   { path: "invoices/new", element: <InvoiceFormPage mode="create" /> },
                   { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
                   { path: "invoices/:invoiceId/edit", element: <InvoiceFormPage mode="edit" /> },

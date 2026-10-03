@@ -19,6 +19,12 @@ import type { ApiError } from "@/lib/api/types";
 import { formatCurrency, formatMoneyAmount } from "@/lib/utils/format";
 import { previewDualNetSettlement, previewWhtAmount } from "@/features/shared/utils/withholding-tax-preview";
 import { buildContactPersonName } from "@/features/invoices/utils/contact-person";
+import {
+  useCreateSalesPerson,
+  useSalesPersons,
+} from "@/features/sales-persons/hooks/use-sales-persons";
+import { CreateEditDrawer } from "@/components/shared/create-edit-drawer";
+import { FormField } from "@/components/shared/form-field";
 import { exclToIncl, inclToExcl, isThirdScheduleSaleType, taxFromInclusiveRetailPrice } from "@/features/shared/utils/document-calculations";
 import { toEditableDecimalString } from "@/features/shared/utils/decimal-string";
 
@@ -61,6 +67,54 @@ export default function InvoiceEditorPage({
   submitError?: ApiError | null;
 }) {
   const watchedCustomerId = form.watch("customerId");
+  const watchedSalesPersonId = form.watch("salesPersonId");
+  const [salesPersonModalOpen, setSalesPersonModalOpen] = useState(false);
+  const [newSalesPersonName, setNewSalesPersonName] = useState("");
+  const [salesPersonModalError, setSalesPersonModalError] = useState<string | null>(null);
+  const salesPersonsQuery = useSalesPersons(companyId);
+  const createSalesPersonMutation = useCreateSalesPerson(companyId);
+  const ADD_NEW_SALES_PERSON = "__add_new_sales_person__";
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    const current = form.getValues("salesPersonId");
+    if (current) return;
+    const defaultSp = (salesPersonsQuery.data ?? []).find((sp) => sp.isDefault);
+    if (defaultSp) {
+      form.setValue("salesPersonId", defaultSp.id, { shouldValidate: true });
+    }
+  }, [form, mode, salesPersonsQuery.data]);
+
+  const handleSalesPersonSelect = (value: string) => {
+    if (value === ADD_NEW_SALES_PERSON) {
+      setSalesPersonModalOpen(true);
+      setNewSalesPersonName("");
+      setSalesPersonModalError(null);
+      return;
+    }
+    form.setValue("salesPersonId", value, { shouldValidate: true });
+  };
+
+  const handleCreateSalesPerson = async () => {
+    const name = newSalesPersonName.trim();
+    if (!name) {
+      setSalesPersonModalError("Name is required");
+      return;
+    }
+    try {
+      const created = await createSalesPersonMutation.mutateAsync({ name });
+      form.setValue("salesPersonId", created.id, { shouldValidate: true });
+      setSalesPersonModalOpen(false);
+      setSalesPersonModalError(null);
+    } catch (err) {
+      setSalesPersonModalError(
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Failed to create sales person",
+      );
+    }
+  };
+
   const watchedCurrencyCode = form.watch("currencyCode");
   const watchedExchangeRate = form.watch("exchangeRate");
   const watchedLines = useWatch({ control: form.control, name: "lines" }) || [];
@@ -367,6 +421,7 @@ export default function InvoiceEditorPage({
   const serviceItems = itemsQuery?.data?.filter((item: any) => item.type === "service") || [];
 
   return (
+    <>
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="mx-auto max-w-7xl bg-white shadow">
         {/* Header */}
@@ -457,6 +512,23 @@ export default function InvoiceEditorPage({
             </div>
 
             <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <label className="text-sm font-medium">Sales person</label>
+                <Select
+                  onChange={(event) => handleSalesPersonSelect(event.target.value)}
+                  value={watchedSalesPersonId || ""}
+                >
+                  <option value="">Select sales person…</option>
+                  {(salesPersonsQuery.data ?? []).map((sp) => (
+                    <option key={sp.id} value={sp.id}>
+                      {sp.name}
+                      {sp.isDefault ? " (default)" : ""}
+                    </option>
+                  ))}
+                  <option value={ADD_NEW_SALES_PERSON}>Add new sales person…</option>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <label className="text-sm font-medium">Invoice No</label>
                 <Input
@@ -983,5 +1055,49 @@ export default function InvoiceEditorPage({
         </div>
       </div>
     </div>
+
+    <CreateEditDrawer
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button
+            onClick={() => {
+              setSalesPersonModalOpen(false);
+              setSalesPersonModalError(null);
+            }}
+            type="button"
+            variant="ghost"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={!newSalesPersonName.trim()}
+            isLoading={createSalesPersonMutation.isPending}
+            onClick={() => void handleCreateSalesPerson()}
+            type="button"
+          >
+            Create
+          </Button>
+        </div>
+      }
+      onClose={() => {
+        setSalesPersonModalOpen(false);
+        setSalesPersonModalError(null);
+      }}
+      open={salesPersonModalOpen}
+      title="New sales person"
+    >
+      <div className="space-y-4">
+        {salesPersonModalError ? (
+          <Alert title={salesPersonModalError} variant="destructive" />
+        ) : null}
+        <FormField label="Name">
+          <Input
+            onChange={(event) => setNewSalesPersonName(event.target.value)}
+            value={newSalesPersonName}
+          />
+        </FormField>
+      </div>
+    </CreateEditDrawer>
+    </>
   );
 }

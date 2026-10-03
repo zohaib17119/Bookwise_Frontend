@@ -147,6 +147,9 @@ function buildQuery(params: DashboardQueryParams = {}) {
   const query = new URLSearchParams();
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
+  for (const id of params.salesPersonIds ?? []) {
+    if (id) query.append("salesPersonIds", id);
+  }
   const serialized = query.toString();
   return serialized ? `?${serialized}` : "";
 }

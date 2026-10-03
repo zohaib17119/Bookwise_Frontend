@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils/cn";
 
 const links = [
   { segment: "items", label: "Items", end: true },
+  { segment: "items/categories", label: "Categories", end: false },
   { segment: "items/hs-codes", label: "HS codes", end: false },
 ] as const;
 

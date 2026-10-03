@@ -7,7 +7,14 @@ export function useCompanyDashboard(
   params: DashboardQueryParams = {},
 ) {
   return useQuery({
-    queryKey: ["companies", companyId, "dashboard", params.fromDate, params.toDate],
+    queryKey: [
+      "companies",
+      companyId,
+      "dashboard",
+      params.fromDate,
+      params.toDate,
+      ...(params.salesPersonIds ?? []).slice().sort(),
+    ],
     queryFn: () => getCompanyDashboard(companyId!, params),
     enabled: Boolean(companyId),
   });

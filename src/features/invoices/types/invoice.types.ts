@@ -59,6 +59,8 @@ export interface Invoice {
   shippingCountry?: string | null;
   customerId: string;
   customerName?: string | null;
+  salesPersonId?: string | null;
+  salesPersonName?: string | null;
   estimateId?: string | null;
   estimateNumber?: string | null;
   issueDate?: string | null;
@@ -152,6 +154,7 @@ export interface InvoiceListParams extends BaseEntityListParams {
 
 export interface InvoicePayload {
   customerId: string;
+  salesPersonId?: string;
   estimateId?: string;
   invoiceNumber?: string;
   referenceNumber?: string;

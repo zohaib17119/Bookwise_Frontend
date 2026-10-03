@@ -21,6 +21,7 @@ import {
 } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
 import type { HsCodeCategory } from "@/features/items/types/hs-code-category.types";
+import type { ItemCategory } from "@/features/items/types/item-category.types";
 import type { Account } from "@/features/accounts/types/account.types";
 import type { Vendor } from "@/features/vendors/types/vendor.types";
 import type { TaxRate } from "@/features/tax/types/tax.types";
@@ -30,6 +31,7 @@ import {
   canUseFbrDigitalInvoicing,
 } from "@/features/compliance/utils/compliance-access";
 import { useCreateHsCodeCategory } from "@/features/items/hooks/use-hs-code-categories";
+import { useCreateItemCategory } from "@/features/items/hooks/use-item-categories";
 import { useNextItemSku } from "@/features/items/hooks/use-items";
 import {
   useCreateUnitOfMeasure,
@@ -49,6 +51,7 @@ import { cn } from "@/lib/utils/cn";
 
 const ADD_NEW_HS_CODE = "__add_new_hs_code__";
 const ADD_NEW_UNIT = "__add_new_unit__";
+const ADD_NEW_ITEM_CATEGORY = "__add_new_item_category__";
 const PICK_FBR_HS = "__pick_fbr_hs__";
 
 type ItemCreateType = "inventory" | "non_inventory" | "service";
@@ -64,6 +67,7 @@ interface ItemFormDrawerProps {
   vendors: Vendor[];
   taxRates: TaxRate[];
   hsCodeCategories: HsCodeCategory[];
+  itemCategories?: ItemCategory[];
   isPending?: boolean;
   error?: ApiError | null;
   onClose: () => void;
@@ -80,6 +84,7 @@ export function ItemFormDrawer({
   vendors,
   taxRates,
   hsCodeCategories,
+  itemCategories = [],
   isPending,
   error,
   onClose,
@@ -92,6 +97,7 @@ export function ItemFormDrawer({
   const nextSkuQuery = useNextItemSku(companyId, open && mode === "create");
   const unitsQuery = useUnitsOfMeasure(open);
   const createHsCodeMutation = useCreateHsCodeCategory(companyId);
+  const createItemCategoryMutation = useCreateItemCategory(companyId);
   const createUnitMutation = useCreateUnitOfMeasure();
   const adoptHsMutation = useAdoptFbrHsCode(companyId);
   const uomsQuery = useFbrRefUoms(companyId, open && showFbrFields);
@@ -101,6 +107,10 @@ export function ItemFormDrawer({
   const [newHsCode, setNewHsCode] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [hsModalError, setHsModalError] = useState<string | null>(null);
+
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newItemCategoryName, setNewItemCategoryName] = useState("");
+  const [categoryModalError, setCategoryModalError] = useState<string | null>(null);
 
   const [fbrHsPickerOpen, setFbrHsPickerOpen] = useState(false);
   const [fbrHsQuery, setFbrHsQuery] = useState("");
@@ -140,6 +150,7 @@ export function ItemFormDrawer({
       sku: "",
       barcode: "",
       unitName: "ea",
+      itemCategoryId: "",
       hsCodeCategoryId: "",
       fbrUom: "",
       fbrSaleType: "",
@@ -166,6 +177,7 @@ export function ItemFormDrawer({
   const trackQuantity = form.watch("trackQuantity");
   const taxRateId = form.watch("taxRateId");
   const selectedHsCodeCategoryId = form.watch("hsCodeCategoryId");
+  const selectedItemCategoryId = form.watch("itemCategoryId");
   const itemName = form.watch("name");
   const selectedUnit = form.watch("unitName");
   const fbrSaleType = form.watch("fbrSaleType") ?? "";
@@ -283,6 +295,7 @@ export function ItemFormDrawer({
       sku: item?.sku ?? "",
       barcode: item?.barcode ?? "",
       unitName: item?.unitName ?? "ea",
+      itemCategoryId: item?.itemCategoryId ?? "",
       hsCodeCategoryId: item?.hsCodeCategoryId ?? "",
       fbrUom: item?.fbrUom ?? "",
       fbrSaleType: item?.fbrSaleType ?? defaultSale,
@@ -304,8 +317,10 @@ export function ItemFormDrawer({
       isActive: item?.isActive ?? true,
     });
     setHsModalOpen(false);
+    setCategoryModalOpen(false);
     setUnitModalOpen(false);
     setHsModalError(null);
+    setCategoryModalError(null);
     setUnitModalError(null);
     setFbrHsPickerOpen(false);
     setFbrHsQuery("");
@@ -424,6 +439,36 @@ export function ItemFormDrawer({
       form.setValue("taxable", true);
     }
   }, [form, taxRateId]);
+
+  const handleItemCategorySelect = (value: string) => {
+    if (value === ADD_NEW_ITEM_CATEGORY) {
+      setCategoryModalOpen(true);
+      setCategoryModalError(null);
+      return;
+    }
+    form.setValue("itemCategoryId", value, { shouldValidate: true });
+  };
+
+  const handleCreateItemCategory = async () => {
+    const name = newItemCategoryName.trim();
+    if (!name) {
+      setCategoryModalError("Category name is required");
+      return;
+    }
+    setCategoryModalError(null);
+    try {
+      const created = await createItemCategoryMutation.mutateAsync({ name });
+      form.setValue("itemCategoryId", created.id, { shouldValidate: true });
+      setCategoryModalOpen(false);
+      setNewItemCategoryName("");
+    } catch (err) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message: string }).message)
+          : "Failed to create category";
+      setCategoryModalError(message);
+    }
+  };
 
   const handleHsCodeSelect = (value: string) => {
     if (value === PICK_FBR_HS) {
@@ -582,6 +627,30 @@ export function ItemFormDrawer({
                 label="Name"
               >
                 <Input {...form.register("name")} placeholder="Paper cup" />
+              </FormField>
+              <FormField
+                error={form.formState.errors.itemCategoryId?.message}
+                helperText="Optional product grouping (not FBR HS)."
+                label="Category"
+              >
+                <Select
+                  onChange={(event) => handleItemCategorySelect(event.target.value)}
+                  value={selectedItemCategoryId || ""}
+                >
+                  <option value="">No category</option>
+                  {selectedItemCategoryId &&
+                  !itemCategories.some((category) => category.id === selectedItemCategoryId) ? (
+                    <option value={selectedItemCategoryId}>
+                      {item?.itemCategoryName ?? selectedItemCategoryId}
+                    </option>
+                  ) : null}
+                  {itemCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                  <option value={ADD_NEW_ITEM_CATEGORY}>Add new category…</option>
+                </Select>
               </FormField>
               {showFbrFields && deferredItemName.length >= 2 && !selectedHsCodeCategoryId ? (
                 <div className="md:col-span-2 max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
@@ -1082,6 +1151,55 @@ export function ItemFormDrawer({
                   variant="ghost"
                 >
                   Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {categoryModalOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-[60] bg-slate-950/45 backdrop-blur-sm"
+            onClick={
+              createItemCategoryMutation.isPending ? undefined : () => setCategoryModalOpen(false)
+            }
+          />
+          <div className="fixed left-1/2 top-1/2 z-[70] w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-4">
+            <div className={cn("surface space-y-4 p-6")}>
+              <div>
+                <h3 className="text-lg font-semibold">Add new category</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Optional product grouping for inventory items.
+                </p>
+              </div>
+              {categoryModalError ? <Alert title={categoryModalError} variant="destructive" /> : null}
+              {createItemCategoryMutation.error ? (
+                <Alert title={createItemCategoryMutation.error.message} variant="destructive" />
+              ) : null}
+              <FormField label="Category name">
+                <Input
+                  onChange={(event) => setNewItemCategoryName(event.target.value)}
+                  placeholder="Cakes"
+                  value={newItemCategoryName}
+                />
+              </FormField>
+              <div className="flex justify-end gap-3">
+                <Button
+                  disabled={createItemCategoryMutation.isPending}
+                  onClick={() => setCategoryModalOpen(false)}
+                  type="button"
+                  variant="ghost"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  isLoading={createItemCategoryMutation.isPending}
+                  onClick={handleCreateItemCategory}
+                  type="button"
+                >
+                  Save category
                 </Button>
               </div>
             </div>

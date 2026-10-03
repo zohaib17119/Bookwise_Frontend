@@ -39,6 +39,7 @@ function serializeInvoicePayload(payload: InvoicePayload): InvoicePayload {
   return {
     customerId: payload.customerId,
     ...omitEmptyFields({
+      salesPersonId: payload.salesPersonId || undefined,
       estimateId: payload.estimateId || undefined,
       invoiceNumber: payload.invoiceNumber || undefined,
       referenceNumber: payload.referenceNumber || undefined,

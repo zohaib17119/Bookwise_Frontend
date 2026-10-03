@@ -36,6 +36,7 @@ import {
 import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
 import { useCreateItem, useItemOptions } from "@/features/items/hooks/use-items";
 import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import { useItemCategories } from "@/features/items/hooks/use-item-categories";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import type { Item } from "@/features/items/types/item.types";
 import { useTaxCodes, useTaxRates } from "@/features/tax/hooks/use-tax";
@@ -89,6 +90,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
   const accountsQuery = useAccountOptions(companyId);
   const vendorsQuery = useVendorOptions(companyId);
   const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
+  const itemCategoriesQuery = useItemCategories(companyId);
   const invoiceQuery = useInvoice(companyId, mode === "edit" ? invoiceId ?? null : null);
   const createMutation = useCreateInvoice(companyId);
   const updateMutation = useUpdateInvoice(companyId, invoiceId ?? null);
@@ -126,6 +128,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
       mode === "edit" && invoiceQuery.data
         ? {
             customerId: invoiceQuery.data.customerId,
+            salesPersonId: invoiceQuery.data.salesPersonId ?? "",
             estimateId: invoiceQuery.data.estimateId ?? "",
             invoiceNumber: invoiceQuery.data.invoiceNumber ?? "",
             referenceNumber: invoiceQuery.data.referenceNumber ?? "",
@@ -224,6 +227,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
           }
         : {
             customerId: "",
+            salesPersonId: "",
             estimateId: "",
             invoiceNumber: nextNumberQuery.data?.nextNumber ? String(nextNumberQuery.data.nextNumber) : "",
             referenceNumber: "",
@@ -382,6 +386,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         onSubmit={async (values) => {
           const payload = {
             ...values,
+            salesPersonId: values.salesPersonId || undefined,
             estimateId: values.estimateId || undefined,
             invoiceNumber: values.invoiceNumber || undefined,
             referenceNumber: values.referenceNumber || undefined,
@@ -553,6 +558,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
         defaultType={itemCreateDefaultType}
         error={createItemMutation.error}
         hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
+        itemCategories={itemCategoriesQuery.data ?? []}
         isPending={createItemMutation.isPending}
         mode="create"
         onClose={() => {
@@ -568,6 +574,7 @@ export function InvoiceFormPage({ mode }: InvoiceFormPageProps) {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
+            itemCategoryId: values.itemCategoryId || null,
             hsCodeCategoryId: values.hsCodeCategoryId || null,
             fbrUom: values.fbrUom || null,
             fbrSaleType: values.fbrSaleType || null,

@@ -29,6 +29,7 @@ import { billSchema, type BillFormInput, type BillFormValues } from "@/features/
 import { ItemFormDrawer } from "@/features/items/components/item-form-drawer";
 import { useCreateItem, useItemOptions } from "@/features/items/hooks/use-items";
 import { useHsCodeCategories } from "@/features/items/hooks/use-hs-code-categories";
+import { useItemCategories } from "@/features/items/hooks/use-item-categories";
 import type { ItemFormValues } from "@/features/items/schemas/item.schema";
 import { canManageEntity } from "@/features/permissions/utils/module-permissions";
 import { toDocumentLinePreview } from "@/features/shared/utils/api-payload";
@@ -128,6 +129,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
   const taxCodesQuery = useTaxCodes(companyId);
   const taxRatesQuery = useTaxRates(companyId);
   const hsCodeCategoriesQuery = useHsCodeCategories(companyId);
+  const itemCategoriesQuery = useItemCategories(companyId);
   const billQuery = useBill(companyId, mode === "edit" ? billId ?? null : null);
   const nextBillNumberQuery = useNextBillNumber(companyId, mode === "create");
   const createMutation = useCreateBill(companyId);
@@ -847,6 +849,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
         baseCurrencyCode={getCompanyBaseCurrency(company)}
         error={createItemMutation.error}
         hsCodeCategories={hsCodeCategoriesQuery.data ?? []}
+        itemCategories={itemCategoriesQuery.data ?? []}
         isPending={createItemMutation.isPending}
         mode="create"
         onClose={() => {
@@ -862,6 +865,7 @@ export function BillFormPage({ mode }: BillFormPageProps) {
             sku: values.sku || undefined,
             barcode: values.barcode?.trim() || null,
             unitName: values.unitName || "ea",
+            itemCategoryId: values.itemCategoryId || null,
             hsCodeCategoryId: values.hsCodeCategoryId || null,
             salesPrice: values.salesPrice || "0",
             purchaseCost: values.purchaseCost || "0",

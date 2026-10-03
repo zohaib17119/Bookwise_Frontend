@@ -95,6 +95,7 @@ function refineDualWht(
 export const invoiceSchema = documentBaseSchema
   .extend({
     customerId: z.string().min(1, "Customer is required"),
+    salesPersonId: z.string().optional().or(z.literal("")),
     estimateId: z.string().optional().or(z.literal("")),
     invoiceNumber: z.string().optional().or(z.literal("")),
     contactPersonName: z.string().optional().or(z.literal("")),

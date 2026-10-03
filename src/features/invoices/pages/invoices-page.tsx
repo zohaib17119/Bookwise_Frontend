@@ -25,6 +25,7 @@ import {
 } from "@/features/compliance/utils/compliance-access";
 import { formatFbrDiStatusLabel } from "@/features/compliance/utils/fbr-status";
 import { useCustomerOptions } from "@/features/customers/hooks/use-customers";
+import { InvoicesModuleNav } from "@/features/invoices/components/invoices-module-nav";
 import { useInvoicesPaginated } from "@/features/invoices/hooks/use-invoices";
 import type { Invoice } from "@/features/invoices/types/invoice.types";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
@@ -494,7 +495,9 @@ export function InvoicesPage() {
       }
       title="Invoices"
       toolbar={
-        <FilterBar>
+        <div className="space-y-3">
+          <InvoicesModuleNav />
+          <FilterBar>
           <DateRangeToolbar
             fromDate={fromDate}
             onFromDateChange={(value) => {
@@ -554,6 +557,7 @@ export function InvoicesPage() {
             </Select>
           </FilterField>
         </FilterBar>
+        </div>
       }
     />
     <AuthorityTaxDialog
