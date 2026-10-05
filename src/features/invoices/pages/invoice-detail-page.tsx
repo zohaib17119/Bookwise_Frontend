@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
@@ -29,11 +29,14 @@ import {
   useDeleteInvoice,
   useInvoice,
   useMarkInvoiceTaxReported,
+  usePatchInvoiceSalesPerson,
   useRetryInvoiceFbrSubmit,
   useSendInvoice,
   useSubmitInvoiceCompliance,
   useSubmitInvoiceFbrSync,
 } from "@/features/invoices/hooks/use-invoices";
+import { useSalesPersons } from "@/features/sales-persons/hooks/use-sales-persons";
+import { Select } from "@/components/ui/select";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { canManageEntity, canViewEntity } from "@/features/permissions/utils/module-permissions";
 import { whtHeldByHint, whtHeldByLabel, whtNetLabel, whtSettlementAddsToCash } from "@/features/shared/utils/wht-labels";
@@ -71,12 +74,23 @@ export function InvoiceDetailPage() {
   const markTaxReportedMutation = useMarkInvoiceTaxReported(companyId);
   const creditNoteMutation = useCreateCreditNote(companyId);
   const debitNoteMutation = useCreateDebitNote(companyId);
+  const patchSalesPersonMutation = usePatchInvoiceSalesPerson(companyId, invoiceId ?? null);
+  const salesPersonsQuery = useSalesPersons(companyId);
+  const [salesPersonDraft, setSalesPersonDraft] = useState("");
+  const [salesPersonSaveError, setSalesPersonSaveError] = useState<string | null>(null);
   const canView = canViewEntity(permissions, "invoices");
   const canManage = canManageEntity(permissions, "invoices");
   const showZatca = canUseZatcaReporting(company);
   const showFbr = canShowFbr(company);
   const useFbrDi = canUseFbrDigitalInvoicing(company);
   const baseCurrency = getCompanyBaseCurrency(company);
+
+  useEffect(() => {
+    if (invoiceQuery.data) {
+      setSalesPersonDraft(invoiceQuery.data.salesPersonId ?? "");
+      setSalesPersonSaveError(null);
+    }
+  }, [invoiceQuery.data?.id, invoiceQuery.data?.salesPersonId]);
 
   if (!canView) {
     return <ErrorState title="Invoice access restricted" description="Your current company membership does not include invoice access." />;
@@ -91,6 +105,10 @@ export function InvoiceDetailPage() {
   }
 
   const invoice = invoiceQuery.data;
+  const canEditSalesPerson =
+    canManage && invoice.status !== "VOID" && invoice.status !== "CANCELLED";
+  const salesPersonDirty =
+    (salesPersonDraft || "") !== (invoice.salesPersonId ?? "");
   const isCreditNote = invoice.documentType === "CREDIT_NOTE";
   const isDebitNote = invoice.documentType === "DEBIT_NOTE";
   const isAdjustmentNote = isCreditNote || isDebitNote;
@@ -519,6 +537,55 @@ export function InvoiceDetailPage() {
                   { label: "Delivery date", value: formatDate(invoice.deliveryDate) },
                   { label: "Delivery challan no", value: invoice.deliveryChallanNumber || "-" },
                   { label: "Issue date", value: formatDate(invoice.issueDate) },
+                  {
+                    label: "Sales person",
+                    value: canEditSalesPerson ? (
+                      <div className="flex max-w-[min(100%,16rem)] flex-col items-end gap-2">
+                        <Select
+                          className="w-full text-left"
+                          disabled={patchSalesPersonMutation.isPending}
+                          onChange={(event) => {
+                            setSalesPersonDraft(event.target.value);
+                            setSalesPersonSaveError(null);
+                          }}
+                          value={salesPersonDraft}
+                        >
+                          <option value="">Select sales person…</option>
+                          {(salesPersonsQuery.data ?? []).map((sp) => (
+                            <option key={sp.id} value={sp.id}>
+                              {sp.name}
+                              {sp.isDefault ? " (default)" : ""}
+                            </option>
+                          ))}
+                        </Select>
+                        {salesPersonSaveError ? (
+                          <span className="text-xs text-destructive">{salesPersonSaveError}</span>
+                        ) : null}
+                        <Button
+                          disabled={
+                            !salesPersonDirty ||
+                            !salesPersonDraft ||
+                            patchSalesPersonMutation.isPending
+                          }
+                          onClick={() => {
+                            setSalesPersonSaveError(null);
+                            patchSalesPersonMutation.mutate(salesPersonDraft, {
+                              onError: (error) => {
+                                setSalesPersonSaveError(getApiErrorMessage(error));
+                              },
+                            });
+                          }}
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          {patchSalesPersonMutation.isPending ? "Saving…" : "Save sales person"}
+                        </Button>
+                      </div>
+                    ) : (
+                      invoice.salesPersonName || "—"
+                    ),
+                  },
                   ...(isAdjustmentNote
                     ? []
                     : [{ label: "Due date", value: formatDate(invoice.dueDate) }]),

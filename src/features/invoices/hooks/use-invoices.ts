@@ -6,6 +6,7 @@ import {
   getInvoices,
   getInvoicesPaginated,
   updateInvoice,
+  patchInvoiceSalesPerson,
   getNextInvoiceNumber,
   sendInvoice,
   markInvoiceTaxReported,
@@ -84,6 +85,27 @@ export function useUpdateInvoice(companyId: string | undefined, invoiceId: strin
       updateInvoice(companyId!, invoiceId!, payload),
     onSuccess: async () => {
       if (companyId) await invalidateInvoiceQueries(companyId);
+    },
+  });
+}
+
+export function usePatchInvoiceSalesPerson(
+  companyId: string | undefined,
+  invoiceId: string | null,
+) {
+  return useMutation({
+    mutationFn: (salesPersonId: string) =>
+      patchInvoiceSalesPerson(companyId!, invoiceId!, salesPersonId),
+    onSuccess: async () => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        invoiceId
+          ? queryClient.invalidateQueries({
+              queryKey: ["companies", companyId, "invoices", invoiceId],
+            })
+          : Promise.resolve(),
+      ]);
     },
   });
 }

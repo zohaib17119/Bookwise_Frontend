@@ -141,6 +141,19 @@ export async function updateInvoice(
   return data;
 }
 
+/** Updates only sales person (safe on issued/paid invoices; no line or payment changes). */
+export async function patchInvoiceSalesPerson(
+  companyId: string,
+  invoiceId: string,
+  salesPersonId: string,
+) {
+  const { data } = await apiClient.patch<Invoice>(
+    `/companies/${companyId}/invoices/${invoiceId}`,
+    omitEmptyFields({ salesPersonId: salesPersonId || undefined }),
+  );
+  return data;
+}
+
 export async function deleteInvoice(companyId: string, invoiceId: string) {
   await apiClient.delete(`/companies/${companyId}/invoices/${invoiceId}`);
 }
