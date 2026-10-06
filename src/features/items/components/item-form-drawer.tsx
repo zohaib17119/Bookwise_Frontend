@@ -229,17 +229,6 @@ export function ItemFormDrawer({
     open && requireFbrDi && selectedSroId != null,
   );
 
-  const sroRequired =
-    requireFbrDi &&
-    Boolean(
-      taxForcesSro ||
-        sroSchedulesQuery.data?.required ||
-        sroSchedulesQuery.data?.applicable ||
-        sroSchedulesQuery.data?.rateForcesSro ||
-        (sroSchedulesQuery.data?.items?.length ?? 0) > 0 ||
-        saleTypeRatesQuery.data?.scenarioRequirement?.sroRequired,
-    );
-
   const retailPriceRequired =
     requireFbrDi && fbrSaleType.trim().toLowerCase() === "3rd schedule goods";
 
@@ -252,13 +241,9 @@ export function ItemFormDrawer({
     selectedUnitName.trim().toLowerCase() !== selectedFbrUom.trim().toLowerCase();
 
   const schema = useMemo(
-    () => buildItemSchema(requireFbrDi, sroRequired, retailPriceRequired, qtyFactorRequired),
-    [requireFbrDi, sroRequired, retailPriceRequired, qtyFactorRequired],
+    () => buildItemSchema(requireFbrDi, false, retailPriceRequired, qtyFactorRequired),
+    [requireFbrDi, retailPriceRequired, qtyFactorRequired],
   );
-
-  useEffect(() => {
-    form.clearErrors(["fbrSroScheduleNo", "fbrSroItemSerialNo"]);
-  }, [form, sroRequired]);
 
   useEffect(() => {
     form.clearErrors(["fbrFixedNotifiedValueOrRetailPrice"]);
@@ -380,10 +365,8 @@ export function ItemFormDrawer({
     }
     const currentDesc = form.getValues("fbrSroScheduleNo")?.trim();
     const match = schedules.find((s) => s.description === currentDesc);
-    const next = match ?? schedules[0];
-    setSelectedSroId(next.sroId);
-    if (!match) {
-      form.setValue("fbrSroScheduleNo", next.description, { shouldValidate: true });
+    if (match) {
+      setSelectedSroId(match.sroId);
     }
   }, [form, open, requireFbrDi, sroSchedulesQuery.data?.items]);
 
@@ -393,8 +376,8 @@ export function ItemFormDrawer({
     if (!items.length) return;
     const current = form.getValues("fbrSroItemSerialNo")?.trim();
     const stillValid = items.some((i) => i.serialNo === current);
-    if (!current || !stillValid) {
-      form.setValue("fbrSroItemSerialNo", items[0].serialNo, { shouldValidate: true });
+    if (current && !stillValid) {
+      form.setValue("fbrSroItemSerialNo", "", { shouldValidate: true });
     }
   }, [form, open, requireFbrDi, sroItemsQuery.data?.items, selectedSroId]);
 
@@ -591,10 +574,6 @@ export function ItemFormDrawer({
                   return;
                 }
                 const payload = { ...parsed.data };
-                if (!sroRequired) {
-                  payload.fbrSroScheduleNo = "";
-                  payload.fbrSroItemSerialNo = "";
-                }
                 if (!retailPriceRequired) {
                   payload.fbrFixedNotifiedValueOrRetailPrice = "";
                 }
@@ -799,8 +778,8 @@ export function ItemFormDrawer({
                         <FormField
                           helperText={
                             taxRatePercentLabel
-                              ? `Matched to item tax ${taxRatePercentLabel} when possible. Non-18% rates require SRO (FBR 0077).`
-                              : "PDI rate used to load SRO schedules for this sale type."
+                              ? `Matched to item tax ${taxRatePercentLabel} when possible. Use to load optional SRO schedules from PDI.`
+                              : "PDI rate used to load optional SRO schedules for this sale type."
                           }
                           label="FBR rate (for SRO)"
                         >
@@ -826,64 +805,62 @@ export function ItemFormDrawer({
                           </Select>
                         </FormField>
                       ) : null}
-                      {sroRequired ? (
-                        <>
-                          <FormField
-                            error={form.formState.errors.fbrSroScheduleNo?.message}
-                            helperText={
-                              sroSchedulesQuery.isError
-                                ? "SRO schedules API failed — check FBR token / DI enabled / Network tab."
-                                : (sroSchedulesQuery.data?.items?.length ?? 0) === 0
-                                  ? "Required for non-18% rate (FBR 0077). PDI returned no schedules for this rate + seller province. Check Settings → FBR seller province, or try another FBR rate."
-                                  : "Required when rate is not 18%, PDI returns schedules, or scenario SN024."
-                            }
-                            label="SRO schedule"
+                      <>
+                        <FormField
+                          error={form.formState.errors.fbrSroScheduleNo?.message}
+                          helperText={
+                            sroSchedulesQuery.isError
+                              ? "SRO schedules API failed — check FBR token / DI enabled / Network tab."
+                              : (sroSchedulesQuery.data?.items?.length ?? 0) === 0
+                                ? "Optional. PDI returned no schedules for this rate + seller province — leave blank or pick another FBR rate."
+                                : "Optional. Select when FBR needs SRO for this item (e.g. some non-18% cases)."
+                          }
+                          label="SRO schedule (optional)"
+                        >
+                          <Select
+                            value={fbrSroScheduleNo}
+                            onChange={(event) => {
+                              const desc = event.target.value;
+                              form.setValue("fbrSroScheduleNo", desc, { shouldValidate: true });
+                              form.setValue("fbrSroItemSerialNo", "");
+                              const match = (sroSchedulesQuery.data?.items ?? []).find(
+                                (s) => s.description === desc,
+                              );
+                              setSelectedSroId(match?.sroId ?? null);
+                            }}
                           >
-                            <Select
-                              value={fbrSroScheduleNo}
-                              onChange={(event) => {
-                                const desc = event.target.value;
-                                form.setValue("fbrSroScheduleNo", desc, { shouldValidate: true });
-                                form.setValue("fbrSroItemSerialNo", "");
-                                const match = (sroSchedulesQuery.data?.items ?? []).find(
-                                  (s) => s.description === desc,
-                                );
-                                setSelectedSroId(match?.sroId ?? null);
-                              }}
-                            >
-                              <option value="">Select SRO schedule…</option>
-                              {(sroSchedulesQuery.data?.items ?? []).map((schedule) => (
-                                <option key={schedule.sroId} value={schedule.description}>
-                                  {schedule.description}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                          <FormField
-                            error={form.formState.errors.fbrSroItemSerialNo?.message}
-                            helperText="SRO item serial number (sroItemSerialNo) from PDI."
-                            label="SRO item serial"
+                            <option value="">Select SRO schedule…</option>
+                            {(sroSchedulesQuery.data?.items ?? []).map((schedule) => (
+                              <option key={schedule.sroId} value={schedule.description}>
+                                {schedule.description}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormField>
+                        <FormField
+                          error={form.formState.errors.fbrSroItemSerialNo?.message}
+                          helperText="Optional SRO item serial (sroItemSerialNo) from PDI."
+                          label="SRO item serial (optional)"
+                        >
+                          <Select
+                            {...form.register("fbrSroItemSerialNo")}
+                            value={form.watch("fbrSroItemSerialNo") ?? ""}
                           >
-                            <Select
-                              {...form.register("fbrSroItemSerialNo")}
-                              value={form.watch("fbrSroItemSerialNo") ?? ""}
-                            >
-                              <option value="">Select SRO item…</option>
-                              {(sroItemsQuery.data?.items ?? []).map((sroItem) => (
-                                <option
-                                  key={`${sroItem.sroItemId}-${sroItem.serialNo}`}
-                                  value={sroItem.serialNo}
-                                >
-                                  {sroItem.serialNo}
-                                  {sroItem.description && sroItem.description !== sroItem.serialNo
-                                    ? ` — ${sroItem.description}`
-                                    : ""}
-                                </option>
-                              ))}
-                            </Select>
-                          </FormField>
-                        </>
-                      ) : null}
+                            <option value="">Select SRO item…</option>
+                            {(sroItemsQuery.data?.items ?? []).map((sroItem) => (
+                              <option
+                                key={`${sroItem.sroItemId}-${sroItem.serialNo}`}
+                                value={sroItem.serialNo}
+                              >
+                                {sroItem.serialNo}
+                                {sroItem.description && sroItem.description !== sroItem.serialNo
+                                  ? ` — ${sroItem.description}`
+                                  : ""}
+                              </option>
+                            ))}
+                          </Select>
+                        </FormField>
+                      </>
                     </>
                   ) : null}
                 </>

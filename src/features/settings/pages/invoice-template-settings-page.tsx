@@ -10,6 +10,7 @@ import { StyleInspector } from "@/features/settings/components/invoice-template-
 import { TemplateCanvas } from "@/features/settings/components/invoice-template-builder/template-canvas";
 import { SettingsSectionCard } from "@/components/settings/settings-section-card";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
+import { canUseFbrDigitalInvoicing } from "@/features/compliance/utils/compliance-access";
 import { canUsePermission } from "@/features/permissions/utils/module-permissions";
 import { useCompanySettings } from "@/features/settings/hooks/use-settings";
 import {
@@ -31,6 +32,7 @@ import {
   columnIdentity,
   createBoxAfterTable,
   createBoxBeforeTable,
+  ensureFbrDiInLayout,
   isBuiltinColumn,
   isFormulaColumn,
   newElementId,
@@ -137,7 +139,8 @@ export function InvoiceTemplateSettingsPage({
   documentKind?: DocumentTemplateKind;
 }) {
   const isEstimate = documentKind === "ESTIMATE";
-  const { companyId, permissions } = useActiveCompany();
+  const { companyId, permissions, company } = useActiveCompany();
+  const fbrDiEnabled = canUseFbrDigitalInvoicing(company);
   const canManage = canUsePermission(permissions, [
     "invoices.manage",
     "company.update",
@@ -181,7 +184,10 @@ export function InvoiceTemplateSettingsPage({
       if (defaultTemplate) {
         setActiveTemplateId(defaultTemplate.id);
         setName(defaultTemplate.name);
-        const next = ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson));
+        const next = ensureFbrDiInLayout(
+          ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson)),
+          fbrDiEnabled,
+        );
         if (!next.logoUrl && companyLogoUrl) {
           next.logoUrl = companyLogoUrl;
         }
@@ -197,7 +203,7 @@ export function InvoiceTemplateSettingsPage({
       if (!source.logoUrl && companyLogoUrl) {
         source.logoUrl = companyLogoUrl;
       }
-      setLayout(ensureSerialColumn(source));
+      setLayout(ensureFbrDiInLayout(ensureSerialColumn(source), fbrDiEnabled));
       setPreviewHtml("");
       return;
     }
@@ -205,7 +211,10 @@ export function InvoiceTemplateSettingsPage({
     if (!defaultTemplate) return;
     setActiveTemplateId(defaultTemplate.id);
     setName(defaultTemplate.name);
-    const next = ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson));
+    const next = ensureFbrDiInLayout(
+      ensureSerialColumn(cloneLayout(defaultTemplate.layoutJson)),
+      fbrDiEnabled,
+    );
     if (!next.logoUrl && companyLogoUrl) {
       next.logoUrl = companyLogoUrl;
     }
@@ -216,9 +225,15 @@ export function InvoiceTemplateSettingsPage({
     defaultTemplate?.id,
     invoiceFallbackTemplate?.id,
     companyLogoUrl,
+    fbrDiEnabled,
     templatesQuery.isLoading,
     invoiceTemplatesQuery.isLoading,
   ]);
+
+  useEffect(() => {
+    if (!fbrDiEnabled) return;
+    setLayout((prev) => ensureFbrDiInLayout(prev, true));
+  }, [fbrDiEnabled]);
 
   const selectedElement = layout.elements.find((el) => el.id === selectedId) ?? null;
   const selectedBoxId =
@@ -748,6 +763,8 @@ export function InvoiceTemplateSettingsPage({
               }}
               onDelete={() => {
                 if (!selectedId) return;
+                const selected = layout.elements.find((el) => el.id === selectedId);
+                if (selected?.kind === "fbrDi" && fbrDiEnabled) return;
                 setLayout((prev) => removeElementAndChildren(prev, selectedId));
                 setSelectedId(null);
               }}

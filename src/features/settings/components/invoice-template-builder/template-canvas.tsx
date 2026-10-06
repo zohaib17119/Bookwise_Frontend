@@ -5,6 +5,7 @@ import {
   getTopLevelElements,
   inferYAnchor,
   isCanvasContainer,
+  mergeFbrDiLayout,
   resolveCanvasHeight,
   resolveCanvasTop,
   SAMPLE_PREVIEW_ROW_COUNT,
@@ -193,6 +194,63 @@ export function TemplateCanvas({
                   <p className="mt-1 text-[9px] text-amber-700">Max height {element.maxHeight}%</p>
                 ) : null}
               </div>
+            ) : element.kind === "fbrDi" ? (
+              (() => {
+                const di = mergeFbrDiLayout(element.fbrDiLayout);
+                const logoW = Math.max(24, Math.round(di.logoWidthPx! * 0.35));
+                const qrW = Math.max(20, Math.round(di.qrSizePx! * 0.35));
+                return (
+                  <div className="space-y-1 overflow-hidden">
+                    <p
+                      className="font-semibold text-slate-800"
+                      style={{
+                        fontSize: Math.max(8, Math.round(di.invoiceFontSize! * 0.7)),
+                        fontWeight: di.invoiceFontWeight === "bold" ? 700 : 400,
+                        color: di.invoiceColor,
+                        textAlign: di.invoiceTextAlign,
+                        marginBottom: Math.max(2, Math.round(di.invoiceMarginBottomPx! * 0.35)),
+                      }}
+                    >
+                      FBR INVOICE: …
+                    </p>
+                    <div
+                      className="flex"
+                      style={{
+                        alignItems:
+                          di.rowAlign === "flex-start"
+                            ? "flex-start"
+                            : di.rowAlign === "center"
+                              ? "center"
+                              : "flex-end",
+                        gap: Math.max(2, Math.round(di.rowGapPx! * 0.35)),
+                      }}
+                    >
+                      <div
+                        className="rounded bg-[#1565c0] px-1 py-0.5 text-[7px] font-bold leading-tight text-white"
+                        style={{
+                          width: logoW,
+                          marginLeft: di.logoOffsetXPx,
+                          marginTop: di.logoOffsetYPx,
+                        }}
+                      >
+                        DIGITAL
+                        <br />
+                        INVOICING
+                      </div>
+                      <div
+                        className="border border-dashed border-slate-400 bg-[repeating-linear-gradient(45deg,#f1f5f9,#f1f5f9_4px,#e2e8f0_4px,#e2e8f0_8px)]"
+                        style={{
+                          width: qrW,
+                          height: qrW,
+                          marginLeft: di.qrOffsetXPx,
+                          marginTop: di.qrOffsetYPx,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-muted-foreground">Required · layout adjustable</p>
+                  </div>
+                );
+              })()
             ) : (
               <p
                 className="truncate font-medium"

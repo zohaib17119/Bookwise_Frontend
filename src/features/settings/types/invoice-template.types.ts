@@ -19,7 +19,8 @@ export type TemplateElementKind =
   | "lineTable"
   | "totals"
   | "notes"
-  | "footer";
+  | "footer"
+  | "fbrDi";
 
 export interface BuiltinInvoiceTableColumn {
   kind?: "builtin";
@@ -62,6 +63,86 @@ export interface TemplateElementStyle {
   padding?: number;
 }
 
+/** Inner layout knobs for locked FBR DI block (number / logo / QR). */
+export interface FbrDiLayoutConfig {
+  invoiceFontSize?: number;
+  invoiceFontWeight?: "normal" | "bold";
+  invoiceColor?: string;
+  invoiceTextAlign?: "left" | "center" | "right";
+  invoiceMarginBottomPx?: number;
+  logoWidthPx?: number;
+  logoOffsetXPx?: number;
+  logoOffsetYPx?: number;
+  qrSizePx?: number;
+  qrOffsetXPx?: number;
+  qrOffsetYPx?: number;
+  rowGapPx?: number;
+  rowAlign?: "flex-start" | "center" | "flex-end";
+}
+
+export const DEFAULT_FBR_DI_LAYOUT: Required<FbrDiLayoutConfig> = {
+  invoiceFontSize: 11,
+  invoiceFontWeight: "bold",
+  invoiceColor: "#0f172a",
+  invoiceTextAlign: "left",
+  invoiceMarginBottomPx: 6,
+  logoWidthPx: 120,
+  logoOffsetXPx: 0,
+  logoOffsetYPx: 0,
+  qrSizePx: 84,
+  qrOffsetXPx: 0,
+  qrOffsetYPx: 0,
+  rowGapPx: 10,
+  rowAlign: "flex-end",
+};
+
+export function clampFbrDiNumber(value: unknown, min: number, max: number, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+export function normalizeFbrDiLayout(raw: unknown): FbrDiLayoutConfig {
+  const d = DEFAULT_FBR_DI_LAYOUT;
+  const src = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const weight =
+    src.invoiceFontWeight === "normal" || src.invoiceFontWeight === "bold"
+      ? src.invoiceFontWeight
+      : d.invoiceFontWeight;
+  const align =
+    src.invoiceTextAlign === "left" ||
+    src.invoiceTextAlign === "center" ||
+    src.invoiceTextAlign === "right"
+      ? src.invoiceTextAlign
+      : d.invoiceTextAlign;
+  const rowAlign =
+    src.rowAlign === "flex-start" || src.rowAlign === "center" || src.rowAlign === "flex-end"
+      ? src.rowAlign
+      : d.rowAlign;
+  return {
+    invoiceFontSize: clampFbrDiNumber(src.invoiceFontSize, 8, 24, d.invoiceFontSize),
+    invoiceFontWeight: weight,
+    invoiceColor:
+      typeof src.invoiceColor === "string" && src.invoiceColor.trim()
+        ? src.invoiceColor.trim().slice(0, 40)
+        : d.invoiceColor,
+    invoiceTextAlign: align,
+    invoiceMarginBottomPx: clampFbrDiNumber(src.invoiceMarginBottomPx, 0, 40, d.invoiceMarginBottomPx),
+    logoWidthPx: clampFbrDiNumber(src.logoWidthPx, 40, 200, d.logoWidthPx),
+    logoOffsetXPx: clampFbrDiNumber(src.logoOffsetXPx, -40, 80, d.logoOffsetXPx),
+    logoOffsetYPx: clampFbrDiNumber(src.logoOffsetYPx, -40, 80, d.logoOffsetYPx),
+    qrSizePx: clampFbrDiNumber(src.qrSizePx, 48, 160, d.qrSizePx),
+    qrOffsetXPx: clampFbrDiNumber(src.qrOffsetXPx, -40, 80, d.qrOffsetXPx),
+    qrOffsetYPx: clampFbrDiNumber(src.qrOffsetYPx, -40, 80, d.qrOffsetYPx),
+    rowGapPx: clampFbrDiNumber(src.rowGapPx, 0, 40, d.rowGapPx),
+    rowAlign,
+  };
+}
+
+export function mergeFbrDiLayout(partial?: FbrDiLayoutConfig | null): FbrDiLayoutConfig {
+  return normalizeFbrDiLayout({ ...DEFAULT_FBR_DI_LAYOUT, ...(partial ?? {}) });
+}
+
 export type YAnchor = "pageTop" | "afterLineTable" | "pageBottom";
 
 export interface TemplateElement {
@@ -83,6 +164,7 @@ export interface TemplateElement {
   showLabel?: boolean;
   content?: string;
   style?: TemplateElementStyle;
+  fbrDiLayout?: FbrDiLayoutConfig;
 }
 
 export interface LineTableConfig {
@@ -134,7 +216,54 @@ export const CONTAINER_KINDS = new Set<TemplateElementKind>([
   "notes",
   "footer",
   "totals",
+  "fbrDi",
 ]);
+
+/** Default geometry for locked FBR Digital Invoicing block (bottom-left). */
+export const DEFAULT_FBR_DI_ELEMENT: TemplateElement = {
+  id: "fbrDi",
+  kind: "fbrDi",
+  x: 2,
+  y: 2,
+  width: 48,
+  height: 16,
+  visible: true,
+  yAnchor: "pageBottom",
+  fbrDiLayout: { ...DEFAULT_FBR_DI_LAYOUT },
+};
+
+export function ensureFbrDiInLayout(
+  layout: InvoiceTemplateLayout,
+  diEnabled: boolean,
+): InvoiceTemplateLayout {
+  if (!diEnabled) return layout;
+  const existing = layout.elements.find((el) => el.kind === "fbrDi" && !el.parentId);
+  if (existing) {
+    return {
+      ...layout,
+      elements: layout.elements.map((el) =>
+        el.id === existing.id
+          ? {
+              ...el,
+              kind: "fbrDi" as const,
+              visible: true,
+              yAnchor: el.yAnchor ?? "pageBottom",
+              height: el.height ?? DEFAULT_FBR_DI_ELEMENT.height,
+              width: el.width ?? DEFAULT_FBR_DI_ELEMENT.width,
+              fbrDiLayout: mergeFbrDiLayout(el.fbrDiLayout),
+            }
+          : el,
+      ),
+    };
+  }
+  return {
+    ...layout,
+    elements: [
+      ...layout.elements,
+      { ...DEFAULT_FBR_DI_ELEMENT, fbrDiLayout: { ...DEFAULT_FBR_DI_LAYOUT } },
+    ],
+  };
+}
 
 export const INVOICE_FIELD_CATALOG: InvoiceFieldDefinition[] = [
   { binding: "invoice.number", label: "Invoice number", group: "invoice" },
@@ -282,6 +411,7 @@ export const KIND_LABELS: Record<TemplateElementKind, string> = {
   totals: "Totals block",
   notes: "Notes",
   footer: "Footer",
+  fbrDi: "FBR Digital Invoice",
 };
 
 export function columnHeaderLabel(column: InvoiceTableColumn): string {
@@ -641,6 +771,7 @@ export function elementPreviewLabel(element: TemplateElement): string {
     if (element.titleBinding) return `{${getFieldLabel(element.titleBinding)}}`;
     return element.content ?? (element.kind === "footer" ? "Footer" : "Box");
   }
+  if (element.kind === "fbrDi") return KIND_LABELS.fbrDi;
   return KIND_LABELS[element.kind];
 }
 
@@ -663,14 +794,14 @@ export function getLineTableElement(elements: TemplateElement[]): TemplateElemen
 
 export function inferYAnchor(el: TemplateElement, lineTableY: number): YAnchor {
   if (el.yAnchor) return el.yAnchor;
-  if (el.kind === "footer") return "pageBottom";
+  if (el.kind === "footer" || el.kind === "fbrDi") return "pageBottom";
   if (el.kind === "lineTable") return "pageTop";
   if (el.y >= lineTableY) return "afterLineTable";
   return "pageTop";
 }
 
 export function elementHeightPct(el: TemplateElement): number {
-  return el.height ?? (el.kind === "box" ? 12 : el.kind === "footer" ? 8 : 10);
+  return el.height ?? (el.kind === "box" ? 12 : el.kind === "footer" || el.kind === "fbrDi" ? 16 : 10);
 }
 
 export function previewTableEndY(
@@ -725,7 +856,7 @@ export function createBoxBeforeTable(layout: InvoiceTemplateLayout): TemplateEle
   let maxBottom = 0;
   for (const el of layout.elements) {
     if (el.visible === false || el.parentId) continue;
-    if (el.kind === "lineTable" || el.kind === "footer") continue;
+    if (el.kind === "lineTable" || el.kind === "footer" || el.kind === "fbrDi") continue;
     if (inferYAnchor(el, lineTableY) !== "pageTop") continue;
     maxBottom = Math.max(maxBottom, el.y + elementHeightPct(el));
   }
@@ -757,7 +888,7 @@ export function createBoxAfterTable(layout: InvoiceTemplateLayout): TemplateElem
   let maxOffset = 0;
   for (const el of layout.elements) {
     if (el.visible === false || el.parentId) continue;
-    if (el.kind === "lineTable" || el.kind === "footer") continue;
+    if (el.kind === "lineTable" || el.kind === "footer" || el.kind === "fbrDi") continue;
     if (inferYAnchor(el, lineTableY) !== "afterLineTable") continue;
     maxOffset = Math.max(maxOffset, el.y + elementHeightPct(el));
   }

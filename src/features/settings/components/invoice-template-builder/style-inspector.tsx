@@ -6,10 +6,13 @@ import FileInput from "@/components/ui/fileInput";
 import {
   INVOICE_FIELD_CATALOG,
   KIND_LABELS,
+  DEFAULT_FBR_DI_LAYOUT,
   elementPreviewLabel,
   getBoxChildren,
   inferYAnchor,
   getLineTableElement,
+  mergeFbrDiLayout,
+  type FbrDiLayoutConfig,
   type InvoiceTemplateLayout,
   type TemplateElement,
   type TemplateElementStyle,
@@ -32,6 +35,13 @@ function updateStyle(
   patch: Partial<TemplateElementStyle>,
 ): TemplateElementStyle {
   return { ...(style ?? {}), ...patch };
+}
+
+function patchFbrDiLayout(
+  current: FbrDiLayoutConfig | undefined,
+  patch: Partial<FbrDiLayoutConfig>,
+): FbrDiLayoutConfig {
+  return mergeFbrDiLayout({ ...current, ...patch });
 }
 
 export function StyleInspector({
@@ -57,9 +67,11 @@ export function StyleInspector({
   const isChild = Boolean(element.parentId);
   const isBox = element.kind === "box";
   const isFooter = element.kind === "footer";
+  const isFbrDi = element.kind === "fbrDi";
   const isLineTable = element.kind === "lineTable";
   const isLogoOrLetterhead = element.kind === "logo" || element.kind === "letterhead";
   const canRepeatOnEveryPage = (isBox || isFooter || isLogoOrLetterhead) && !isChild;
+  const canDelete = canManage && !isFbrDi;
   const lineTableY = getLineTableElement(layout.elements)?.y ?? 38;
   const yAnchor = inferYAnchor(element, lineTableY);
   const boxChildren = isBox || isFooter ? getBoxChildren(layout.elements, element.id) : [];
@@ -75,15 +87,25 @@ export function StyleInspector({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold">{KIND_LABELS[element.kind]}</p>
-        <button
-          className="text-xs text-rose-600 hover:underline disabled:opacity-50"
-          disabled={!canManage}
-          onClick={onDelete}
-          type="button"
-        >
-          Delete
-        </button>
+        {canDelete ? (
+          <button
+            className="text-xs text-rose-600 hover:underline disabled:opacity-50"
+            disabled={!canManage}
+            onClick={onDelete}
+            type="button"
+          >
+            Delete
+          </button>
+        ) : isFbrDi ? (
+          <span className="text-[11px] text-muted-foreground">Required (FBR DI)</span>
+        ) : null}
       </div>
+      {isFbrDi ? (
+        <p className="text-[11px] text-muted-foreground">
+          Required FBR Digital Invoice block (number, logo, QR). Adjust size and position below —
+          parts cannot be removed while FBR DI is enabled.
+        </p>
+      ) : null}
 
       {!isChild && isBox ? (
         <p className="text-[11px] text-muted-foreground">
@@ -153,12 +175,12 @@ export function StyleInspector({
             <label className="text-xs text-muted-foreground">
               Height %
               <Input
-                disabled={!canManage || yAnchor === "pageBottom"}
+                disabled={!canManage || (yAnchor === "pageBottom" && !isFbrDi)}
                 max={80}
                 min={4}
                 onChange={(e) => onChange({ height: Number(e.target.value) || 4 })}
                 type="number"
-                value={Math.round(element.height ?? 8)}
+                value={Math.round(element.height ?? (isFbrDi ? 16 : 8))}
               />
             </label>
           )}
@@ -355,6 +377,205 @@ export function StyleInspector({
         </div>
       ) : null}
 
+      {isFbrDi ? (
+        <div className="space-y-3 border-t pt-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            FBR DI layout
+          </p>
+          {(() => {
+            const di = mergeFbrDiLayout(element.fbrDiLayout);
+            const setDi = (patch: Partial<FbrDiLayoutConfig>) =>
+              onChange({ fbrDiLayout: patchFbrDiLayout(element.fbrDiLayout, patch) });
+            return (
+              <>
+                <p className="text-[11px] font-medium text-foreground">Invoice number</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-muted-foreground">
+                    Font size
+                    <Input
+                      disabled={!canManage}
+                      max={24}
+                      min={8}
+                      onChange={(e) =>
+                        setDi({ invoiceFontSize: Number(e.target.value) || DEFAULT_FBR_DI_LAYOUT.invoiceFontSize })
+                      }
+                      type="number"
+                      value={di.invoiceFontSize}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Font weight
+                    <Select
+                      disabled={!canManage}
+                      onChange={(e) =>
+                        setDi({ invoiceFontWeight: e.target.value as "normal" | "bold" })
+                      }
+                      value={di.invoiceFontWeight}
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="bold">Bold</option>
+                    </Select>
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Text color
+                    <Input
+                      disabled={!canManage}
+                      onChange={(e) => setDi({ invoiceColor: e.target.value })}
+                      type="color"
+                      value={di.invoiceColor}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Align
+                    <Select
+                      disabled={!canManage}
+                      onChange={(e) =>
+                        setDi({
+                          invoiceTextAlign: e.target.value as "left" | "center" | "right",
+                        })
+                      }
+                      value={di.invoiceTextAlign}
+                    >
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </Select>
+                  </label>
+                  <label className="col-span-2 text-xs text-muted-foreground">
+                    Margin below number (px)
+                    <Input
+                      disabled={!canManage}
+                      max={40}
+                      min={0}
+                      onChange={(e) =>
+                        setDi({
+                          invoiceMarginBottomPx:
+                            Number(e.target.value) || DEFAULT_FBR_DI_LAYOUT.invoiceMarginBottomPx,
+                        })
+                      }
+                      type="number"
+                      value={di.invoiceMarginBottomPx}
+                    />
+                  </label>
+                </div>
+
+                <p className="text-[11px] font-medium text-foreground">Logo</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-muted-foreground">
+                    Width (px)
+                    <Input
+                      disabled={!canManage}
+                      max={200}
+                      min={40}
+                      onChange={(e) =>
+                        setDi({ logoWidthPx: Number(e.target.value) || DEFAULT_FBR_DI_LAYOUT.logoWidthPx })
+                      }
+                      type="number"
+                      value={di.logoWidthPx}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Offset X (px)
+                    <Input
+                      disabled={!canManage}
+                      max={80}
+                      min={-40}
+                      onChange={(e) => setDi({ logoOffsetXPx: Number(e.target.value) || 0 })}
+                      type="number"
+                      value={di.logoOffsetXPx}
+                    />
+                  </label>
+                  <label className="col-span-2 text-xs text-muted-foreground">
+                    Offset Y (px)
+                    <Input
+                      disabled={!canManage}
+                      max={80}
+                      min={-40}
+                      onChange={(e) => setDi({ logoOffsetYPx: Number(e.target.value) || 0 })}
+                      type="number"
+                      value={di.logoOffsetYPx}
+                    />
+                  </label>
+                </div>
+
+                <p className="text-[11px] font-medium text-foreground">QR code</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-muted-foreground">
+                    Size (px)
+                    <Input
+                      disabled={!canManage}
+                      max={160}
+                      min={48}
+                      onChange={(e) =>
+                        setDi({ qrSizePx: Number(e.target.value) || DEFAULT_FBR_DI_LAYOUT.qrSizePx })
+                      }
+                      type="number"
+                      value={di.qrSizePx}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Offset X (px)
+                    <Input
+                      disabled={!canManage}
+                      max={80}
+                      min={-40}
+                      onChange={(e) => setDi({ qrOffsetXPx: Number(e.target.value) || 0 })}
+                      type="number"
+                      value={di.qrOffsetXPx}
+                    />
+                  </label>
+                  <label className="col-span-2 text-xs text-muted-foreground">
+                    Offset Y (px)
+                    <Input
+                      disabled={!canManage}
+                      max={80}
+                      min={-40}
+                      onChange={(e) => setDi({ qrOffsetYPx: Number(e.target.value) || 0 })}
+                      type="number"
+                      value={di.qrOffsetYPx}
+                    />
+                  </label>
+                </div>
+
+                <p className="text-[11px] font-medium text-foreground">Logo + QR row</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="text-xs text-muted-foreground">
+                    Gap (px)
+                    <Input
+                      disabled={!canManage}
+                      max={40}
+                      min={0}
+                      onChange={(e) =>
+                        setDi({ rowGapPx: Number(e.target.value) || 0 })
+                      }
+                      type="number"
+                      value={di.rowGapPx}
+                    />
+                  </label>
+                  <label className="text-xs text-muted-foreground">
+                    Align
+                    <Select
+                      disabled={!canManage}
+                      onChange={(e) =>
+                        setDi({
+                          rowAlign: e.target.value as "flex-start" | "center" | "flex-end",
+                        })
+                      }
+                      value={di.rowAlign}
+                    >
+                      <option value="flex-start">Top</option>
+                      <option value="center">Center</option>
+                      <option value="flex-end">Bottom</option>
+                    </Select>
+                  </label>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      ) : null}
+
+      {!isFbrDi ? (
       <div className="space-y-2 border-t pt-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Style</p>
         <label className="block text-xs text-muted-foreground">
@@ -428,6 +649,7 @@ export function StyleInspector({
           </Select>
         </label>
       </div>
+      ) : null}
     </div>
   );
 }
