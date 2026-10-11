@@ -62,6 +62,8 @@ interface ItemFormDrawerProps {
   item?: Item | null;
   /** Used when mode is create and no item is provided. */
   defaultType?: ItemCreateType;
+  /** Prefill create-mode fields (e.g. sale price from rate calculator). */
+  createPrefill?: { salesPrice?: string };
   baseCurrencyCode?: string;
   accounts: Account[];
   vendors: Vendor[];
@@ -79,6 +81,7 @@ export function ItemFormDrawer({
   mode,
   item,
   defaultType = "inventory",
+  createPrefill,
   baseCurrencyCode = "USD",
   accounts,
   vendors,
@@ -288,7 +291,7 @@ export function ItemFormDrawer({
       fbrSroItemSerialNo: item?.fbrSroItemSerialNo ?? "",
       fbrFixedNotifiedValueOrRetailPrice: item?.fbrFixedNotifiedValueOrRetailPrice ?? "",
       fbrQtyPerSellingUnit: item?.fbrQtyPerSellingUnit ?? "",
-      salesPrice: item?.salesPrice ?? "0",
+      salesPrice: item?.salesPrice ?? (mode === "create" ? createPrefill?.salesPrice ?? "0" : "0"),
       purchaseCost: item?.purchaseCost ?? "0",
       incomeAccountId: item?.incomeAccountId ?? "",
       expenseAccountId: item?.expenseAccountId ?? "",
@@ -313,7 +316,7 @@ export function ItemFormDrawer({
     setAdoptedHsCode(item?.hsCode?.trim() ?? "");
     setSelectedRateId(null);
     setSelectedSroId(null);
-  }, [companyDefaultSaleType, defaultType, form, item, mode, open, requireFbrDi]);
+  }, [companyDefaultSaleType, createPrefill?.salesPrice, defaultType, form, item, mode, open, requireFbrDi]);
 
   useEffect(() => {
     if (!open || !requireFbrDi) return;

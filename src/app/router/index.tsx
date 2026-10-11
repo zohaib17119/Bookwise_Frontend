@@ -54,6 +54,7 @@ import { AcceptInvitePage } from "@/features/invites/pages/accept-invite-page";
 import { ItemsPage } from "@/features/items/pages/items-page";
 import { HsCodesPage } from "@/features/items/pages/hs-codes-page";
 import { ItemCategoriesPage } from "@/features/items/pages/item-categories-page";
+import { ItemRateCalculatorsPage } from "@/features/items/pages/item-rate-calculators-page";
 import { JournalDetailPage } from "@/features/journals/pages/journal-detail-page";
 import { JournalFormPage } from "@/features/journals/pages/journal-form-page";
 import { JournalsPage } from "@/features/journals/pages/journals-page";
@@ -145,6 +146,7 @@ const router = createBrowserRouter([
                   { path: "vendors", element: <VendorsPage /> },
                   { path: "items", element: <ItemsPage /> },
                   { path: "items/categories", element: <ItemCategoriesPage /> },
+                  { path: "items/rate-calculators", element: <ItemRateCalculatorsPage /> },
                   { path: "items/hs-codes", element: <HsCodesPage /> },
                   { path: "estimates", element: <EstimatesPage /> },
                   { path: "estimates/new", element: <EstimateFormPage mode="create" /> },
