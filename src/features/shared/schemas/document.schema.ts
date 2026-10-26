@@ -50,7 +50,7 @@ const requiredQuantitySchema = z.preprocess(
 
 export const lineItemSchema = z.object({
   itemId: optionalString,
-  description: z.string().min(1, "Line description is required").max(500),
+  description: z.string().trim().max(500),
   quantity: requiredQuantitySchema,
   unitPrice: moneyStringSchema,
   unitCost: moneyStringSchema,
