@@ -27,6 +27,7 @@ import {
   INVOICE_TABLE_COLUMN_KEYS,
   MAX_INVOICE_TABLE_COLUMNS,
   addChildToBox,
+  applyDeliveryChallanLayout,
   applyQuotationTitle,
   columnHeaderLabel,
   columnIdentity,
@@ -139,6 +140,8 @@ export function InvoiceTemplateSettingsPage({
   documentKind?: DocumentTemplateKind;
 }) {
   const isEstimate = documentKind === "ESTIMATE";
+  const isDeliveryChallan = documentKind === "DELIVERY_CHALLAN";
+  const usesInvoiceFallback = isEstimate || isDeliveryChallan;
   const { companyId, permissions, company } = useActiveCompany();
   const fbrDiEnabled = canUseFbrDigitalInvoicing(company);
   const canManage = canUsePermission(permissions, [
@@ -149,14 +152,20 @@ export function InvoiceTemplateSettingsPage({
   const companySettingsQuery = useCompanySettings(companyId);
   const templatesQuery = useInvoiceDocumentTemplates(companyId, documentKind);
   const invoiceTemplatesQuery = useInvoiceDocumentTemplates(
-    isEstimate ? companyId : undefined,
+    usesInvoiceFallback ? companyId : undefined,
     "INVOICE",
   );
   const createMutation = useCreateInvoiceDocumentTemplate(companyId, documentKind);
   const updateMutation = useUpdateInvoiceDocumentTemplate(companyId, documentKind);
   const previewMutation = usePreviewInvoiceDocumentTemplate(companyId);
 
-  const [name, setName] = useState(isEstimate ? "Company quotation" : "Company invoice");
+  const [name, setName] = useState(
+    isEstimate
+      ? "Company quotation"
+      : isDeliveryChallan
+        ? "Company delivery challan"
+        : "Company invoice",
+  );
   const [layout, setLayout] = useState<InvoiceTemplateLayout>(DEFAULT_INVOICE_TEMPLATE_LAYOUT);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState("");
@@ -179,7 +188,7 @@ export function InvoiceTemplateSettingsPage({
   const companyLogoUrl = companySettingsQuery.data?.logoUrl ?? "";
 
   useEffect(() => {
-    if (isEstimate) {
+    if (usesInvoiceFallback) {
       if (templatesQuery.isLoading || invoiceTemplatesQuery.isLoading) return;
       if (defaultTemplate) {
         setActiveTemplateId(defaultTemplate.id);
@@ -196,10 +205,13 @@ export function InvoiceTemplateSettingsPage({
         return;
       }
       setActiveTemplateId(null);
-      setName("Company quotation");
-      const source = invoiceFallbackTemplate
-        ? applyQuotationTitle(cloneLayout(invoiceFallbackTemplate.layoutJson))
-        : applyQuotationTitle(cloneLayout(DEFAULT_INVOICE_TEMPLATE_LAYOUT));
+      setName(isDeliveryChallan ? "Company delivery challan" : "Company quotation");
+      const base = invoiceFallbackTemplate
+        ? cloneLayout(invoiceFallbackTemplate.layoutJson)
+        : cloneLayout(DEFAULT_INVOICE_TEMPLATE_LAYOUT);
+      const source = isDeliveryChallan
+        ? applyDeliveryChallanLayout(base)
+        : applyQuotationTitle(base);
       if (!source.logoUrl && companyLogoUrl) {
         source.logoUrl = companyLogoUrl;
       }
@@ -221,7 +233,8 @@ export function InvoiceTemplateSettingsPage({
     setLayout(next);
     setPreviewHtml(defaultTemplate.compiledHtml || "");
   }, [
-    isEstimate,
+    usesInvoiceFallback,
+    isDeliveryChallan,
     defaultTemplate?.id,
     invoiceFallbackTemplate?.id,
     companyLogoUrl,
@@ -319,7 +332,13 @@ export function InvoiceTemplateSettingsPage({
     return (
       <ErrorState
         description={templatesQuery.error.message}
-        title={isEstimate ? "Unable to load estimate templates" : "Unable to load invoice templates"}
+        title={
+          isEstimate
+            ? "Unable to load estimate templates"
+            : isDeliveryChallan
+              ? "Unable to load delivery challan templates"
+              : "Unable to load invoice templates"
+        }
       />
     );
   }
@@ -347,9 +366,17 @@ export function InvoiceTemplateSettingsPage({
         description={
           isEstimate
             ? "Starts as a copy of your invoice template until you save. After the first save, quotation layout is independent."
-            : "Add boxes, select a box, then place fields inside it. Each line has its own label and font. Empty values are hidden on the invoice PDF."
+            : isDeliveryChallan
+              ? "Starts as a copy of your invoice template with product and qty columns. Money totals are hidden. First print also seeds a default if none is saved."
+              : "Add boxes, select a box, then place fields inside it. Each line has its own label and font. Empty values are hidden on the invoice PDF."
         }
-        title={isEstimate ? "Estimate / quotation PDF template" : "Invoice PDF template"}
+        title={
+          isEstimate
+            ? "Estimate / quotation PDF template"
+            : isDeliveryChallan
+              ? "Delivery challan PDF template"
+              : "Invoice PDF template"
+        }
       >
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
@@ -722,7 +749,13 @@ export function InvoiceTemplateSettingsPage({
                 <iframe
                   className="h-[520px] w-full bg-white"
                   srcDoc={previewHtml}
-                  title={isEstimate ? "Estimate template preview" : "Invoice template preview"}
+                  title={
+                    isEstimate
+                      ? "Estimate template preview"
+                      : isDeliveryChallan
+                        ? "Delivery challan template preview"
+                        : "Invoice template preview"
+                  }
                 />
               </div>
             ) : (

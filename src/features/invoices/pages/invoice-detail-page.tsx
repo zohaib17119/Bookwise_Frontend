@@ -48,6 +48,8 @@ import {
   type FbrDiAttemptEvidence,
 } from "@/features/invoices/api/invoices.api";
 import InvoiceView from "./InvoiceView";
+import { DeliveryChallanPreview } from "@/features/invoices/components/delivery-challan-preview";
+import { useDeliveryChallanRemaining } from "@/features/invoices/hooks/use-delivery-challans";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { Alert } from "@/components/ui/alert";
 
@@ -66,6 +68,11 @@ export function InvoiceDetailPage() {
     fbrDi?: FbrDiAttemptEvidence | null;
   } | null>(null);
   const invoiceQuery = useInvoice(companyId, invoiceId ?? null);
+  const remainingDcQuery = useDeliveryChallanRemaining(
+    companyId,
+    invoiceId ?? null,
+    Boolean(invoiceId) && !invoiceQuery.isLoading,
+  );
   const deleteMutation = useDeleteInvoice(companyId);
   const sendMutation = useSendInvoice(companyId);
   const complianceMutation = useSubmitInvoiceCompliance(companyId);
@@ -209,6 +216,10 @@ export function InvoiceDetailPage() {
     invoice.status !== "DRAFT" &&
     invoice.status !== "CANCELLED" &&
     invoice.status !== "VOID";
+  const canCreateDeliveryChallan =
+    canManage &&
+    !isAdjustmentNote &&
+    Boolean(remainingDcQuery.data?.canCreate);
 
   const fbrStatusLabel = formatFbrDiStatusLabel(fbrStatus, {
     digitalInvoicingEnabled: useFbrDi,
@@ -256,6 +267,13 @@ export function InvoiceDetailPage() {
               {invoice.status === "DRAFT" ? (
                 <Button onClick={() => setSendOpen(true)} variant="primary">
                   {sendLabel}
+                </Button>
+              ) : null}
+              {canCreateDeliveryChallan ? (
+                <Button asChild variant="secondary">
+                  <Link to={`/app/company/${companyId}/invoices/${invoice.id}/delivery-challans/new`}>
+                    Create delivery challan
+                  </Link>
                 </Button>
               ) : null}
               {canCreateAdjustment ? (
@@ -718,6 +736,58 @@ export function InvoiceDetailPage() {
               showHsCode
             />
           </DocumentDetailsSection>
+
+          {!isAdjustmentNote ? (
+            <DocumentDetailsSection title="Delivery challans">
+              {(invoice.deliveryChallans?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No delivery challans yet.
+                  {canCreateDeliveryChallan
+                    ? " Create one to print a partial or full delivery document (stock is unchanged)."
+                    : ""}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {invoice.deliveryChallans!.map((dc) => (
+                    <li
+                      key={dc.id}
+                      className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 last:border-0 last:pb-0"
+                    >
+                      <div className="text-sm">
+                        <div className="font-medium">{dc.challanNumber}</div>
+                        <div className="text-muted-foreground">
+                          {formatDate(dc.challanDate)}
+                          {dc.lines?.length
+                            ? ` · ${dc.lines.length} line${dc.lines.length === 1 ? "" : "s"}`
+                            : ""}
+                        </div>
+                      </div>
+                      {companyId ? (
+                        <DeliveryChallanPreview
+                          challanNumber={dc.challanNumber}
+                          companyId={companyId}
+                          dcId={dc.id}
+                          invoiceId={invoice.id}
+                          label="Print"
+                        />
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canCreateDeliveryChallan ? (
+                <div className="pt-3">
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      to={`/app/company/${companyId}/invoices/${invoice.id}/delivery-challans/new`}
+                    >
+                      Create delivery challan
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
+            </DocumentDetailsSection>
+          ) : null}
         </div>
 
         <div className="space-y-4">

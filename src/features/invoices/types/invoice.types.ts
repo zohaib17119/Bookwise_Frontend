@@ -4,6 +4,7 @@ import type {
   DocumentLineInput,
   DocumentTotals,
 } from "@/features/shared/types/documents";
+import type { InvoiceDeliveryChallanSummary } from "@/features/invoices/types/delivery-challan.types";
 
 export type InvoiceStatus =
   | "DRAFT"
@@ -49,6 +50,7 @@ export interface Invoice {
   contactPersonDepartment?: string | null;
   deliveryDate?: string;
   deliveryChallanNumber?: string;
+  deliveryChallans?: InvoiceDeliveryChallanSummary[];
   shippingAddressId?: string | null;
   shippingAddressLabel?: string | null;
   shippingAddressLine1?: string | null;
@@ -150,6 +152,20 @@ export interface InvoiceListParams extends BaseEntityListParams {
   customerId?: string;
   fromDate?: string;
   toDate?: string;
+}
+
+/** Filter-scoped money totals (company base currency) from invoice list API. */
+export interface InvoiceColumnSums {
+  amountExclusiveTax?: string;
+  taxAmount?: string;
+  amountInclusiveTax?: string;
+  total?: string;
+  amountPaid?: string;
+  amountDue?: string;
+  incomeWhtAmount?: string;
+  salesTaxWhtAmount?: string;
+  amountInclusiveWht?: string;
+  totalReceivable?: string;
 }
 
 export interface InvoicePayload {

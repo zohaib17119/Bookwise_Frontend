@@ -188,7 +188,7 @@ export interface InvoiceTemplateLayout {
   elements: TemplateElement[];
 }
 
-export type DocumentTemplateKind = "INVOICE" | "ESTIMATE";
+export type DocumentTemplateKind = "INVOICE" | "ESTIMATE" | "DELIVERY_CHALLAN";
 
 export interface InvoiceDocumentTemplate {
   id: string;
@@ -917,6 +917,44 @@ export function applyQuotationTitle(layout: InvoiceTemplateLayout): InvoiceTempl
         ? { ...el, content: "QUOTATION" }
         : el,
     ),
+  };
+}
+
+/** Adapt an invoice layout for delivery challan print (qty columns; hide money totals). */
+export function applyDeliveryChallanLayout(layout: InvoiceTemplateLayout): InvoiceTemplateLayout {
+  const qtyColumns: InvoiceTableColumn[] = [
+    { kind: "builtin", key: "serial" },
+    { kind: "builtin", key: "product" },
+    { kind: "builtin", key: "description" },
+    { kind: "builtin", key: "qty" },
+  ];
+  return {
+    ...layout,
+    columns: qtyColumns,
+    elements: layout.elements.map((el) => {
+      if (
+        el.id === "title-invoice" ||
+        (el.kind === "text" && el.content?.trim().toUpperCase() === "INVOICE")
+      ) {
+        return { ...el, content: "DELIVERY CHALLAN" };
+      }
+      if (el.id === "box-meta" || (el.kind === "box" && el.content === "Invoice details")) {
+        return { ...el, content: "Challan details" };
+      }
+      if (el.id === "inv-issue") {
+        return { ...el, label: "Challan date", binding: "invoice.issueDate" };
+      }
+      if (el.id === "delivery-challan") {
+        return { ...el, label: "Challan no", binding: "invoice.deliveryChallanNumber" };
+      }
+      if (el.id === "inv-due" || el.kind === "totals" || el.id === "box-totals") {
+        return { ...el, visible: false };
+      }
+      if (el.parentId === "box-totals") {
+        return { ...el, visible: false };
+      }
+      return el;
+    }),
   };
 }
 

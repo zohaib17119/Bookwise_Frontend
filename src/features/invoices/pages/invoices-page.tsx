@@ -174,6 +174,13 @@ export function InvoicesPage() {
     setPage(1);
   };
 
+  const columnSums = invoicesQuery.data?.columnSums;
+  const headerSum = (key: string) => {
+    const value = columnSums?.[key];
+    if (value == null || value === "") return undefined;
+    return formatCurrency(value, baseCurrency);
+  };
+
   const columnMap: Record<string, DataTableColumn<Invoice>> = {
     number: {
       key: "number",
@@ -265,6 +272,7 @@ export function InvoicesPage() {
     amountExclusiveTax: {
       key: "amountExclusiveTax",
       header: "Amount exclusive tax",
+      headerExtra: headerSum("amountExclusiveTax"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -281,6 +289,7 @@ export function InvoicesPage() {
     taxAmount: {
       key: "taxAmount",
       header: "Tax amount",
+      headerExtra: headerSum("taxAmount"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -291,6 +300,7 @@ export function InvoicesPage() {
     amountInclusiveTax: {
       key: "amountInclusiveTax",
       header: "Amount inclusive tax",
+      headerExtra: headerSum("amountInclusiveTax"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -310,6 +320,7 @@ export function InvoicesPage() {
     incomeWhtAmount: {
       key: "incomeWhtAmount",
       header: "Income WHT amount",
+      headerExtra: headerSum("incomeWhtAmount"),
       className: "text-right",
       render: (invoice) =>
         invoice.incomeWhtEnabled
@@ -328,6 +339,7 @@ export function InvoicesPage() {
     salesTaxWhtAmount: {
       key: "salesTaxWhtAmount",
       header: "Sales tax WHT amount",
+      headerExtra: headerSum("salesTaxWhtAmount"),
       className: "text-right",
       render: (invoice) =>
         invoice.salesTaxWhtEnabled
@@ -337,6 +349,7 @@ export function InvoicesPage() {
     amountInclusiveWht: {
       key: "amountInclusiveWht",
       header: "Amount including WHT",
+      headerExtra: headerSum("amountInclusiveWht"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -352,6 +365,7 @@ export function InvoicesPage() {
     totalReceivable: {
       key: "totalReceivable",
       header: "Total receivable",
+      headerExtra: headerSum("totalReceivable"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -365,6 +379,7 @@ export function InvoicesPage() {
     amountPaid: {
       key: "amountPaid",
       header: "Amount paid",
+      headerExtra: headerSum("amountPaid"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(invoice.amountPaid ?? "0", invoice.currencyCode ?? baseCurrency),
@@ -373,6 +388,7 @@ export function InvoicesPage() {
       key: "total",
       sortable: true,
       header: "Total",
+      headerExtra: headerSum("total"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(
@@ -384,6 +400,7 @@ export function InvoicesPage() {
       key: "amountDue",
       sortable: true,
       header: "Amount Due",
+      headerExtra: headerSum("amountDue"),
       className: "text-right",
       render: (invoice) =>
         formatCurrency(invoice.amountDue ?? "0", invoice.currencyCode ?? baseCurrency),

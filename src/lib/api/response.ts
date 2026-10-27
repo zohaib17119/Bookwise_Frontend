@@ -10,6 +10,8 @@ export interface PaginationMeta {
 export interface PaginatedResult<T> {
   items: T[];
   pagination: PaginationMeta;
+  /** Optional filter-scoped aggregates (e.g. invoice list money column sums). */
+  columnSums?: Record<string, string>;
 }
 
 type UnknownListEnvelope<T> =
@@ -64,14 +66,33 @@ function findPaginationMeta(response: unknown): PaginationMeta | undefined {
   return undefined;
 }
 
+function findColumnSums(response: unknown): Record<string, string> | undefined {
+  if (!response || typeof response !== "object") return undefined;
+  const envelope = response as Record<string, unknown>;
+
+  const fromObj = (obj: unknown): Record<string, string> | undefined => {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
+    const sums = (obj as Record<string, unknown>).columnSums;
+    if (!sums || typeof sums !== "object" || Array.isArray(sums)) return undefined;
+    return sums as Record<string, string>;
+  };
+
+  return fromObj(envelope) ?? fromObj(envelope.data);
+}
+
 export function extractPaginated<T>(response: UnknownListEnvelope<T>): PaginatedResult<T> {
   const items = extractListData<T>(response);
   const meta = findPaginationMeta(response);
+  const columnSums = findColumnSums(response);
 
   const total = meta?.total ?? items.length;
   const page = meta?.page ?? 1;
   const limit = meta?.limit ?? (items.length || 25);
   const totalPages = meta?.totalPages ?? (limit > 0 ? Math.max(1, Math.ceil(total / limit)) : 1);
 
-  return { items, pagination: { total, page, limit, totalPages } };
+  return {
+    items,
+    pagination: { total, page, limit, totalPages },
+    ...(columnSums ? { columnSums } : {}),
+  };
 }

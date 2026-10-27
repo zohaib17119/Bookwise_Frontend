@@ -29,6 +29,7 @@ export interface ExpenseListParams extends BaseEntityListParams {
   fromDate?: string;
   toDate?: string;
   expenseAccountIds?: string;
+  paymentAccountIds?: string;
 }
 
 export interface ExpensePayload {

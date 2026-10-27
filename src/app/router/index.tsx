@@ -47,6 +47,7 @@ import { StockOnHandPage } from "@/features/inventory/pages/stock-on-hand-page";
 import { CreditNotesPage } from "@/features/creditNotes/pages/credit-notes-page";
 import { DebitNotesPage } from "@/features/debitNotes/pages/debit-notes-page";
 import { InvoiceDetailPage } from "@/features/invoices/pages/invoice-detail-page";
+import { DeliveryChallanCreatePage } from "@/features/invoices/pages/delivery-challan-create-page";
 import { InvoiceFormPage } from "@/features/invoices/pages/invoice-form-page";
 import { InvoicesPage } from "@/features/invoices/pages/invoices-page";
 import { SalesPersonsPage } from "@/features/sales-persons/pages/sales-persons-page";
@@ -81,6 +82,7 @@ import { SettingsTeamPage } from "@/features/settings/pages/settings-team-page";
 import { SettingsTaxPage } from "@/features/settings/pages/settings-tax-page";
 import { InvoiceTemplateSettingsPage } from "@/features/settings/pages/invoice-template-settings-page";
 import { EstimateTemplateSettingsPage } from "@/features/settings/pages/estimate-template-settings-page";
+import { DeliveryChallanTemplateSettingsPage } from "@/features/settings/pages/delivery-challan-template-settings-page";
 import { ZatcaSettingsRoute } from "@/features/settings/pages/zatca-country-guard";
 import { FbrSettingsRoute } from "@/features/settings/pages/fbr-country-guard";
 import { PosPage } from "@/features/pos/pages/pos-page";
@@ -156,6 +158,10 @@ const router = createBrowserRouter([
                   { path: "invoices/sales-persons", element: <SalesPersonsPage /> },
                   { path: "invoices/new", element: <InvoiceFormPage mode="create" /> },
                   { path: "invoices/:invoiceId", element: <InvoiceDetailPage /> },
+                  {
+                    path: "invoices/:invoiceId/delivery-challans/new",
+                    element: <DeliveryChallanCreatePage />,
+                  },
                   { path: "invoices/:invoiceId/edit", element: <InvoiceFormPage mode="edit" /> },
                   { path: "credit-notes", element: <CreditNotesPage /> },
                   { path: "debit-notes", element: <DebitNotesPage /> },
@@ -222,6 +228,10 @@ const router = createBrowserRouter([
                       { path: "tax", element: <SettingsTaxPage /> },
                       { path: "invoice-template", element: <InvoiceTemplateSettingsPage /> },
                       { path: "estimate-template", element: <EstimateTemplateSettingsPage /> },
+                      {
+                        path: "delivery-challan-template",
+                        element: <DeliveryChallanTemplateSettingsPage />,
+                      },
                       { path: "zatca", element: <ZatcaSettingsRoute /> },
                       { path: "fbr", element: <FbrSettingsRoute /> },
                       { path: "team", element: <SettingsTeamPage /> },

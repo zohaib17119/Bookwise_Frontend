@@ -15,6 +15,7 @@ function buildQuery(params: ExpenseListParams) {
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
   if (params.expenseAccountIds !== undefined) query.set("expenseAccountIds", params.expenseAccountIds);
+  if (params.paymentAccountIds !== undefined) query.set("paymentAccountIds", params.paymentAccountIds);
   if (params.sortBy) query.set("sortBy", params.sortBy);
   if (params.sortDir) query.set("sortDir", params.sortDir);
   query.set("limit", String(params.limit ?? 25));

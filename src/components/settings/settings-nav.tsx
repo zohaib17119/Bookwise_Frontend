@@ -10,6 +10,7 @@ const baseSettingsItems = [
   { segment: "tax", label: "Tax" },
   { segment: "invoice-template", label: "Invoice template" },
   { segment: "estimate-template", label: "Estimate / quotation template" },
+  { segment: "delivery-challan-template", label: "Delivery challan template" },
   { segment: "team", label: "Team" },
   { segment: "preferences", label: "Preferences" },
 ];

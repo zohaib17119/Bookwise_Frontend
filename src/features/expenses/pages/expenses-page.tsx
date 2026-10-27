@@ -13,6 +13,7 @@ import { SortableTableHeader, toggleListSort } from "@/components/shared/sortabl
 import type { ListSortDir } from "@/features/shared/types/common";
 import { useAccountOptions } from "@/features/accounts/hooks/use-accounts";
 import { buildPayFromOptions } from "@/features/accounts/utils/payment-account-options";
+import { ExpensePayFromFilter } from "@/features/expenses/components/expense-pay-from-filter";
 import { useBankAccounts } from "@/features/banking/hooks/use-banking";
 import { useActiveCompany } from "@/features/companies/hooks/use-active-company";
 import { getCompanyBaseCurrency } from "@/features/companies/utils/company-currency";
@@ -73,6 +74,7 @@ export function ExpensesPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft());
   const [addDraft, setAddDraft] = useState<Draft>(emptyDraft());
   const [includedCategoryIds, setIncludedCategoryIds] = useState<Set<string> | null>(null);
+  const [includedPayFromIds, setIncludedPayFromIds] = useState<Set<string> | null>(null);
   const deferredSearch = useDeferredValue(search);
   const accountsQuery = useAccountOptions(companyId);
   const bankAccountsQuery = useBankAccounts(companyId);
@@ -81,6 +83,8 @@ export function ExpensesPage() {
   const notesRequired = Boolean(accountingQuery.data?.expenseUpdateNotesRequired);
   const expenseAccountIdsParam =
     includedCategoryIds === null ? undefined : [...includedCategoryIds].join(",");
+  const paymentAccountIdsParam =
+    includedPayFromIds === null ? undefined : [...includedPayFromIds].join(",");
   const expensesQuery = useExpensesPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
     fromDate,
@@ -88,6 +92,7 @@ export function ExpensesPage() {
     page,
     limit,
     expenseAccountIds: expenseAccountIdsParam,
+    paymentAccountIds: paymentAccountIdsParam,
     sortBy,
     sortDir,
   });
@@ -440,6 +445,14 @@ export function ExpensesPage() {
               setIncludedCategoryIds(next);
               setPage(1);
             }}
+          />
+          <ExpensePayFromFilter
+            includedIds={includedPayFromIds}
+            onChange={(next) => {
+              setIncludedPayFromIds(next);
+              setPage(1);
+            }}
+            options={payFromOptions}
           />
         </FilterBar>
       }

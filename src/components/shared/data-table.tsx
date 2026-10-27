@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils/cn";
 export interface DataTableColumn<T> {
   key: string;
   header: string;
+  /** Optional second line under the header (e.g. filter-scoped column total). */
+  headerExtra?: ReactNode;
   className?: string;
   sortable?: boolean;
   sortKey?: string;
@@ -85,17 +87,24 @@ export function DataTable<T>({
                   )}
                   key={column.key}
                 >
-                  {column.sortable && onSort ? (
-                    <SortableTableHeader
-                      activeSortKey={sortKey}
-                      label={column.header}
-                      onSort={onSort}
-                      sortDir={sortDir}
-                      sortKey={column.sortKey ?? column.key}
-                    />
-                  ) : (
-                    column.header
-                  )}
+                  <div className="flex flex-col gap-0.5">
+                    {column.sortable && onSort ? (
+                      <SortableTableHeader
+                        activeSortKey={sortKey}
+                        label={column.header}
+                        onSort={onSort}
+                        sortDir={sortDir}
+                        sortKey={column.sortKey ?? column.key}
+                      />
+                    ) : (
+                      <span>{column.header}</span>
+                    )}
+                    {column.headerExtra != null ? (
+                      <span className="normal-case tracking-normal text-[11px] font-semibold text-foreground">
+                        {column.headerExtra}
+                      </span>
+                    ) : null}
+                  </div>
                 </th>
               ))}
             </tr>
