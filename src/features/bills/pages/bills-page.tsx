@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { CheckboxMultiFilter } from "@/components/shared/checkbox-multi-filter";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
@@ -66,12 +66,26 @@ function moneyNum(value?: string | null) {
   return Number.isFinite(n) ? n : 0;
 }
 
+const BILL_STATUS_FILTER_OPTIONS = [
+  "DRAFT",
+  "OPEN",
+  "UNPAID",
+  "PARTIALLY_PAID",
+  "PAID",
+  "OVERDUE",
+  "VOID",
+  "CANCELLED",
+].map((id) => ({
+  id,
+  label: id === "UNPAID" ? "Unpaid" : id.replace(/_/g, " "),
+}));
+
 export function BillsPage() {
   const { companyId, company, permissions } = useActiveCompany();
   const user = useAuthStore((state) => state.user);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [vendorId, setVendorId] = useState("");
+  const [includedStatuses, setIncludedStatuses] = useState<Set<string> | null>(null);
+  const [includedVendorIds, setIncludedVendorIds] = useState<Set<string> | null>(null);
   const defaultRange = lastNDaysRange(30);
   const [fromDate, setFromDate] = useState(defaultRange.fromDate);
   const [toDate, setToDate] = useState(defaultRange.toDate);
@@ -86,8 +100,8 @@ export function BillsPage() {
   const settleIncomeWhtMutation = useSettleBillIncomeWht(companyId);
   const billsQuery = useBillsPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
-    status: status || undefined,
-    vendorId: vendorId || undefined,
+    statuses: includedStatuses === null ? undefined : [...includedStatuses].join(","),
+    vendorIds: includedVendorIds === null ? undefined : [...includedVendorIds].join(","),
     fromDate,
     toDate,
     sortBy,
@@ -139,6 +153,13 @@ export function BillsPage() {
     setSortBy(next.sortBy);
     setSortDir(next.sortDir);
     setPage(1);
+  };
+
+  const columnSums = billsQuery.data?.columnSums;
+  const headerSum = (key: string) => {
+    const value = columnSums?.[key];
+    if (value == null || value === "") return undefined;
+    return formatCurrency(value, baseCurrency);
   };
 
   const columnMap: Record<string, DataTableColumn<Bill>> = {
@@ -198,6 +219,7 @@ export function BillsPage() {
     amountExclusiveTax: {
       key: "amountExclusiveTax",
       header: "Amount exclusive tax",
+      headerExtra: headerSum("amountExclusiveTax"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(bill.subtotal ?? bill.totals?.subtotal ?? "0", bill.currencyCode ?? baseCurrency),
@@ -211,6 +233,7 @@ export function BillsPage() {
     taxAmount: {
       key: "taxAmount",
       header: "Tax amount",
+      headerExtra: headerSum("taxAmount"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(bill.taxAmount ?? bill.totals?.taxTotal ?? "0", bill.currencyCode ?? baseCurrency),
@@ -218,6 +241,7 @@ export function BillsPage() {
     amountInclusiveTax: {
       key: "amountInclusiveTax",
       header: "Amount inclusive tax",
+      headerExtra: headerSum("amountInclusiveTax"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(bill.total ?? bill.totals?.total ?? "0", bill.currencyCode ?? baseCurrency),
@@ -234,6 +258,7 @@ export function BillsPage() {
     incomeWhtAmount: {
       key: "incomeWhtAmount",
       header: "Income WHT amount",
+      headerExtra: headerSum("incomeWhtAmount"),
       className: "text-right",
       render: (bill) =>
         bill.incomeWhtEnabled
@@ -252,6 +277,7 @@ export function BillsPage() {
     salesTaxWhtAmount: {
       key: "salesTaxWhtAmount",
       header: "Sales tax WHT amount",
+      headerExtra: headerSum("salesTaxWhtAmount"),
       className: "text-right",
       render: (bill) =>
         bill.salesTaxWhtEnabled
@@ -261,6 +287,7 @@ export function BillsPage() {
     amountInclusiveWht: {
       key: "amountInclusiveWht",
       header: "Amount including WHT",
+      headerExtra: headerSum("amountInclusiveWht"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(
@@ -273,6 +300,7 @@ export function BillsPage() {
     totalPayable: {
       key: "totalPayable",
       header: "Total payable",
+      headerExtra: headerSum("totalPayable"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(
@@ -283,6 +311,7 @@ export function BillsPage() {
     amountPaid: {
       key: "amountPaid",
       header: "Amount paid",
+      headerExtra: headerSum("amountPaid"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(bill.amountPaid ?? "0", bill.currencyCode ?? baseCurrency),
@@ -291,6 +320,7 @@ export function BillsPage() {
       key: "total",
       sortable: true,
       header: "Total",
+      headerExtra: headerSum("total"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(
@@ -302,6 +332,7 @@ export function BillsPage() {
       key: "amountDue",
       sortable: true,
       header: "Amount Due",
+      headerExtra: headerSum("amountDue"),
       className: "text-right",
       render: (bill) =>
         formatCurrency(bill.amountDue ?? "0", bill.currencyCode ?? baseCurrency),
@@ -445,40 +476,30 @@ export function BillsPage() {
             />
           </FilterField>
           <FilterField className="sm:min-w-[180px]">
-            <Select
-              className="w-full"
-              onChange={(e) => {
-                setStatus(e.target.value);
+            <CheckboxMultiFilter
+              includedIds={includedStatuses}
+              label="Status"
+              onChange={(next) => {
+                setIncludedStatuses(next);
                 setPage(1);
               }}
-              value={status}
-            >
-              <option value="">All statuses</option>
-              {["DRAFT", "OPEN", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map(
-                (option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/_/g, " ")}
-                  </option>
-                ),
-              )}
-            </Select>
+              options={BILL_STATUS_FILTER_OPTIONS}
+            />
           </FilterField>
           <FilterField className="sm:min-w-[220px]">
-            <Select
-              className="w-full"
-              onChange={(e) => {
-                setVendorId(e.target.value);
+            <CheckboxMultiFilter
+              includedIds={includedVendorIds}
+              label="Vendors"
+              minWidth={280}
+              onChange={(next) => {
+                setIncludedVendorIds(next);
                 setPage(1);
               }}
-              value={vendorId}
-            >
-              <option value="">All vendors</option>
-              {(vendorsQuery.data ?? []).map((vendor) => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.displayName}
-                </option>
-              ))}
-            </Select>
+              options={(vendorsQuery.data ?? []).map((vendor) => ({
+                id: vendor.id,
+                label: vendor.displayName,
+              }))}
+            />
           </FilterField>
         </FilterBar>
       }

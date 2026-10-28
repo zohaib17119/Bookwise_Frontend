@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { CheckboxMultiFilter } from "@/components/shared/checkbox-multi-filter";
 import { DataTable, type DataTableColumn } from "@/components/shared/data-table";
 import { EntityListPage } from "@/components/shared/entity-list-page";
 import { ErrorState } from "@/components/shared/error-state";
@@ -74,6 +74,20 @@ function moneyNum(value?: string | null) {
   return Number.isFinite(n) ? n : 0;
 }
 
+const INVOICE_STATUS_FILTER_OPTIONS = [
+  "DRAFT",
+  "ISSUED",
+  "UNPAID",
+  "PARTIALLY_PAID",
+  "PAID",
+  "OVERDUE",
+  "VOID",
+  "CANCELLED",
+].map((id) => ({
+  id,
+  label: id === "UNPAID" ? "Unpaid" : id.replace(/_/g, " "),
+}));
+
 export function InvoicesPage() {
   const { companyId, company, permissions } = useActiveCompany();
   const user = useAuthStore((state) => state.user);
@@ -81,8 +95,8 @@ export function InvoicesPage() {
   const showFbr = canShowFbr(company);
   const useFbrDi = canUseFbrDigitalInvoicing(company);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [customerId, setCustomerId] = useState("");
+  const [includedStatuses, setIncludedStatuses] = useState<Set<string> | null>(null);
+  const [includedCustomerIds, setIncludedCustomerIds] = useState<Set<string> | null>(null);
   const defaultRange = lastNDaysRange(30);
   const [fromDate, setFromDate] = useState(defaultRange.fromDate);
   const [toDate, setToDate] = useState(defaultRange.toDate);
@@ -99,8 +113,8 @@ export function InvoicesPage() {
   const settleIncomeWhtMutation = useSettleInvoiceIncomeWht(companyId);
   const invoicesQuery = useInvoicesPaginated(companyId, {
     search: deferredSearch.trim() || undefined,
-    status: status || undefined,
-    customerId: customerId || undefined,
+    statuses: includedStatuses === null ? undefined : [...includedStatuses].join(","),
+    customerIds: includedCustomerIds === null ? undefined : [...includedCustomerIds].join(","),
     fromDate,
     toDate,
     sortBy,
@@ -538,40 +552,30 @@ export function InvoicesPage() {
             />
           </FilterField>
           <FilterField className="sm:min-w-[180px]">
-            <Select
-              className="w-full"
-              onChange={(e) => {
-                setStatus(e.target.value);
+            <CheckboxMultiFilter
+              includedIds={includedStatuses}
+              label="Status"
+              onChange={(next) => {
+                setIncludedStatuses(next);
                 setPage(1);
               }}
-              value={status}
-            >
-              <option value="">All statuses</option>
-              {["DRAFT", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "VOID", "CANCELLED"].map(
-                (option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/_/g, " ")}
-                  </option>
-                ),
-              )}
-            </Select>
+              options={INVOICE_STATUS_FILTER_OPTIONS}
+            />
           </FilterField>
           <FilterField className="sm:min-w-[220px]">
-            <Select
-              className="w-full"
-              onChange={(e) => {
-                setCustomerId(e.target.value);
+            <CheckboxMultiFilter
+              includedIds={includedCustomerIds}
+              label="Customers"
+              minWidth={280}
+              onChange={(next) => {
+                setIncludedCustomerIds(next);
                 setPage(1);
               }}
-              value={customerId}
-            >
-              <option value="">All customers</option>
-              {(customersQuery.data ?? []).map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.displayName}
-                </option>
-              ))}
-            </Select>
+              options={(customersQuery.data ?? []).map((customer) => ({
+                id: customer.id,
+                label: customer.displayName,
+              }))}
+            />
           </FilterField>
         </FilterBar>
         </div>

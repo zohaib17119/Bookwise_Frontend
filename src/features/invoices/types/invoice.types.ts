@@ -149,7 +149,9 @@ export interface Invoice {
 
 export interface InvoiceListParams extends BaseEntityListParams {
   status?: string;
+  statuses?: string;
   customerId?: string;
+  customerIds?: string;
   fromDate?: string;
   toDate?: string;
 }

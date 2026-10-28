@@ -13,7 +13,9 @@ function buildQuery(params: InvoiceListParams) {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
+  if (params.statuses !== undefined) query.set("statuses", params.statuses);
   if (params.customerId) query.set("customerId", params.customerId);
+  if (params.customerIds !== undefined) query.set("customerIds", params.customerIds);
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
   if (params.sortBy) query.set("sortBy", params.sortBy);

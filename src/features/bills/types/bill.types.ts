@@ -102,9 +102,24 @@ export interface Bill {
 
 export interface BillListParams extends BaseEntityListParams {
   status?: string;
+  statuses?: string;
   vendorId?: string;
+  vendorIds?: string;
   fromDate?: string;
   toDate?: string;
+}
+
+export interface BillColumnSums {
+  amountExclusiveTax?: string;
+  taxAmount?: string;
+  amountInclusiveTax?: string;
+  total?: string;
+  amountPaid?: string;
+  amountDue?: string;
+  incomeWhtAmount?: string;
+  salesTaxWhtAmount?: string;
+  amountInclusiveWht?: string;
+  totalPayable?: string;
 }
 
 export interface BillPayload {

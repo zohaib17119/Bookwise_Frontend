@@ -8,7 +8,9 @@ function buildQuery(params: BillListParams) {
   const query = new URLSearchParams();
   if (params.search) query.set("search", params.search);
   if (params.status) query.set("status", params.status);
+  if (params.statuses !== undefined) query.set("statuses", params.statuses);
   if (params.vendorId) query.set("vendorId", params.vendorId);
+  if (params.vendorIds !== undefined) query.set("vendorIds", params.vendorIds);
   if (params.fromDate) query.set("fromDate", params.fromDate);
   if (params.toDate) query.set("toDate", params.toDate);
   if (params.sortBy) query.set("sortBy", params.sortBy);
