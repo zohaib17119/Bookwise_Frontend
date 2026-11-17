@@ -10,6 +10,7 @@ import {
   getNextInvoiceNumber,
   sendInvoice,
   markInvoiceTaxReported,
+  revertInvoiceToDraft,
   retryInvoiceFbrSubmit,
   submitInvoiceCompliance,
   submitInvoiceFbrSync,
@@ -131,6 +132,21 @@ export function useSendInvoice(companyId: string | undefined) {
 export function useMarkInvoiceTaxReported(companyId: string | undefined) {
   return useMutation({
     mutationFn: (invoiceId: string) => markInvoiceTaxReported(companyId!, invoiceId),
+    onSuccess: async (_data, invoiceId) => {
+      if (!companyId) return;
+      await Promise.all([
+        invalidateInvoiceQueries(companyId),
+        queryClient.invalidateQueries({
+          queryKey: ["companies", companyId, "invoices", invoiceId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useRevertInvoiceToDraft(companyId: string | undefined) {
+  return useMutation({
+    mutationFn: (invoiceId: string) => revertInvoiceToDraft(companyId!, invoiceId),
     onSuccess: async (_data, invoiceId) => {
       if (!companyId) return;
       await Promise.all([

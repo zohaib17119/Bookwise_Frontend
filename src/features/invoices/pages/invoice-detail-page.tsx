@@ -31,6 +31,7 @@ import {
   useMarkInvoiceTaxReported,
   usePatchInvoiceSalesPerson,
   useRetryInvoiceFbrSubmit,
+  useRevertInvoiceToDraft,
   useSendInvoice,
   useSubmitInvoiceCompliance,
   useSubmitInvoiceFbrSync,
@@ -56,9 +57,10 @@ import { Alert } from "@/components/ui/alert";
 export function InvoiceDetailPage() {
   const navigate = useNavigate();
   const { invoiceId, companyId } = useParams();
-  const { permissions, company } = useActiveCompany();
+  const { permissions, company, role } = useActiveCompany();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [revertOpen, setRevertOpen] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<AdjustmentNoteType | null>(null);
   const [fbrFlash, setFbrFlash] = useState<{
     tone: "ok" | "err";
@@ -79,6 +81,7 @@ export function InvoiceDetailPage() {
   const fbrSubmitMutation = useSubmitInvoiceFbrSync(companyId);
   const fbrRetryMutation = useRetryInvoiceFbrSubmit(companyId);
   const markTaxReportedMutation = useMarkInvoiceTaxReported(companyId);
+  const revertToDraftMutation = useRevertInvoiceToDraft(companyId);
   const creditNoteMutation = useCreateCreditNote(companyId);
   const debitNoteMutation = useCreateDebitNote(companyId);
   const patchSalesPersonMutation = usePatchInvoiceSalesPerson(companyId, invoiceId ?? null);
@@ -220,6 +223,13 @@ export function InvoiceDetailPage() {
     canManage &&
     !isAdjustmentNote &&
     Boolean(remainingDcQuery.data?.canCreate);
+  const canRevertToDraft =
+    canManage &&
+    (role === "OWNER" || role === "ADMIN") &&
+    !isAdjustmentNote &&
+    invoice.status !== "DRAFT" &&
+    invoice.status !== "VOID" &&
+    invoice.status !== "CANCELLED";
 
   const fbrStatusLabel = formatFbrDiStatusLabel(fbrStatus, {
     digitalInvoicingEnabled: useFbrDi,
@@ -353,6 +363,11 @@ export function InvoiceDetailPage() {
                     Receive payment
                   </Link>
               </Button>
+              ) : null}
+              {canRevertToDraft ? (
+                <Button onClick={() => setRevertOpen(true)} variant="secondary">
+                  Revert to draft
+                </Button>
               ) : null}
               <Button onClick={() => setDeleteOpen(true)} variant="ghost">Delete</Button>
             </div>
@@ -913,6 +928,24 @@ export function InvoiceDetailPage() {
           presetInvoiceId={invoice.id}
         />
       ) : null}
+
+      <ConfirmDialog
+        confirmLabel="Revert to draft"
+        description="This reverses the invoice journal and inventory, clears FBR submission data, and reopens the invoice as Draft so you can edit and re-issue. Unallocate any customer payments first. Linked credit/debit notes block this action."
+        errorMessage={revertToDraftMutation.error?.message}
+        isPending={revertToDraftMutation.isPending}
+        onClose={() => {
+          setRevertOpen(false);
+          revertToDraftMutation.reset();
+        }}
+        onConfirm={async () => {
+          await revertToDraftMutation.mutateAsync(invoice.id);
+          revertToDraftMutation.reset();
+          setRevertOpen(false);
+        }}
+        open={revertOpen}
+        title="Revert invoice to draft?"
+      />
 
       <ConfirmDeleteDialog
         description="This will remove the document from active workflows while preserving backend audit visibility."

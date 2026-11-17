@@ -174,6 +174,13 @@ export async function markInvoiceTaxReported(companyId: string, invoiceId: strin
   return data;
 }
 
+export async function revertInvoiceToDraft(companyId: string, invoiceId: string) {
+  const { data } = await apiClient.post<Invoice>(
+    `/companies/${companyId}/invoices/${invoiceId}/revert-to-draft`,
+  );
+  return data;
+}
+
 export async function submitInvoiceCompliance(companyId: string, invoiceId: string) {
   const { data } = await apiClient.post<{ jobId: string }>(
     `/companies/${companyId}/invoices/${invoiceId}/compliance/submit`,
