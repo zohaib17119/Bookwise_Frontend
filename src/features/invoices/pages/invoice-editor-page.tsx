@@ -351,7 +351,25 @@ export default function InvoiceEditorPage({
   const shippingAddresses = (selectedCustomer?.shippingAddresses ?? []) as Array<{
     id: string;
     label: string;
+    addressLine1?: string | null;
+    addressLine2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
   }>;
+  const formatShippingOption = (address: (typeof shippingAddresses)[number]) => {
+    const locality = [address.city, address.state, address.postalCode]
+      .map((p) => (p ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    const lines = [address.addressLine1, address.addressLine2, locality, address.country]
+      .map((p) => (p ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    const label = (address.label ?? "").trim() || "Shipping";
+    return lines ? `${label} — ${lines}` : label;
+  };
 
   const addLine = () => {
     const currentLines = form.getValues("lines") || [];
@@ -503,7 +521,7 @@ export default function InvoiceEditorPage({
                     <option value="">No shipping address</option>
                     {shippingAddresses.map((address) => (
                       <option key={address.id} value={address.id}>
-                        {address.label}
+                        {formatShippingOption(address)}
                       </option>
                     ))}
                   </Select>
