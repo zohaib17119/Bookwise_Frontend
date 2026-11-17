@@ -1,4 +1,5 @@
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,10 @@ export function CustomerPaymentsPage() {
   const { companyId, company, permissions } = useActiveCompany();
   const [search, setSearch] = useState("");
   const [customerId, setCustomerId] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const customersQuery = useCustomerOptions(companyId);
   const paymentsQuery = useCustomerPayments(companyId, {
-    search: deferredSearch.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     customerId: customerId || undefined,
   });
   const canView = canViewEntity(permissions, "customer_payments");

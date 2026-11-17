@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AuditLogFilters } from "@/components/audit/audit-log-filters";
@@ -22,11 +23,11 @@ export function AuditLogsPage() {
     fromDate: "",
     toDate: "",
   });
-  const deferredSearch = useDeferredValue(filters.search);
+  const debouncedSearch = useDebouncedValue(filters.search, 200);
   const queryFilters = useMemo(
     () => ({
       ...filters,
-      search: deferredSearch || undefined,
+      search: debouncedSearch || undefined,
       module: filters.module || undefined,
       action: filters.action || undefined,
       entityType: filters.entityType || undefined,
@@ -34,7 +35,7 @@ export function AuditLogsPage() {
       fromDate: filters.fromDate || undefined,
       toDate: filters.toDate || undefined,
     }),
-    [deferredSearch, filters],
+    [debouncedSearch, filters],
   );
   const auditLogsQuery = useAuditLogs(companyId, queryFilters);
 

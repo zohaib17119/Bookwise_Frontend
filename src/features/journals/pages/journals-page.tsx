@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -27,17 +28,17 @@ export function JournalsPage() {
   const [sourceModule, setSourceModule] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
 
   const filters = useMemo(
     () => ({
-      search: deferredSearch.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       status: status || undefined,
       sourceModule: sourceModule || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
     }),
-    [deferredSearch, fromDate, sourceModule, status, toDate],
+    [debouncedSearch, fromDate, sourceModule, status, toDate],
   );
 
   const journalsQuery = useJournalEntries(companyId, filters);

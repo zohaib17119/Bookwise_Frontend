@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
@@ -104,7 +105,7 @@ export function InvoicesPage() {
   const [sortDir, setSortDir] = useState<ListSortDir>("desc");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const customersQuery = useCustomerOptions(companyId);
   const accountsQuery = useAccountOptions(companyId);
   const taxSettingsQuery = useTaxSettings(companyId);
@@ -112,7 +113,7 @@ export function InvoicesPage() {
   const paySalesTaxMutation = usePayInvoiceSalesTax(companyId);
   const settleIncomeWhtMutation = useSettleInvoiceIncomeWht(companyId);
   const invoicesQuery = useInvoicesPaginated(companyId, {
-    search: deferredSearch.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     statuses: includedStatuses === null ? undefined : [...includedStatuses].join(","),
     customerIds: includedCustomerIds === null ? undefined : [...includedCustomerIds].join(","),
     fromDate,

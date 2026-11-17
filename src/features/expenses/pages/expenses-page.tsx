@@ -1,4 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
 import { Alert } from "@/components/ui/alert";
@@ -75,7 +76,7 @@ export function ExpensesPage() {
   const [addDraft, setAddDraft] = useState<Draft>(emptyDraft());
   const [includedCategoryIds, setIncludedCategoryIds] = useState<Set<string> | null>(null);
   const [includedPayFromIds, setIncludedPayFromIds] = useState<Set<string> | null>(null);
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const accountsQuery = useAccountOptions(companyId);
   const bankAccountsQuery = useBankAccounts(companyId);
   const mappingQuery = useDefaultAccountMapping(companyId);
@@ -86,7 +87,7 @@ export function ExpensesPage() {
   const paymentAccountIdsParam =
     includedPayFromIds === null ? undefined : [...includedPayFromIds].join(",");
   const expensesQuery = useExpensesPaginated(companyId, {
-    search: deferredSearch.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     fromDate,
     toDate,
     page,

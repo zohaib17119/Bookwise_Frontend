@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus, Spline, Trash2 } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,17 +47,17 @@ export function AccountsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Account | null>(null);
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
 
   const filters = useMemo(
     () => ({
-      search: deferredSearch.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       type: type || undefined,
       includeInactive,
       includeSystemGenerated,
       asTree,
     }),
-    [asTree, deferredSearch, includeInactive, includeSystemGenerated, type],
+    [asTree, debouncedSearch, includeInactive, includeSystemGenerated, type],
   );
 
   const accountsQuery = useAccounts(companyId, filters);

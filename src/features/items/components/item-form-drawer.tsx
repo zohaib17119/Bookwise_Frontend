@@ -1,4 +1,5 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -121,11 +122,11 @@ export function ItemFormDrawer({
   const [adoptedHsCode, setAdoptedHsCode] = useState("");
   const [selectedRateId, setSelectedRateId] = useState<number | null>(null);
   const [selectedSroId, setSelectedSroId] = useState<number | null>(null);
-  const deferredHsQuery = useDeferredValue(fbrHsQuery.trim());
+  const debouncedHsQuery = useDebouncedValue(fbrHsQuery.trim(), 200);
   const fbrHsCodesQuery = useFbrRefHsCodes(
     companyId,
-    deferredHsQuery,
-    open && showFbrFields && (fbrHsPickerOpen || deferredHsQuery.length >= 2),
+    debouncedHsQuery,
+    open && showFbrFields && (fbrHsPickerOpen || debouncedHsQuery.length >= 2),
   );
   const hsUomsQuery = useFbrHsUoms(
     companyId,
@@ -265,7 +266,7 @@ export function ItemFormDrawer({
   const hasAccountOverrides = Boolean(
     item?.incomeAccountId || item?.expenseAccountId || item?.assetAccountId,
   );
-  const deferredItemName = useDeferredValue(itemName?.trim() ?? "");
+  const debouncedItemName = useDebouncedValue(itemName?.trim() ?? "", 200);
 
   useEffect(() => {
     if (!open) return;
@@ -386,10 +387,10 @@ export function ItemFormDrawer({
 
   useEffect(() => {
     if (!open || !showFbrFields || fbrHsPickerOpen) return;
-    if (deferredItemName.length >= 2) {
-      setFbrHsQuery(deferredItemName);
+    if (debouncedItemName.length >= 2) {
+      setFbrHsQuery(debouncedItemName);
     }
-  }, [deferredItemName, fbrHsPickerOpen, open, showFbrFields]);
+  }, [debouncedItemName, fbrHsPickerOpen, open, showFbrFields]);
 
   useEffect(() => {
     if (!open || !showFbrFields || !adoptedHsCode) return;
@@ -634,10 +635,10 @@ export function ItemFormDrawer({
                   <option value={ADD_NEW_ITEM_CATEGORY}>Add new category…</option>
                 </Select>
               </FormField>
-              {showFbrFields && deferredItemName.length >= 2 && !selectedHsCodeCategoryId ? (
+              {showFbrFields && debouncedItemName.length >= 2 && !selectedHsCodeCategoryId ? (
                 <div className="md:col-span-2 max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
                   <p className="px-1 text-xs text-muted-foreground">
-                    FBR HS matches for “{deferredItemName}”
+                    FBR HS matches for “{debouncedItemName}”
                     {fbrHsCodesQuery.isFetching ? " · searching…" : ""}
                   </p>
                   {(fbrHsCodesQuery.data?.items ?? []).length === 0 && !fbrHsCodesQuery.isFetching ? (

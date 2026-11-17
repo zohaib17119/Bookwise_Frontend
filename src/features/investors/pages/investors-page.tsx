@@ -1,4 +1,5 @@
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -37,9 +38,9 @@ export function InvestorsPage() {
   const [selectedInvestor, setSelectedInvestor] = useState<Investor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Investor | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const investorsQuery = useInvestorsPaginated(companyId, {
-    search: deferredSearch.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     includeInactive,
     page,
     limit,

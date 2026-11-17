@@ -1,4 +1,5 @@
-import { useDeferredValue, useState } from "react";
+import { useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,9 @@ export function VendorsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Vendor | null>(null);
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const vendorsQuery = useVendorsPaginated(companyId, {
-    search: deferredSearch.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     includeInactive,
     page,
     limit,

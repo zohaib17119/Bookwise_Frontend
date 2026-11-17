@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -42,7 +43,7 @@ export function BankTransactionsPage() {
   const [type, setType] = useState("");
   const [direction, setDirection] = useState("");
   const [source, setSource] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);
   const [drawerMode, setDrawerMode] = useState<"create" | "edit">("create");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -50,7 +51,7 @@ export function BankTransactionsPage() {
 
   const filters = useMemo(
     () => ({
-      search: deferredSearch.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       bankAccountId: bankAccountId || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
@@ -60,7 +61,7 @@ export function BankTransactionsPage() {
       direction: direction || undefined,
       source: source || undefined,
     }),
-    [bankAccountId, deferredSearch, direction, fromDate, isCleared, isMatched, source, toDate, type],
+    [bankAccountId, debouncedSearch, direction, fromDate, isCleared, isMatched, source, toDate, type],
   );
 
   const bankAccountsQuery = useBankAccounts(companyId);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { DocumentStatusBadge } from "@/components/documents/document-status-badge";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export function FbrMonitoringPanel({ companyId }: { companyId: string }) {
   const [toDate, setToDate] = useState(defaultRange.toDate);
   const [status, setStatus] = useState<string>("ALL");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 200);
   const [page, setPage] = useState(1);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function FbrMonitoringPanel({ companyId }: { companyId: string }) {
     fromDate: fromDate || undefined,
     toDate: toDate || undefined,
     status: status === "ALL" ? undefined : status,
-    search: search.trim() || undefined,
+    search: debouncedSearch.trim() || undefined,
     page,
     limit: 25,
   };
@@ -105,7 +107,7 @@ export function FbrMonitoringPanel({ companyId }: { companyId: string }) {
 
   useEffect(() => {
     setPage(1);
-  }, [fromDate, toDate, status, search]);
+  }, [fromDate, toDate, status, debouncedSearch]);
 
   const summary = summaryQuery.data;
   const items = listQuery.data?.items ?? [];

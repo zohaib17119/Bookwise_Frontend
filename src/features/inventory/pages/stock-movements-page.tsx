@@ -1,4 +1,5 @@
-import { useDeferredValue, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Select } from "@/components/ui/select";
 import { InventoryMovementTable } from "@/components/accounting/inventory-movement-table";
 import { DateRangeToolbar } from "@/components/accounting/date-range-toolbar";
@@ -21,12 +22,12 @@ export function StockMovementsPage() {
   const [movementType, setMovementType] = useState("");
   const [direction, setDirection] = useState("");
   const [sourceModule, setSourceModule] = useState("");
-  const deferredSearch = useDeferredValue(search);
+  const debouncedSearch = useDebouncedValue(search, 200);
   const itemsQuery = useItemOptions(companyId);
 
   const filters = useMemo(
     () => ({
-      search: deferredSearch.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       itemId: itemId || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
@@ -34,7 +35,7 @@ export function StockMovementsPage() {
       direction: direction || undefined,
       sourceModule: sourceModule || undefined,
     }),
-    [deferredSearch, direction, fromDate, itemId, movementType, sourceModule, toDate],
+    [debouncedSearch, direction, fromDate, itemId, movementType, sourceModule, toDate],
   );
 
   const movementsQuery = useStockMovements(companyId, filters);
